@@ -1,0 +1,119 @@
+/* Status glyphs: the glyph carries the state. From LaptopStyles. */
+.st {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.st-failed {
+  color: var(--red);
+}
+/*
+ * In progress (#370, LaptopStyles' Labels): a topology's numbers while it still fits, on both
+ * leaderboards, carry a dotted underline in the in-progress dot's cobalt. "so far" goes only
+ * inside a phrase that says what's provisional ("top 10 so far"), never as a tag on a value.
+ */
+.live-n {
+  text-decoration: underline dotted var(--cobalt);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+  text-decoration-skip-ink: none;
+}
+/* A held run reads quieter than a running one (Submit run's config status). */
+.st-quiet {
+  color: var(--ink-3);
+}
+.g {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.g-on,
+.g-running {
+  background: var(--cobalt);
+}
+.g-busy {
+  background: var(--cobalt-mid);
+}
+.g-queued {
+  border: 1.5px solid var(--cobalt);
+}
+.g-held {
+  border: 1.5px dashed var(--ink-3);
+}
+/* A topology next to go out, and one waiting behind it (#233). */
+.g-next {
+  border: 1.5px dashed var(--cobalt);
+}
+.g-wait {
+  width: 8px;
+  height: 8px;
+  border: 1.3px solid var(--ink-3);
+}
+.g-completed {
+  width: 5px;
+  height: 9px;
+  border-radius: 0;
+  border: solid var(--ink-2);
+  border-width: 0 1.5px 1.5px 0;
+  transform: translateY(-1px) rotate(45deg);
+  margin: 0 2px;
+}
+.g-failed {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  border-radius: 0;
+}
+.g-failed::before,
+.g-failed::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 3.75px;
+  width: 9px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--red);
+  transform: rotate(45deg);
+}
+.g-failed::after {
+  transform: rotate(-45deg);
+}
+.g-canceled {
+  width: 9px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--ink-3);
+  transform: rotate(-45deg);
+}
+.g-off {
+  width: 9px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--ink-3);
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+.g-running,
+.g-busy,
+.live {
+  animation: pulse 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .g-running,
+  .g-busy,
+  .live {
+    animation: none;
+  }
+}

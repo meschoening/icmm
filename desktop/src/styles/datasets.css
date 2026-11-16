@@ -1,0 +1,1097 @@
+/*
+ * Datasets and Dataset detail (#142): LaptopDatasets and LaptopDatasetDetail,
+ * on tokens so dark mode follows.
+ */
+
+.nw {
+  white-space: nowrap;
+}
+
+/* Datasets' head: the heading over its facts, and New dataset at the right. */
+.head-text {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.datasets-head .btn {
+  flex-shrink: 0;
+}
+
+/* Datasets' list */
+.ds-list {
+  display: flex;
+  flex-direction: column;
+}
+/* Above 1280 the Dataset column takes the width; Protocols keeps its 1280 width (#451, SF10). */
+.ds-row {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(0, 476px) 48px 156px 112px;
+  gap: 20px;
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--line);
+  align-items: start;
+}
+.ds-row.ds-heads {
+  padding: 0 12px 10px;
+  align-items: end;
+}
+.ds-num {
+  text-align: right;
+}
+.ds-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ds-link {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.ds-sub {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.ds-sub .n {
+  color: var(--ink-3);
+}
+.ds-protocols {
+  min-width: 0;
+  padding-top: 2px;
+}
+.ds-plist {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 3px 14px;
+  margin: 0;
+  align-items: baseline;
+}
+.ds-plist-row {
+  display: contents;
+}
+.ds-plist dt {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.ds-plist dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+/* "+ 27 more", under the templates past 6 protocols (#451, SF09). */
+.ds-plist-more {
+  margin: 3px 0 0 110px;
+  font-size: 14px;
+}
+.ds-runs {
+  font-size: 14px;
+  text-align: right;
+  padding-top: 2px;
+  color: var(--ink-2);
+}
+.ds-best {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+/* "val 0.0393", "train 0.0712": which RMSE is the best (RF23). */
+.ds-best-by {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.ds-by {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.ds-best-v {
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--cobalt);
+  text-decoration: none;
+}
+.ds-best-v:hover {
+  color: var(--cobalt-2);
+}
+.ds-dash {
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--ink-3);
+}
+.ds-mod {
+  font-size: 14px;
+  color: var(--ink-2);
+  padding-top: 2px;
+}
+
+/* A dataset whose current revision can't be read, in place of its protocols. */
+.ds-fail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.ds-fail-what {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.ds-fail-what .g {
+  flex-shrink: 0;
+  transform: translateY(-1px);
+}
+.ds-fail-raw {
+  margin: 0;
+  padding-left: 17px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* An empty list, or the runs list before any run */
+.ds-none {
+  margin: 0;
+  padding: 14px 12px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--ink-3);
+}
+.ds-foot {
+  margin: 16px 0 0;
+  padding: 0 12px;
+  max-width: 820px;
+  font-size: 14px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.ds-offline {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--ground);
+  font-size: 14px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+/*
+ * Not connected, nothing read (#358, RF15, LaptopStyles' Not connected): the sentence a page
+ * shows in place of its data, with Connect beside it.
+ */
+.offline-note {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 12px 10px 16px;
+}
+.offline-note p {
+  margin: 0;
+  min-width: 0;
+  line-height: 1.45;
+}
+.offline-note .btn {
+  flex-shrink: 0;
+}
+
+/* Dataset detail's head: breadcrumb, the name with its button, the facts under both. */
+.ds-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.crumbs {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-3);
+  min-width: 0;
+}
+.crumbs .link {
+  color: var(--ink-2);
+}
+.crumbs .mono {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.ds-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+.ds-title {
+  flex-grow: 1;
+  min-width: 0;
+}
+.ds-title .page-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 10px;
+}
+.ds-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.del-word {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--ink-3);
+  letter-spacing: 0;
+}
+.ds-facts {
+  margin-top: 2px;
+}
+.ds-name-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.ds-name-row .btn {
+  flex-shrink: 0;
+}
+
+/* Rename (#146): the name as a field, with Cancel and Save, and its checks under it */
+.ds-rename {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding-bottom: 4px;
+}
+.ds-rename-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 100%;
+}
+.ds-rename-input {
+  height: 38px;
+  width: 340px;
+  min-width: 0;
+  padding: 0 10px;
+  font-family: var(--font-mono);
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.ds-rename-acts {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.ds-rename .ok .mono {
+  color: var(--ink);
+}
+.ds-rename .err {
+  max-width: 820px;
+}
+
+/* Duplicate, and what its last try said under it */
+.ds-dup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.ds-dup-message {
+  max-width: 260px;
+  text-align: right;
+}
+
+/* Export's outcome under the header (#147): the note, or the red box. */
+.dd-exported .err {
+  display: block;
+  margin-top: 4px;
+}
+.ebox > .btn {
+  flex-shrink: 0;
+}
+
+/* Jump to */
+.dd-jumps {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 22px;
+}
+.dd-jump {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.dd-jump:hover {
+  color: var(--ink);
+}
+.dd-jump-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* The protocols, each with its facts beside its two charts */
+.dd-protocols {
+  display: flex;
+  flex-direction: column;
+}
+.dd-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  padding: 0 0 12px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.dd-legend .key {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.whisker-glyph {
+  stroke: var(--ink);
+  stroke-width: 1;
+  opacity: 0.55;
+}
+.dot-glyph {
+  fill: var(--ink);
+}
+.ring-glyph {
+  stroke: var(--ink);
+  stroke-width: 1.2;
+}
+.dd-glyph {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--ink);
+}
+.dd-glyph.added {
+  width: 6px;
+  height: 6px;
+  border-radius: 0;
+  transform: rotate(45deg);
+  margin: 0 1px;
+}
+.dd-glyph.held {
+  border: 1.3px solid var(--ink);
+  background: var(--bg);
+}
+.dd-glyph.added.held {
+  width: 6.4px;
+  height: 6.4px;
+  border-width: 1.2px;
+}
+
+/* Above 1280 the two charts take the width; the facts keep their 1280 width (#451, SF10). */
+.dd-protocol {
+  display: grid;
+  grid-template-columns: minmax(0, 360px) minmax(400px, 1fr) minmax(400px, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  column-gap: 28px;
+  row-gap: 2px;
+  padding: 20px 0 18px;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 12px;
+}
+.dd-proto-facts,
+.dd-proto-fig {
+  grid-row: span 2;
+  display: grid;
+  grid-template-rows: subgrid;
+  margin: 0;
+  min-width: 0;
+}
+.dd-protocol.asking {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+.dd-protocol.asking > .dd-proto-facts,
+.dd-protocol.asking > .dd-proto-fig {
+  grid-row: 2 / span 2;
+}
+.dd-remove {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  margin-bottom: 16px;
+}
+/* The name, and at the right of the facts column, Edit protocol… and Remove… (#146) */
+/* The name keeps whole: Edit protocol… and Remove… wrap below it when both don't fit (#326). */
+.dd-proto-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  min-width: 0;
+  align-self: baseline;
+}
+.dd-proto-acts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.dd-proto-why {
+  margin: 8px 0 0;
+  text-wrap: pretty;
+}
+.dd-proto-name {
+  flex-grow: 1;
+  margin: 0;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 22px;
+  overflow-wrap: break-word;
+  align-self: baseline;
+}
+.dd-proto-name:focus {
+  outline: none;
+}
+.dd-proto-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.dd-proto-shape {
+  font-size: 14px;
+  font-weight: 500;
+}
+.dd-meta {
+  margin: 10px 0 0;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 1px 12px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.dd-meta-row {
+  display: contents;
+}
+.dd-meta dt {
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.dd-meta dd {
+  margin: 0;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.dd-proto-note {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.dd-proto-fig figcaption {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+  align-self: baseline;
+}
+.dd-proto-fig .label {
+  color: var(--ink);
+}
+.fig-title {
+  font-size: 13px;
+  color: var(--ink-3);
+  min-width: 0;
+}
+.fig-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fig-foot {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.fig-foot .grow {
+  flex-grow: 1;
+  min-width: 0;
+}
+.fig-foot .ink {
+  color: var(--ink);
+}
+
+/* A chart: its plot inset for the axes' labels, 296 px tall. */
+.pts-chart {
+  position: relative;
+  height: 296px;
+}
+.pts-chart .plot {
+  position: absolute;
+  left: 40px;
+  right: 8px;
+  top: 8px;
+  bottom: 24px;
+}
+.pts-chart .gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--line);
+}
+.pts-chart .baseline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--line-2);
+}
+.pts-chart .whisker {
+  position: absolute;
+  width: 5px;
+  box-sizing: border-box;
+  border: solid var(--ink);
+  border-width: 1px 0;
+  opacity: 0.55;
+}
+.pts-chart .whisker::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--ink);
+}
+/* A point: measured ●, interpolated ◆; hollow when it's a validation point. */
+.pts-chart .mark {
+  position: absolute;
+  width: 4.8px;
+  height: 4.8px;
+  translate: -2.4px -2.4px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+.pts-chart .mark.held {
+  width: 6.8px;
+  height: 6.8px;
+  translate: -3.4px -3.4px;
+  box-sizing: border-box;
+  border: 1.3px solid var(--ink);
+  background: var(--bg);
+}
+.pts-chart .mark.added {
+  width: 5.2px;
+  height: 5.2px;
+  translate: -2.6px -2.6px;
+  border-radius: 0;
+  rotate: 45deg;
+}
+.pts-chart .mark.added.held {
+  width: 6.4px;
+  height: 6.4px;
+  translate: -3.2px -3.2px;
+  border-width: 1.2px;
+}
+.pts-chart .ring {
+  position: absolute;
+  width: 13.2px;
+  height: 13.2px;
+  translate: -6.6px -6.6px;
+  box-sizing: border-box;
+  border: 1.2px solid var(--ink);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.pts-chart svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.pts-chart svg path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  stroke-linejoin: round;
+}
+.pts-chart .grid {
+  stroke: var(--line);
+}
+.pts-chart .family {
+  stroke: var(--ink-3);
+  stroke-width: 1;
+  opacity: 0.4;
+}
+.pts-chart .sweep {
+  stroke: var(--ink);
+  stroke-width: 1.6;
+}
+
+/* The runs fit to the dataset */
+.ds-runs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+}
+.ds-runs-list h2 {
+  margin: 0;
+}
+
+/*
+ * The configs from the dataset (#213): each row its name, its facts and its
+ * runs, opening it on Configs. A long name wraps rather than cutting off.
+ */
+.dd-configs {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+.dd-config {
+  display: grid;
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr) 200px;
+  gap: 20px;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  line-height: 20px;
+}
+.dd-config:hover {
+  background: var(--ground);
+}
+.dd-config-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.dd-config-facts {
+  min-width: 0;
+  color: var(--ink-3);
+}
+.dd-config-facts .g {
+  margin-right: 7px;
+  transform: translateY(-1px);
+}
+.dd-config-runs {
+  justify-self: end;
+  color: var(--ink-3);
+}
+.dd-configs-note {
+  margin: 2px 0 0 12px;
+}
+/* The facts' count of them, in the facts' color, as the board draws it. */
+.dd-facts-link {
+  color: var(--ink-2);
+}
+
+/* Change this dataset (#146): New protocol… and Delete dataset…, each with its line */
+.dd-change {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.dd-change h2 {
+  margin: 0 0 6px;
+}
+.dd-change-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 6px 0;
+}
+.dd-change-row .btn {
+  justify-self: start;
+}
+.dd-change-says {
+  font-size: 14px;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+/* A change that asks first, in place: Remove… across its protocol, Delete dataset… here */
+.dd-ask {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--red-soft);
+  border: 1px solid color-mix(in srgb, var(--red) 22%, var(--red-soft));
+}
+.dd-change .dd-ask {
+  margin-top: 6px;
+}
+.dd-ask-text {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.dd-ask-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.dd-ask-title:focus {
+  outline: none;
+}
+.dd-ask-message {
+  margin-top: 4px;
+  color: var(--red);
+}
+.dd-ask-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+/*
+ * Import (#147, LaptopDatasets' `read` … `newer`): Import beside New dataset,
+ * then the box above the list, on cobalt-soft, with the name at the left
+ * and what the file holds at the right; or the red box saying why.
+ */
+.head-acts {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.imp {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 16px 16px;
+  border-radius: 12px;
+  background: var(--cobalt-soft);
+}
+.imp-h {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.imp-say {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.imp-t {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.imp-b {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.imp-acts,
+.ebox-acts {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.imp-g {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 32px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  background: var(--bg);
+}
+.imp-n {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
+.imp-n .input {
+  width: 320px;
+  max-width: 100%;
+}
+.imp-n .ok {
+  gap: 6px;
+  white-space: normal;
+}
+.imp-n .ok svg,
+.imp-n .ok .g {
+  flex-shrink: 0;
+}
+.imp-n .ok .mono,
+.same .mono {
+  overflow-wrap: anywhere;
+}
+.imp-n .ink,
+.same .ink {
+  color: var(--ink);
+}
+.imp-p {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.imp-facts {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.imp-plist {
+  margin-top: 4px;
+}
+.imp-plist dd .n {
+  color: var(--ink-3);
+}
+.same {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 2px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.same svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.imp-wait {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.flist {
+  margin: 2px 0 4px;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+/* Imported: the line where the box was, and the new row tinted until the page is left. */
+.ds-imported {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--cobalt-soft);
+  font-size: 14px;
+  color: var(--ink);
+}
+.ds-imported svg {
+  flex-shrink: 0;
+}
+.ds-imported .mono {
+  overflow-wrap: anywhere;
+}
+.ds-row.ds-new {
+  background: var(--cobalt-soft);
+}
+
+/* Changing validation points (#53): the bar, and every point on a faint cobalt disc. */
+.vbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px 12px 16px;
+  border-radius: 10px;
+  background: var(--cobalt-soft);
+}
+.vbar-text {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.vbar-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.vbar-body {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.vbar-acts {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.vhit.edit {
+  background: color-mix(in srgb, var(--cobalt) 13%, transparent);
+}
+.vhit.edit.near {
+  background: color-mix(in srgb, var(--cobalt) 26%, transparent);
+}
+.vlayer:active ~ .vhit.edit.near {
+  background: color-mix(in srgb, var(--cobalt) 34%, transparent);
+}
+.dd-legend .dd-vchange {
+  margin-left: auto;
+}
+
+/*
+ * The runs fit to the dataset (#236, LaptopDatasetDetail): status, number,
+ * name, progress and best, its best run tinted; those on earlier data under
+ * their own heading.
+ */
+.dd-runs-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.dd-runs-head h2 {
+  flex-grow: 1;
+}
+.dd-runs-head h2:focus {
+  outline: none;
+}
+.dd-runs-all {
+  font-size: 13px;
+}
+.dd-runs {
+  display: flex;
+  flex-direction: column;
+}
+.dd-run {
+  display: grid;
+  grid-template-columns: 112px 56px minmax(0, 1fr) 150px 220px;
+  gap: 20px;
+  align-items: center;
+  height: 44px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.dd-run.dd-run-heads {
+  height: auto;
+  align-items: end;
+  padding-bottom: 10px;
+}
+.dd-run.dd-run-best {
+  background: var(--cobalt-soft);
+}
+a.dd-run:hover {
+  background: var(--ground);
+}
+a.dd-run.dd-run-best:hover {
+  background: color-mix(in srgb, var(--cobalt) 12%, var(--bg));
+}
+.dd-run .st {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.dd-run .st.st-failed {
+  color: var(--red);
+}
+.dd-run-id {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.dd-run-name {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dd-run-prog {
+  font-size: 14px;
+  color: var(--ink-3);
+}
+.dd-run-prog .mono {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.dd-run-num {
+  text-align: right;
+}
+.dd-run-best-cell {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.dd-run-tag {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cobalt);
+}
+.dd-run-v {
+  font-size: 14px;
+  min-width: 52px;
+  text-align: right;
+}
+.dd-run-best .dd-run-v {
+  color: var(--cobalt);
+}
+.dd-runs-div {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 22px 12px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.dd-runs-div h3 {
+  margin: 0;
+  flex-shrink: 0;
+  color: var(--ink-2);
+}
+.best-v {
+  color: var(--cobalt);
+  text-decoration: none;
+}
+.best-v:hover {
+  color: var(--cobalt-2);
+}

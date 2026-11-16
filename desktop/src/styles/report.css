@@ -1,0 +1,115 @@
+/*
+ * Report a problem… (#126): the panel under its failure, drawn like the host
+ * key's question, and the sentence once a report is saved (LaptopConnection's
+ * and LaptopSettings' report-review and reported).
+ */
+.rep {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding: 14px 20px;
+  background: var(--cobalt-soft);
+  border-top: 1px solid var(--line);
+}
+.rep:last-child {
+  border-radius: 0 0 11px 11px;
+}
+.rep-say {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.rep h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.rep h4:focus {
+  outline: none;
+}
+.rep p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.rep .kv {
+  margin-top: 8px;
+  gap: 4px 24px;
+}
+.rep .kv dt,
+.rep .kv dd {
+  font-size: 13px;
+}
+.rep .kv dd {
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.rep .field-issue {
+  margin-top: 6px;
+}
+.rep-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+/* Its failure's box squares its foot onto the panel. */
+.strip.bad.open {
+  border-radius: 0;
+}
+.fail-box.open {
+  border-radius: 10px 10px 0 0;
+}
+/* Under a box of its own, rather than inside a card: its buttons at the
+   bottom right, as the box's are (#117's U01). */
+.rep.alone,
+.rep.alone:last-child {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  padding: 14px 16px;
+}
+.rep.alone .rep-actions {
+  align-self: flex-end;
+}
+/* Under a failed start's buttons, a box of its own. */
+.rep.boxed,
+.rep.boxed:last-child {
+  border-top: 0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 8px;
+}
+
+/* Saved and opened: under the failure's words. */
+.rsent {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.rsent .g {
+  flex-shrink: 0;
+}
+.rsent-file {
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.rsent .field-issue {
+  display: block;
+  margin-top: 4px;
+}
+/* A box and its panel, as one. */
+.rep-under {
+  display: flex;
+  flex-direction: column;
+}

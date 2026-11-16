@@ -1,0 +1,405 @@
+name: release
+
+# ICMM's release: four installers from one pushed tag, as a draft only Max publishes
+# (ADR-0023 in the private icmm-dev, after MaxPrice's release workflow, minus its updater: ICMM has
+# none). This file lives in icmm-dev under release/overlay/ and reaches this repo through the mirror,
+# so it's never edited here.
+#
+#   preflight       the tag is vX.Y.Z or vX.Y.Z-rc.N and every version file says so; all six
+#                   Apple secrets are set (a DMG is never published unsigned)
+#   cluster-engine  the linux-x86_64 engine bundle that clusters run, built once in
+#                   manylinux_2_28 and handed to every leg: it ships only inside the installers
+#   build (x4)      each leg builds its own core and host engine natively, then the app:
+#                     macos-latest    arm64 DMG, signed (Developer ID, hardened runtime), notarized
+#                     macos-15-intel  x64 DMG, the same
+#                     windows-latest  NSIS .exe, per-user install, unsigned
+#                     ubuntu-22.04    x86_64 .deb, whose host engine is the cluster engine
+#   verify (x4)     installs each installer on a fresh runner of its kind and launches it once:
+#                   the app must unpack its host engine from its own resources and pass the
+#                   engine's selfcheck. Also: signatures, notarization tickets and Gatekeeper on
+#                   macOS, the Visual C++ runtime on Windows, the .deb's Depends on Linux
+#   release         a draft (a prerelease for -rc.) carrying exactly the four, named
+#                   icmm_<version>_<arch>-<os>.<ext>. Publishing is Max's step
+#
+# The .deb is built on Ubuntu 22.04, the oldest system it supports, because it links that
+# system's glibc. Third-party actions are pinned to full commit SHAs. Toolchains come from
+# scripts/ci/pins.env and desktop/src-tauri/rust-toolchain.toml, as in icmm-dev's CI. No `run:`
+# interpolates an expression: each value reaches the shell through `env:`.
+#
+# Secrets (scripts/release_apple_secrets.sh in icmm-dev sets them):
+#   APPLE_CERTIFICATE           the Developer ID Application .p12, base64
+#   APPLE_CERTIFICATE_PASSWORD  its password
+#   APPLE_SIGNING_IDENTITY      "Developer ID Application: <name> (<team>)"
+#   APPLE_API_KEY               the App Store Connect API key's .p8, base64
+#   APPLE_API_KEY_ID            its key id
+#   APPLE_API_ISSUER            its issuer id
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  # Python 3.12 from uv, on every runner: Ubuntu 22.04's own is 3.10.
+  CHECK: uv run --no-project --python 3.12 .github/release_check.py
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+      prerelease: ${{ steps.tag.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: The tag names every version file's version
+        id: tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: python3 .github/release_check.py tag "$TAG"
+      - name: All six Apple secrets are set
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: python3 .github/release_check.py secrets
+
+  cluster-engine:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Build the cluster engine in manylinux_2_28
+        # The image's own user writes the archive into the mounted engines folder.
+        run: |
+          chmod a+rwx desktop/src-tauri/engines
+          scripts/cluster_engine.sh
+          ls -l desktop/src-tauri/engines
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cluster-engine
+          path: desktop/src-tauri/engines/*-linux-x86_64-*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  build:
+    needs: [preflight, cluster-engine]
+    name: build (${{ matrix.leg }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { leg: macos-arm64, runner: macos-latest, os: macos, arch: arm64, bundles: dmg, lib: build/libicmm.dylib }
+          - { leg: macos-x64, runner: macos-15-intel, os: macos, arch: x64, bundles: dmg, lib: build/libicmm.dylib }
+          - { leg: windows-x64, runner: windows-latest, os: windows, arch: x64, bundles: nsis, lib: build/Release/icmm.dll }
+          - { leg: linux-x64, runner: ubuntu-22.04, os: linux, arch: x64, bundles: deb, lib: "" }
+    env:
+      VERSION: ${{ needs.preflight.outputs.version }}
+      OS: ${{ matrix.os }}
+      ARCH: ${{ matrix.arch }}
+      BUNDLES: ${{ matrix.bundles }}
+      LIBICMM: ${{ matrix.lib }}
+      BUNDLE_DIR: desktop/src-tauri/target/release/bundle/${{ matrix.bundles }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Read the toolchain pins
+        run: grep -E '^(NODE_VERSION|UV_VERSION|NASM_VERSION|NASM_SHA256_WINDOWS)=' scripts/ci/pins.env >> "$GITHUB_ENV"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.UV_VERSION }}
+      - name: Rust, from rust-toolchain.toml
+        working-directory: desktop/src-tauri
+        run: rustup toolchain install && rustc --version
+      - name: The app's system libraries (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            libayatana-appindicator3-dev libgtk-3-dev librsvg2-dev libssl-dev \
+            libwebkit2gtk-4.1-dev libxdo-dev
+          pkg-config --modversion webkit2gtk-4.1
+      - name: NASM, for aws-lc-sys (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          $v = $env:NASM_VERSION
+          $zip = "$env:RUNNER_TEMP\nasm.zip"
+          Invoke-WebRequest "https://www.nasm.us/pub/nasm/releasebuilds/$v/win64/nasm-$v-win64.zip" -OutFile $zip
+          if ((Get-FileHash $zip -Algorithm SHA256).Hash -ne $env:NASM_SHA256_WINDOWS) { throw "nasm-$v's sha256 isn't the pin's" }
+          Expand-Archive $zip "$env:RUNNER_TEMP\nasm"
+          Add-Content $env:GITHUB_PATH "$env:RUNNER_TEMP\nasm\nasm-$v"
+      - name: dumpbin, which the engine bundle checks icmm.dll with (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $bin = Get-ChildItem "$vs\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe" | Sort-Object FullName | Select-Object -Last 1
+          Add-Content $env:GITHUB_ENV "DUMPBIN_DIR=$($bin.DirectoryName)"
+      - run: uv sync --locked
+      - name: The core
+        if: matrix.os != 'linux'
+        run: |
+          cmake -S engine/cpp -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release --parallel
+      - name: The host engine bundle
+        if: matrix.os != 'linux'
+        run: |
+          if [[ -n ${DUMPBIN_DIR:-} ]]; then PATH="$(cygpath -u "$DUMPBIN_DIR"):$PATH"; fi
+          archive="$(uv run --locked python scripts/engine_bundle.py --libicmm "$LIBICMM")"
+          echo "built $archive"
+          uv run --locked python .github/release_check.py selfcheck "$archive"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cluster-engine
+          path: desktop/src-tauri/engines
+      - run: ls -l desktop/src-tauri/engines
+      - name: npm ci
+        working-directory: desktop
+        run: npm ci --no-audit --no-fund
+      - name: The signing keychain and the notary key (macOS)
+        if: matrix.os == 'macos'
+        id: signing
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          keychain="$RUNNER_TEMP/icmm-signing.keychain-db"
+          password="$(openssl rand -base64 24)"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          printf '%s' "$APPLE_CERTIFICATE" | openssl base64 -d -A > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" >/dev/null
+          # Ahead of the login keychain in the search list, so codesign finds the identity.
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          if ! security find-identity -v -p codesigning "$keychain" | grep -qF "\"$APPLE_SIGNING_IDENTITY\""; then
+            echo "::error::The .p12 holds no valid identity named APPLE_SIGNING_IDENTITY."
+            exit 1
+          fi
+          key="$RUNNER_TEMP/AuthKey.p8"
+          printf '%s' "$APPLE_API_KEY" | openssl base64 -d -A > "$key"
+          echo "keychain=$keychain" >> "$GITHUB_OUTPUT"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+      - name: Build the app and its installer
+        working-directory: desktop
+        env:
+          # Tauri signs the .app with the keychain's identity (hardened runtime), then notarizes
+          # and staples it before it makes the DMG. Its APPLE_API_KEY is the key's id; the .p8 is
+          # the file at APPLE_API_KEY_PATH.
+          APPLE_SIGNING_IDENTITY: ${{ matrix.os == 'macos' && secrets.APPLE_SIGNING_IDENTITY || '' }}
+          APPLE_API_KEY: ${{ matrix.os == 'macos' && secrets.APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ matrix.os == 'macos' && secrets.APPLE_API_ISSUER || '' }}
+          APPLE_API_KEY_PATH: ${{ steps.signing.outputs.key }}
+        run: npm run tauri -- build --bundles "$BUNDLES" -- --locked
+      - name: Sign, notarize and staple the DMG (macOS)
+        if: matrix.os == 'macos'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          KEY: ${{ steps.signing.outputs.key }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          dmgs=("$BUNDLE_DIR"/*.dmg)
+          if [[ ${#dmgs[@]} -ne 1 ]]; then echo "::error::expected one DMG, found ${#dmgs[@]}"; exit 1; fi
+          dmg="${dmgs[0]}"
+          codesign --force --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$dmg"
+          result="$(xcrun notarytool submit "$dmg" --key "$KEY" --key-id "$APPLE_API_KEY_ID" \
+            --issuer "$APPLE_API_ISSUER" --wait --timeout 60m --output-format json)"
+          echo "$result"
+          if [[ "$(jq -r .status <<<"$result")" != Accepted ]]; then
+            xcrun notarytool log "$(jq -r .id <<<"$result")" --key "$KEY" \
+              --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" || true
+            echo "::error::Apple's notary service didn't accept the DMG."
+            exit 1
+          fi
+          xcrun stapler staple "$dmg"
+          xcrun stapler validate "$dmg"
+      - name: Name the installer for its platform
+        id: stage
+        run: uv run --locked python .github/release_check.py stage "$BUNDLE_DIR" "$VERSION" "$ARCH" "$OS" "$RUNNER_TEMP/dist"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: installer-${{ matrix.leg }}
+          path: ${{ steps.stage.outputs.path }}
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+      - name: Remove the signing keychain and the notary key (macOS)
+        if: always() && matrix.os == 'macos'
+        env:
+          KEYCHAIN: ${{ steps.signing.outputs.keychain }}
+        run: |
+          if [[ -n $KEYCHAIN ]]; then security delete-keychain "$KEYCHAIN" || true; fi
+          rm -f "$RUNNER_TEMP/AuthKey.p8" "$RUNNER_TEMP/cert.p12"
+
+  verify:
+    needs: [preflight, build]
+    name: verify (${{ matrix.leg }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { leg: macos-arm64, runner: macos-latest, os: macos, lipo: arm64 }
+          - { leg: macos-x64, runner: macos-15-intel, os: macos, lipo: x86_64 }
+          - { leg: windows-x64, runner: windows-latest, os: windows, lipo: "" }
+          - { leg: linux-x64, runner: ubuntu-22.04, os: linux, lipo: "" }
+    env:
+      LIPO: ${{ matrix.lipo }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Read the toolchain pins
+        run: grep -E '^UV_VERSION=' scripts/ci/pins.env >> "$GITHUB_ENV"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.UV_VERSION }}
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: installer-${{ matrix.leg }}
+          path: dist
+
+      - name: Signed, notarized and stapled; Gatekeeper accepts it (macOS)
+        if: matrix.os == 'macos'
+        run: |
+          set -euo pipefail
+          dmg="$(ls dist/*.dmg)"
+          codesign --verify --strict --verbose=2 "$dmg"
+          xcrun stapler validate "$dmg"
+          spctl --assess --type open --context context:primary-signature --verbose=2 "$dmg"
+          mount="$RUNNER_TEMP/dmg"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount" "$dmg"
+          mkdir -p "$RUNNER_TEMP/Applications"
+          ditto "$mount/ICMM.app" "$RUNNER_TEMP/Applications/ICMM.app"
+          hdiutil detach "$mount"
+          app="$RUNNER_TEMP/Applications/ICMM.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          details="$(codesign --display --verbose=2 "$app" 2>&1)"
+          echo "$details"
+          grep -q 'flags=.*runtime' <<<"$details" || { echo "::error::no hardened runtime"; exit 1; }
+          grep -q '^Authority=Developer ID Application' <<<"$details" || { echo "::error::not signed with a Developer ID"; exit 1; }
+          spctl --assess --type execute --verbose=2 "$app" 2>&1 | tee "$RUNNER_TEMP/spctl.txt"
+          grep -q 'source=Notarized Developer ID' "$RUNNER_TEMP/spctl.txt" || { echo "::error::Gatekeeper doesn't see it as notarized"; exit 1; }
+          xcrun stapler validate "$app"
+          exe="$app/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$app/Contents/Info.plist")"
+          archs="$(lipo -archs "$exe")"
+          [[ "$archs" == "$LIPO" ]] || { echo "::error::the app is $archs, not $LIPO"; exit 1; }
+          ls -l "$app/Contents/Resources/engines"
+          echo "APP_EXE=$exe" >> "$GITHUB_ENV"
+
+      - name: Install it for this user, silently (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem dist\*.exe).FullName
+          $p = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "the installer exited $($p.ExitCode)" }
+          $dir = @("$env:LOCALAPPDATA\ICMM", "$env:LOCALAPPDATA\Programs\ICMM") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $dir) { throw "the installer put no ICMM folder in $env:LOCALAPPDATA" }
+          $exe = @(Get-ChildItem $dir -Filter *.exe | Where-Object Name -NotMatch '^uninstall')
+          if ($exe.Count -ne 1) { throw "expected one app in $dir, found: $($exe.Name -join ', ')" }
+          Get-ChildItem -Recurse $dir | Select-Object FullName, Length | Format-Table -AutoSize
+          Add-Content $env:GITHUB_ENV "APP_EXE=$($exe[0].FullName)"
+          Add-Content $env:GITHUB_ENV "APP_DIR=$dir"
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          $bin = Get-ChildItem "$vs\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe" | Sort-Object FullName | Select-Object -Last 1
+          Add-Content $env:GITHUB_ENV "DUMPBIN_DIR=$($bin.DirectoryName)"
+
+      - name: Install it with apt, which brings what it depends on (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          set -euo pipefail
+          deb="$(ls dist/*.deb)"
+          depends="$(dpkg-deb --field "$deb" Depends)"
+          echo "Depends: $depends"
+          grep -qF 'libwebkit2gtk-4.1-0 (>= 2.50)' <<<"$depends" || { echo "::error::the .deb doesn't depend on libwebkit2gtk-4.1-0 (>= 2.50)"; exit 1; }
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xvfb xauth "./$deb"
+          package="$(dpkg-deb --field "$deb" Package)"
+          exe="$(dpkg -L "$package" | grep '^/usr/bin/' | head -n1)"
+          [[ -x "$exe" ]] || { echo "::error::$package installed no program in /usr/bin"; exit 1; }
+          dpkg -L "$package"
+          echo "APP_EXE=$exe" >> "$GITHUB_ENV"
+
+      - name: Launch it once; it installs its engine from its own resources
+        run: $CHECK launch "$APP_EXE"
+
+      - name: No Visual C++ runtime it doesn't carry (Windows)
+        if: matrix.os == 'windows'
+        run: |
+          PATH="$(cygpath -u "$DUMPBIN_DIR"):$PATH"
+          $CHECK pe-imports "$APP_DIR" "$LOCALAPPDATA/org.meschoening.icmm/engine"
+
+  release:
+    needs: [preflight, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.ref_name }}
+      VERSION: ${{ needs.preflight.outputs.version }}
+      PRERELEASE: ${{ needs.preflight.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: installer-*
+          merge-multiple: true
+          path: dist
+      - name: Exactly the four installers
+        run: python3 .github/release_check.py assets "$VERSION" $(ls dist)
+      - name: Draft the release
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::$TAG already has a release. Delete it (a draft) to build it again, or cut a new version."
+            exit 1
+          fi
+          flags=(--draft --verify-tag --title "ICMM $TAG")
+          if [[ $PRERELEASE == true ]]; then flags+=(--prerelease); fi
+          gh release create "$TAG" "${flags[@]}" \
+            --notes "ICMM $VERSION. Its notes follow when it's published." dist/*
+      - name: The draft carries all four, whole
+        run: |
+          set -euo pipefail
+          listing="$(gh release view "$TAG" --json assets --jq '.assets[] | "\(.name)\t\(.size)\t\(.state)"')"
+          echo "$listing"
+          python3 .github/release_check.py assets "$VERSION" $(cut -f1 <<<"$listing")
+          while IFS=$'\t' read -r name size state; do
+            [[ $state == uploaded ]] || { echo "::error::$name is $state"; exit 1; }
+            [[ $size == "$(stat -c %s "dist/$name")" ]] || { echo "::error::$name's size differs from the built one"; exit 1; }
+          done <<<"$listing"

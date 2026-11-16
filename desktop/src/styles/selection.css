@@ -1,0 +1,160 @@
+/*
+ * The session's selection (LaptopResults' selection bar, #339): floating at
+ * the window's bottom over Results, a start's page and Compare, with the
+ * room under the page that lets its end scroll clear of it.
+ */
+.selbar {
+  position: fixed;
+  z-index: 20;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 9px 9px 18px;
+  box-sizing: border-box;
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: 0 24px 64px -24px var(--shadow);
+}
+/* The bar's height, its gap to the window's bottom and the page's own bottom padding's worth. */
+.selbar-room {
+  flex-shrink: 0;
+  height: 56px;
+}
+/* Past the window's width, the chips give way, their names cut short; the rest keep theirs. */
+.selbar > * {
+  flex-shrink: 0;
+}
+.selbar > .schips {
+  flex-shrink: 1;
+}
+.seln {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.schips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.schip {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 3px 0 9px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--bg);
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+.schip .mono {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--ink);
+}
+/* A chip's dataset gives way first: the start it names is the point. */
+.schip .sds {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.xb {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 4px;
+  color: var(--ink-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.xb:hover {
+  background: var(--ground);
+  color: var(--ink);
+}
+.xb:active {
+  background: color-mix(in srgb, var(--ink) 11%, var(--bg));
+  color: var(--ink);
+}
+.xb:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 1px;
+}
+.btn-text.moreb {
+  height: 28px;
+  padding: 0 8px;
+  font-size: 13px;
+}
+
+/* "+N more": every start selected, above the bar. */
+.slist {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  box-sizing: border-box;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 24px 64px -24px var(--shadow);
+}
+.slist-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 6px 8px 8px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.slist ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.slist-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 20px;
+  align-items: center;
+  column-gap: 12px;
+  min-height: 34px;
+  padding: 0 6px 0 8px;
+  border-radius: 6px;
+}
+.slist-item:hover {
+  background: var(--ground);
+}
+.slist-item .mono {
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slist-where {
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}

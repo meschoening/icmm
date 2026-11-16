@@ -1,0 +1,327 @@
+/*
+ * The connection in a platform's card: the status line's colors, and the
+ * strip across the card's foot with the connect's steps, a failure, or a
+ * reconnect's countdown. From LaptopConnection.
+ */
+.platform-status .ink {
+  color: var(--ink);
+}
+.platform-status .ink.bad {
+  color: var(--red);
+}
+.platform-where .ink-2 {
+  color: var(--ink-2);
+}
+
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 0 0 12px 12px;
+}
+.strip.bad {
+  background: var(--red-soft);
+  align-items: flex-start;
+}
+.strip-say {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.strip-sentence {
+  font-size: 14px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.strip-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.strip-line {
+  flex-grow: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+/* A failure in three lines (#116): what happened, the next step, and the raw
+   line in small mono */
+.strip-say.failure {
+  gap: 3px;
+}
+.strip .strip-sentence {
+  font-size: 14px;
+  color: var(--ink);
+}
+.strip .strip-next {
+  line-height: 1.45;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.strip .strip-raw {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+/* The steps, with what to know while the engine uploads under them */
+.strip.steps {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+.strip.steps .hint {
+  color: var(--ink-3);
+}
+/* A reconnect's facts under its reason: the countdown, or the try under way */
+.strip-facts {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+/* A host key: one to trust, or one that changed (LaptopConnection's
+   `host-unknown`, `host-changed` and `forget`) */
+.strip.ask {
+  background: var(--cobalt-soft);
+  align-items: flex-start;
+}
+.strip.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+/* A host key's question over its fingerprints, 8 px apart as the canvas sets them */
+.strip.keyed {
+  gap: 8px;
+}
+.strip.keyed .strip-confirm {
+  margin-top: 4px;
+}
+.strip-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+.strip h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.strip h4:focus {
+  outline: none;
+}
+.strip p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.strip-confirm {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-2);
+  font-size: 13px;
+}
+.fpt {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 13px;
+}
+.fpt dt {
+  color: var(--ink-3);
+}
+.fpt dd {
+  margin: 0;
+  min-width: 0;
+}
+/* A fingerprint reads whole, so two can be compared character by character. */
+.fp {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+/* Fingerprints, then the key type and the line on record under them */
+.fpk {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.strip .fpk .hint {
+  color: var(--ink-3);
+}
+
+/* The steps */
+.hsteps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  flex-grow: 1;
+  min-width: 0;
+}
+.hstep {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding-right: 12px;
+}
+.hstep-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.hstep-top .todo {
+  color: var(--ink-3);
+}
+.hstep-line {
+  flex-grow: 1;
+  height: 1px;
+  background: var(--line-2);
+  min-width: 12px;
+}
+.hstep-d {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  padding-left: 15px;
+  /* It wraps under its label rather than cut (#449's SF06). */
+  overflow-wrap: anywhere;
+}
+.meter {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--track);
+  overflow: hidden;
+  margin: 3px 0 0 15px;
+  max-width: 150px;
+}
+.meter span {
+  display: block;
+  height: 100%;
+  background: var(--cobalt);
+  border-radius: 2px;
+}
+.g-todo {
+  border: 1.5px solid var(--line-2);
+}
+
+/* A page's heading with the facts under it */
+.page-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.page-head.home {
+  gap: 4px;
+}
+
+/* Home when not connected (LaptopHomeOffline) */
+.home-platform {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* Live's column, Best of ended runs' 320 px and the 40 px between left free (#445, SF13). */
+.home-platform .surface-card {
+  box-sizing: border-box;
+  max-width: calc(100% - 360px);
+}
+.home-kept .home-platform .surface-card {
+  max-width: none;
+}
+.home-platform .hint {
+  margin: 0;
+}
+
+/* A key to add or choose, when none gets through (LaptopConnection's
+   `needs-key` … `add-again`, and First launch's `needs-key`) */
+.strip.kform {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 14px;
+}
+.ktop {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+.ktop > div:first-child {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.paths {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.path {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-width: 0;
+}
+.path h5 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.strip .path p.hint {
+  color: var(--ink-3);
+}
+.strip .path p.field-issue {
+  color: var(--red);
+}
+/* A command or a path reads whole: `ssh-agent` never breaks at its hyphen. */
+.path .hint .mono {
+  white-space: nowrap;
+}
+.path-foot {
+  margin-top: auto;
+}
+.pub {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+.pub code {
+  align-self: stretch;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  padding: 7px 10px;
+  overflow-wrap: anywhere;
+}

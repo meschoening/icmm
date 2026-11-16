@@ -1,0 +1,227 @@
+/*
+ * The log view (LaptopLogs, #288; built in #289): a page that fills the
+ * window below its heading, the log scrolling on its own. Its bar (the
+ * tabs, the try switch or generation select, Follow, Copy, Copy path), the
+ * path and size, then the log: a Start log under its column heads, or a job
+ * log as wrapped text with a hanging indent. Every color is a token, so dark
+ * mode follows.
+ */
+.lg-page {
+  height: 100%;
+  box-sizing: border-box;
+  padding: 24px 32px 28px;
+  gap: 14px;
+}
+.lg-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.lg-head .page-heading {
+  margin: 0;
+}
+.lg-main {
+  flex-grow: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lg-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.lg-grow {
+  flex-grow: 1;
+}
+.lg-gen {
+  width: 330px;
+  max-width: 100%;
+}
+.lg-follow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  cursor: pointer;
+}
+.lg-follow-note {
+  margin-right: 8px;
+}
+.lg-path {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.lg-path .mono {
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.lg-path .lg-size {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.lg-off {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+/* The log: on the ground, its lines scrolling inside it. */
+.lg-log {
+  position: relative;
+  flex-grow: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ground);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-2);
+}
+.lg-log:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+.lg-log .lh {
+  padding: 10px 14px 4px;
+  color: var(--ink-3);
+  white-space: pre;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.lg-scroll {
+  flex-grow: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+/* Short logs sit at the bottom, as a terminal's do; a job log reads from its top. */
+.lg-lines {
+  min-height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 8px 14px 12px;
+}
+.lg-lines.top {
+  justify-content: flex-start;
+}
+.lg-lines > span {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-left: 8ch;
+  text-indent: -8ch;
+}
+.lg-lines > .lg-table {
+  white-space: pre;
+  overflow-wrap: normal;
+}
+.lg-lines .ink {
+  color: var(--ink);
+}
+.lg-lines .err {
+  color: var(--red);
+}
+.lg-lines .mk {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--ink-3);
+  padding: 4px 0;
+  text-indent: 0;
+}
+.lg-lines .rd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--ink-3);
+  padding: 2px 0 6px;
+  text-indent: 0;
+}
+.lg-lines .rd .link {
+  font-size: 12px;
+}
+.stale .lg-lines {
+  color: var(--ink-3);
+}
+.stale .lg-lines .ink {
+  color: var(--ink-2);
+}
+.lg-newer {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 15px;
+  border: 1px solid var(--line-2);
+  background: var(--bg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  box-shadow: 0 8px 24px -12px rgba(17, 18, 20, 0.3);
+  cursor: pointer;
+}
+.lg-newer:hover {
+  background: var(--ground);
+}
+.lg-newer:active {
+  background: var(--track);
+}
+
+/* Nothing to show: said in the log's place, in a dashed box. */
+.lg-empty {
+  flex-grow: 1;
+  box-sizing: border-box;
+  border: 1px dashed var(--line-2);
+  border-radius: 10px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lg-empty p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-wrap: pretty;
+  max-width: 640px;
+}
+.lg-empty .meta {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.lg-main .reading {
+  margin: 0;
+  padding-top: 8px;
+  font-size: 14px;
+  color: var(--ink-2);
+}

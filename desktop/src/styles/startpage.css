@@ -1,0 +1,1189 @@
+/*
+ * The Start page (LaptopStart, #196; built in #239): the status line,
+ * heading and tiles; Why it ended; Optimization progress; the fit per
+ * protocol; then Parameters beside where it runs, its Rates and its Log. A
+ * finished start (#346) leads with its fit and ends with its progress.
+ * Every color is a token, so dark mode follows.
+ */
+.sp-page {
+  gap: 32px;
+}
+.sp-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.sp-wait {
+  padding-top: 14px;
+}
+.sp-headtext {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.sp-status {
+  margin: 0;
+  align-items: baseline;
+  white-space: normal;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.sp-status > .g {
+  align-self: center;
+}
+.sp-word {
+  color: var(--ink);
+}
+.sp-red {
+  color: var(--red);
+}
+.sp-line {
+  color: var(--ink-3);
+}
+.sp-line .n {
+  color: var(--ink-2);
+}
+.sp-line .raw {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.sp-titlerow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.sp-titlerow > .page-heading {
+  flex-grow: 1;
+  min-width: 0;
+  margin: 0;
+}
+.sp-acts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.sp-acts .cf-more {
+  position: relative;
+}
+.sp-acts .cf-menu {
+  right: 0;
+  left: auto;
+  min-width: 260px;
+}
+
+/* The tiles under the heading, over a rule. */
+.sp-tiles {
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 44px;
+}
+.sp-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sp-tile dt {
+  white-space: nowrap;
+}
+.sp-tile dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.sp-tile dd .n {
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.sp-tile dd .vbest {
+  color: var(--cobalt);
+}
+/* Words in a number's place sit on its line, in ink, as LaptopStart draws them (#449's SF16). */
+.sp-tile dd .tx {
+  font-size: 15px;
+  line-height: calc(22px * 1.3);
+  color: var(--ink);
+}
+.sp-bar {
+  display: flex;
+  height: 6px;
+  width: 132px;
+  margin-top: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--track);
+}
+.sp-fill {
+  display: block;
+  height: 100%;
+  background: var(--cobalt);
+}
+.sp-fill.ended {
+  background: var(--ink-3);
+}
+.sp-fill.red {
+  background: var(--red);
+}
+.sp-fill.live {
+  animation: pulse 1.8s ease-in-out infinite;
+}
+.sp-bar.mem {
+  width: auto;
+  flex-grow: 1;
+  max-width: 96px;
+  margin-top: 0;
+}
+
+/* Why it ended: how far it got on the left; what happened and what to do on the right. */
+.sp-why {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 28px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.sp-whyleft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sp-whyleft .label {
+  margin: 0;
+}
+.sp-big {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-top: 4px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.sp-big .mono {
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.sp-cap {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.sp-say {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+}
+/* The prose keeps its measure; the traceback takes the panel's width (#449's SF03). */
+.sp-say p {
+  margin: 0;
+  max-width: 800px;
+}
+.sp-what {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.sp-what .g {
+  flex-shrink: 0;
+  transform: translateY(-2px);
+}
+.sp-next,
+.sp-hint {
+  padding-left: 18px;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+.sp-next {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.sp-hint {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.sp-tb,
+.sp-log {
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  background: var(--ground);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: pre;
+  overflow: hidden;
+}
+/* A frame's file and line sit at its end, so the traceback scrolls sideways rather than cut. */
+.sp-tb {
+  margin: 4px 0 0 18px;
+  padding: 10px 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+.sp-tb > span {
+  min-width: max-content;
+}
+.sp-log > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-tb .err {
+  color: var(--red);
+}
+
+/* A section: its head, then what it draws. */
+.sp-sec,
+.sp-asec {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.sp-reading {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-3);
+}
+.sp-empty {
+  box-sizing: border-box;
+  border: 1px dashed var(--line-2);
+  border-radius: 10px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+.sp-empty.tall {
+  min-height: 180px;
+}
+.sp-empty.short {
+  min-height: 96px;
+}
+.sp-empty p {
+  margin: 0;
+  max-width: 640px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.sp-empty .meta {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+/* The drawings: geometry in a view box, labels laid over it. */
+.sp-page .fluid * {
+  vector-effect: non-scaling-stroke;
+}
+.sp-grid {
+  stroke: var(--line);
+}
+.sp-vgrid {
+  stroke: var(--line);
+  stroke-opacity: 0.6;
+}
+.sp-base {
+  stroke: var(--line-2);
+}
+.sp-now {
+  stroke: var(--ink-3);
+  stroke-dasharray: 3 3;
+}
+.sp-me {
+  stroke: var(--cobalt);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+/* The topology's finished starts beside it: their middle 80 %, median and best start. */
+.sp-page path.sp-band {
+  fill: var(--ink-3);
+  fill-opacity: 0.14;
+}
+.sp-median {
+  stroke: var(--ink-3);
+  stroke-width: 1;
+}
+.sp-best {
+  stroke: var(--ink);
+  stroke-width: 1.4;
+}
+.sp-pg,
+.sp-plot,
+.sp-curvebox {
+  position: relative;
+  display: block;
+}
+.sp-pg {
+  height: 320px;
+}
+.sp-pg svg,
+.sp-plot svg,
+.sp-curvebox svg {
+  display: block;
+}
+.sp-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: var(--cobalt);
+  box-shadow: 0 0 0 2px var(--bg);
+}
+.sp-dot.still {
+  background: var(--ink-3);
+}
+.sp-dot.live {
+  animation: pulse 1.8s ease-in-out infinite;
+}
+.sp-lab {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  color: var(--ink-3);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.sp-lab.mid {
+  transform: translateX(-50%);
+}
+.sp-lab.end {
+  transform: translateX(-100%);
+}
+.sp-lab.y {
+  transform: translate(-100%, -50%);
+}
+.sp-lab.rise {
+  transform: translateY(-100%);
+}
+.sp-lab.me {
+  font-size: 12px;
+  color: var(--cobalt);
+  background: var(--bg);
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.sp-lab.best {
+  font-size: 12px;
+  color: var(--ink);
+  transform: translateY(-50%);
+}
+.sp-lab.unit {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.sp-curvebox .sp-lab.unit {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.sp-curvebox .sp-lab.now {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.sp-key,
+.sp-fitkey {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sp-key {
+  padding-left: 52px;
+}
+.sp-sec > .sp-key {
+  padding-left: 0;
+}
+.sp-pg + .sp-key {
+  padding-left: 52px;
+}
+.sp-key > span,
+.sp-fitkey > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sp-sw {
+  display: inline-block;
+}
+.sp-sw.me {
+  width: 16px;
+  height: 2px;
+  background: var(--cobalt);
+}
+.sp-sw.best {
+  width: 16px;
+  height: 1.5px;
+  background: var(--ink);
+}
+.sp-sw.median {
+  width: 16px;
+  height: 1px;
+  background: var(--ink-3);
+}
+.sp-sw.middle {
+  width: 16px;
+  height: 8px;
+  background: color-mix(in oklab, var(--ink-3) 30%, var(--bg));
+}
+.sp-sw.tick {
+  width: 2px;
+  height: 12px;
+  background: var(--ink);
+}
+.sp-sw.band {
+  width: 18px;
+  height: 8px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--cobalt) 24%, var(--bg));
+}
+
+/* The fit: a card per protocol, five across. */
+.sp-grow {
+  flex-grow: 1;
+}
+.sp-fithead {
+  flex-wrap: wrap;
+}
+.sp-k-dot {
+  fill: var(--ink);
+}
+.sp-k-ring {
+  fill: var(--bg);
+  stroke: var(--ink);
+  stroke-width: 1.1;
+}
+.sp-k-line,
+.sp-model {
+  stroke: var(--cobalt);
+  stroke-width: 1.6;
+}
+.sp-whisk {
+  stroke: var(--ink);
+  stroke-opacity: 0.45;
+}
+/*
+ * The Drift box (#360, RF11): who drew the fit and who scored it, over each
+ * drifting protocol's stored and redrawn RMSE, on the ground, with its ×.
+ */
+.sp-dnote {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--ground);
+}
+.sp-dnote > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--ink-2);
+}
+.sp-dsay {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.sp-dsay > p {
+  margin: 0;
+  max-width: 760px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.sp-dtab {
+  display: grid;
+  grid-template-columns: repeat(3, max-content);
+  column-gap: 40px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sp-dtab > [role="row"] {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+.sp-dtab > [role="row"] > span {
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.sp-dtab > [role="row"]:last-child > span {
+  border-bottom: 0;
+}
+.sp-dth > span {
+  padding-top: 0;
+  font-family: var(--font-mono);
+}
+.sp-dpr {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+}
+.sp-dv {
+  display: inline-flex;
+  gap: 14px;
+  align-items: baseline;
+}
+.sp-dv .mono {
+  font-size: 13px;
+  color: var(--ink);
+}
+.sp-dnote .sp-dx {
+  flex-shrink: 0;
+  margin: -6px -8px 0 auto;
+  color: var(--ink-3);
+}
+.sp-dnote .sp-dx:hover {
+  background: color-mix(in srgb, var(--ink) 8%, var(--ground));
+  color: var(--ink);
+}
+.sp-dnote .sp-dx:active {
+  background: color-mix(in srgb, var(--ink) 14%, var(--ground));
+}
+/* Dismissed, one gray line stays, with Show the numbers. */
+.sp-dline {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.sp-dline svg {
+  flex-shrink: 0;
+  color: var(--ink-3);
+}
+.sp-dline .btn-text {
+  height: 28px;
+  margin-left: -4px;
+  padding: 0 8px;
+  font-size: 13px;
+}
+.sp-cards {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 20px;
+}
+.sp-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
+}
+.sp-plot {
+  height: 156px;
+}
+.sp-card figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.sp-stem {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.sp-stem .mono {
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sp-worst {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 17px;
+  padding: 0 5px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+}
+.sp-proto {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.sp-rmses {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sp-rmses .mono {
+  font-size: 14px;
+  color: var(--ink);
+}
+.sp-rmses .sp-val {
+  color: var(--ink-2);
+}
+
+/* Parameters beside the aside. */
+.sp-low {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 40px;
+  align-items: start;
+}
+.sp-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.sp-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  min-width: 0;
+}
+.vnum {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  text-align: right;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pn {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.sp-out {
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.sp-pmhint {
+  margin: 0;
+}
+.prm-roomy .prm-row {
+  height: 34px;
+  border-bottom: 1px solid var(--line);
+}
+.prm-roomy .prm-head {
+  height: 58px;
+  border-bottom-color: var(--line-2);
+}
+.prm-roomy .prm-curvehead {
+  display: flex;
+  height: 52px;
+}
+.prm-follows {
+  color: var(--ink-3);
+}
+
+/* A part's strip: its range, the Top 10's band, the best start's tick, this start's dot. */
+.sp-strip {
+  position: relative;
+  display: block;
+  height: 20px;
+  min-width: 0;
+}
+.sp-strip > span {
+  position: absolute;
+}
+.sp-strip > .ax {
+  left: 0;
+  right: 0;
+  top: 9.5px;
+  height: 1px;
+  background: var(--line-2);
+}
+.sp-strip > .e0,
+.sp-strip > .e1,
+.sp-strip > .md {
+  top: 5px;
+  width: 1px;
+  height: 10px;
+  background: var(--line-2);
+}
+.sp-strip > .e0 {
+  left: 0;
+}
+.sp-strip > .e1 {
+  right: 0;
+}
+.sp-strip > .md {
+  left: 50%;
+  top: 7px;
+  height: 6px;
+}
+.sp-strip > .bd {
+  top: 5px;
+  height: 10px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--cobalt) 24%, var(--bg));
+}
+.sp-strip > .tk {
+  top: 2px;
+  width: 2px;
+  height: 16px;
+  background: var(--ink);
+}
+.sp-mdot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: var(--cobalt);
+  box-shadow: 0 0 0 1.5px var(--bg);
+}
+.sp-strip > .sp-mdot {
+  top: 5px;
+}
+
+/* The Voltage dependence curve beside a and b. */
+.sp-curve {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  column-gap: 28px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.sp-curvebox {
+  width: 340px;
+  height: 104px;
+}
+.sp-cband {
+  fill: color-mix(in oklab, var(--cobalt) 14%, var(--bg));
+}
+.sp-ccurve {
+  stroke: var(--ink);
+  stroke-width: 1.8;
+}
+.sp-ab {
+  display: flex;
+  flex-direction: column;
+  padding-top: 26px;
+  border-top: 1px solid var(--line-2);
+}
+.sp-abrow {
+  display: grid;
+  grid-template-columns: 20px 56px 30px minmax(0, 1fr) 42px 52px;
+  column-gap: 10px;
+  align-items: center;
+  height: 34px;
+  border-bottom: 1px solid var(--line);
+}
+/* a's row says where half-way is, under it (#360, RF23). */
+.sp-abrow.sp-ahrow {
+  height: auto;
+  padding: 7px 0 6px;
+  row-gap: 2px;
+}
+.sp-half {
+  grid-column: 1 / 5;
+  grid-row: 2;
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.sp-end {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sp-end.lo {
+  text-align: right;
+}
+
+/* The aside: where it runs, its rates, its log. */
+.sp-kv {
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.sp-kvrow {
+  display: contents;
+}
+.sp-kv dd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.sp-kv .n {
+  font-size: 13px;
+}
+.sp-kv .tx {
+  color: var(--ink-3);
+}
+.sp-kv .raw {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sp-rates {
+  gap: 10px;
+}
+.sp-rhead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 30px;
+}
+.sp-rhead .label {
+  margin: 0;
+  flex-grow: 1;
+}
+.sp-at {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.sp-at .input {
+  width: 64px;
+  text-align: right;
+}
+.sp-rtable {
+  display: flex;
+  flex-direction: column;
+}
+.sp-rrow {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: center;
+  height: 30px;
+  border-bottom: 1px solid var(--line);
+}
+.sp-rrow.sp-rh {
+  align-items: end;
+  padding-bottom: 7px;
+  box-sizing: border-box;
+  border-bottom-color: var(--line-2);
+}
+.sp-num {
+  text-align: right;
+}
+.sp-rrow .vnum {
+  font-size: 13px;
+}
+.sp-rates .hint {
+  margin: 0;
+}
+.sp-log {
+  padding: 12px 14px;
+  line-height: 1.7;
+}
+.sp-log .lh {
+  color: var(--ink-3);
+}
+.sp-log .now {
+  color: var(--ink);
+}
+
+/* Not connected: what it last read, still. */
+.sp-page.stale .g-running,
+.sp-page.stale .live {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-fill.live,
+  .sp-dot.live {
+    animation: none;
+  }
+}
+
+/* The ways into its logs page (#289): Open job log under Why it ended, Open full log above the Log box. */
+.sp-say .sp-open {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0 0 18px;
+}
+/* An error's report (#126): its sentence and panel under the buttons, on their line. */
+.sp-say > .rsent,
+.sp-say > .rep {
+  margin-left: 18px;
+}
+.sp-loghead .topo-hint {
+  flex-grow: 1;
+}
+
+/*
+ * A finished start (#340, #346): the still-improving line, the fit's cards
+ * that choose a protocol and its inspector, the Best start's Spread, and
+ * the topology atop the aside.
+ */
+.sp-page .facts .qual-e {
+  color: var(--ink-2);
+}
+.sp-imp {
+  margin: 14px 0 0;
+  display: flex;
+  gap: 9px;
+  align-items: baseline;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.sp-imp svg {
+  flex-shrink: 0;
+  transform: translateY(1px);
+  color: var(--ink);
+}
+.sp-imp b {
+  font-weight: 500;
+  color: var(--ink);
+}
+.sp-fitrow {
+  margin-top: -4px;
+}
+.sp-unreadsay svg {
+  flex-shrink: 0;
+  color: var(--ink-3);
+  transform: translateY(2px);
+}
+.sp-unread {
+  min-height: 120px;
+}
+.sp-empty .sp-unreadsay {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.sp-cardwords {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+/* A card that chooses the protocol the inspector draws: its underline thickens when chosen. */
+.sp-pcard {
+  align-items: stretch;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  cursor: pointer;
+}
+.sp-pcard:hover {
+  border-bottom-color: var(--ink-3);
+}
+.sp-pcard[aria-pressed="true"] {
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: 9px;
+}
+.sp-pcard:active {
+  background: color-mix(in srgb, var(--ink) 4%, transparent);
+}
+.sp-pcard:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 4px;
+}
+.sp-numbers {
+  padding-bottom: 10px;
+}
+.sp-insp {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding-top: 18px;
+}
+.sp-insphead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 36px;
+}
+.sp-insphead h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.sp-hi {
+  flex-grow: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sp-hi .mono {
+  color: var(--ink-2);
+}
+.sp-scale {
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.sp-inspgrid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 8fr);
+  gap: 40px;
+  align-items: start;
+}
+.sp-inspcol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.sp-insplabel {
+  font-size: 13px;
+  font-weight: 500;
+}
+.sp-overlay {
+  height: 320px;
+}
+.sp-response {
+  height: 184px;
+}
+.sp-voltage {
+  height: 150px;
+}
+.sp-overlay .sp-model {
+  stroke-width: 1.8;
+}
+.sp-overlay .sp-k-ring {
+  stroke-width: 1.2;
+}
+.sp-sweep {
+  stroke: var(--cobalt);
+  stroke-width: 0.8;
+  stroke-opacity: 0.5;
+  stroke-linejoin: round;
+}
+.sp-sweep.hi {
+  stroke-width: 1.8;
+  stroke-opacity: 1;
+}
+.sp-command {
+  stroke: var(--ink-3);
+  stroke-width: 0.8;
+  stroke-opacity: 0.55;
+  stroke-linejoin: round;
+}
+.sp-command.hi {
+  stroke: var(--ink);
+  stroke-width: 1.6;
+  stroke-opacity: 1;
+}
+.sp-lab.title {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.sp-lab.back {
+  transform: translate(-100%, -100%);
+}
+.sp-lab.mine {
+  font-size: 12px;
+  color: var(--cobalt);
+  transform: translateY(-50%);
+}
+.sp-response .sp-lab.me {
+  color: var(--cobalt-2);
+  background: none;
+  padding: 0;
+}
+.sp-lab.sweep {
+  font-size: 12px;
+  color: var(--ink);
+}
+.sp-spread {
+  font-family: var(--font-mono);
+  text-align: right;
+}
+.sp-topo {
+  gap: 10px;
+}
+.sp-topohead {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.sp-topohead .label {
+  margin: 0;
+  flex-grow: 1;
+}
+.sp-topohead .link {
+  font-size: 13px;
+}
+.sp-topohead .link .mono {
+  font-size: 12px;
+}
+.sp-topo .topo-sbox {
+  min-height: 136px;
+}
+.sp-topo .topo-cap {
+  margin: 0;
+}
+
+/* Export and its menu (#344, LaptopStart's `open: export`): each item's formats in mono, on its
+   right, and why it's gray under it. */
+.sp-exp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.sp-acts .sp-expmenu {
+  min-width: 340px;
+}
+.sp-expmenu [role="menuitem"] {
+  gap: 24px;
+}
+.sp-expmenu [role="menuitem"] > span:first-child {
+  flex-grow: 1;
+}
+.sp-expmenu .mfmt {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+
+/* An export's note ends the head, its tiles' distance below them, as Still improving's is. */
+.sp-head > .ex-note,
+.sp-head > .ex-failed {
+  margin-top: 14px;
+}

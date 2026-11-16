@@ -1,0 +1,65 @@
+/*
+ * A topology drawn (#212, LaptopConfigBuilder): states on --bg ringed --ink,
+ * edges --ink-3, the open state filled --ink; an id without one rings each
+ * state it's fit at, dashed --ink-2. It scales down with its viewBox where
+ * its column is narrower, and a ring spills into what holds it.
+ */
+.tdraw {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.tdraw-edges {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 1.3;
+}
+.tdraw-ring {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+.tdraw-state circle {
+  fill: var(--bg);
+  stroke: var(--ink);
+  stroke-width: 1.3;
+}
+.tdraw-state text {
+  fill: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--tdraw-font);
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.tdraw-state.on circle {
+  fill: var(--ink);
+}
+.tdraw-state.on text {
+  fill: var(--bg);
+}
+
+/*
+ * A typed topology that breaks a rule (#222): the part that breaks it in
+ * --red, the rest dimmed to --dim, so the two differ in lightness as well as
+ * hue (old ADR-0025's ΔL*).
+ */
+.tdraw.marked .tdraw-edges {
+  stroke: var(--dim);
+}
+.tdraw-bad {
+  fill: none;
+  stroke: var(--red);
+  stroke-width: 2.2;
+}
+.tdraw.marked .tdraw-state circle {
+  stroke: var(--dim);
+}
+.tdraw.marked .tdraw-state.on circle {
+  fill: var(--dim);
+}
+.tdraw.marked .tdraw-state.bad circle {
+  stroke: var(--red);
+  stroke-width: 1.8;
+}

@@ -1,0 +1,349 @@
+/*
+ * Runs (#236): LaptopRuns, on tokens so dark mode follows. In flight in a
+ * bordered box, five columns; Ended under day headings, nine.
+ */
+
+.runs-head-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.runs-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+}
+.runs-head .btn {
+  flex-shrink: 0;
+}
+.runs-head .facts .runs-quiet {
+  color: var(--ink-3);
+}
+
+/* The filter and the datasets row */
+.runs-filters {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.runs-filter {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 320px;
+  flex-shrink: 0;
+}
+.runs-filter svg {
+  position: absolute;
+  left: 12px;
+  color: var(--ink-3);
+}
+.runs-filter .input {
+  padding-left: 34px;
+}
+.runs-seg {
+  flex-wrap: wrap;
+}
+.runs-seg-n {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.runs-lists {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.runs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.runs-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.runs-section-head .label {
+  margin: 0;
+}
+.runs-count {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.runs-cap {
+  margin-left: 8px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.runs-lists .meta {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.runs-lists .runs-quiet {
+  color: var(--ink-3);
+}
+.runs-lists .qual-e {
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.runs-lists .cfg-gone {
+  margin-left: 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-2);
+}
+.runs-lists .runs-h-num {
+  text-align: right;
+}
+
+/* Rows: a link to the run in flight; a row with its run's link once it ended */
+.runs-lists .trow {
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.runs-lists .trow:hover {
+  background: var(--ground);
+}
+.runs-lists .trow .act {
+  opacity: 0;
+}
+.runs-lists .trow:hover .act,
+.runs-lists .trow:focus-within .act {
+  opacity: 1;
+}
+.runs-lists a.trow:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: -2px;
+}
+
+/* In flight */
+.runs-box {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.igrid {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) minmax(220px, 292px) 120px 120px;
+  column-gap: 20px;
+  align-items: center;
+  padding: 0 20px;
+}
+.igrid.runs-colhead {
+  height: 36px;
+}
+.igrid.trow {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+.runs-lists .st {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.runs-lists .st .g {
+  margin: 0 3px;
+}
+.runs-lists .st.st-failed {
+  color: var(--red);
+}
+.runs-lists .st.st-quiet {
+  color: var(--ink-3);
+}
+.runs-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.runs-title {
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.runs-title .runs-quiet {
+  font-weight: 400;
+}
+.runs-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.runs-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--track);
+}
+.runs-bar > span {
+  flex-grow: 0;
+  flex-shrink: 0;
+}
+.runs-bar-done {
+  background: var(--cobalt);
+}
+.runs-bar-failed {
+  background: var(--red);
+}
+.runs-bar-fitting {
+  background: var(--cobalt-mid);
+}
+.runs-lines {
+  display: flex;
+  flex-direction: column;
+}
+.runs-line {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.runs-best,
+.runs-eta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.runs-big {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.runs-sofar {
+  color: var(--cobalt);
+}
+.runs-of {
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.runs-bytrain {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.runs-eta-day {
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.runs-eta .meta {
+  white-space: nowrap;
+}
+.runs-wait {
+  grid-column: span 3;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.runs-say {
+  font-size: 14px;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+/* Ended */
+.fgrid {
+  display: grid;
+  /* Duration fits "under a minute" (#322). */
+  grid-template-columns: 100px minmax(0, 1fr) 82px 56px 56px 132px 72px 104px 120px;
+  column-gap: 14px;
+  align-items: center;
+  padding: 0 12px;
+}
+.fgrid.runs-colhead {
+  height: 36px;
+}
+.fgrid.trow {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.runs-cmp-h {
+  padding-left: 10px;
+  white-space: nowrap;
+}
+.runs-day {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 16px 12px 6px;
+}
+.runs-day > span:first-child {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.runs-day > span.mono {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.runs-title-sm {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.runs-ds {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.runs-why {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.runs-n,
+.runs-val {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.runs-val {
+  color: var(--ink);
+  font-weight: 500;
+}
+.runs-cmp {
+  padding-left: 10px;
+  font-size: 14px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.runs-cmp.vbest {
+  color: var(--cobalt);
+  font-weight: 600;
+}
+.runs-cmp.vbest .runs-bytrain {
+  font-weight: 400;
+}
+.runs-dur {
+  font-size: 14px;
+  color: var(--ink-3);
+  text-align: right;
+  white-space: nowrap;
+}
+.runs-act {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+}
+.runs-more {
+  align-self: flex-start;
+}
+
+/* Not connected: what was last read stays, its glyphs still */
+.runs-lists.stale .g-running,
+.runs-lists.stale .live {
+  animation: none;
+}

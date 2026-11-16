@@ -1,0 +1,570 @@
+/*
+ * The Config builder (#183): LaptopConfigBuilder, on tokens so dark mode
+ * follows. Its header reuses the wizard's actions and status line (`.hacts`,
+ * `.acts`, `.astat`); the form's three numbered sections sit beside the
+ * 400 px aside of Work and Data.
+ */
+
+.cb-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+}
+.cb-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+  min-width: 0;
+}
+.cb-head-text .facts {
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.cb-head .astat {
+  color: var(--ink-2);
+}
+.cb-head .astat.bad {
+  color: var(--red);
+}
+/* The kbd in a primary button, on its ink. */
+.kbd-inv {
+  border-color: color-mix(in srgb, var(--bg) 35%, transparent);
+  color: color-mix(in srgb, var(--bg) 80%, transparent);
+}
+/* Grayed with its button, so it still reads. */
+.btn:disabled .kbd-inv,
+.btn[aria-disabled="true"]:not([aria-busy="true"]) .kbd-inv {
+  border-color: var(--line-2);
+  color: var(--ink-4);
+}
+
+.cb-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 40px;
+  align-items: start;
+}
+.cb-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+/* A numbered section: its number in the margin, its heading and hint on one line. */
+.cb-section {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.cb-n {
+  font-size: 13px;
+  color: var(--ink-3);
+  padding-top: 3px;
+}
+.cb-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.cb-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.cb-section-head h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.cb-section-head .hint,
+.cb-page p.hint {
+  margin: 0;
+  text-wrap: pretty;
+}
+.cb-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px 20px;
+}
+/*
+ * Name & data: a row that wraps, Name across two of `.cb-grid`'s columns
+ * and the gap between them and Dataset across the third. Dataset is never
+ * narrower than its menu, nor the menu than its longest entry, "herg-wt-37c
+ * (deleted)" too (CF12, old ADR-0023: an identifier isn't cut); at
+ * `width: 100%` a menu adds nothing to its box's least width (CSS Sizing's
+ * compressible controls), so its own least width does. Name gives way down
+ * to a column's width; past that, Dataset takes the row under it.
+ */
+.cb-grid.cb-name-data {
+  display: flex;
+  flex-wrap: wrap;
+}
+.cb-name-data > .cb-span2 {
+  flex: 2 1 20px;
+  min-width: calc((100% - 40px) / 3);
+}
+.cb-name-data > .cb-field:last-child {
+  flex: 1 1 0px;
+  min-width: min-content;
+}
+.cb-name-data select.input {
+  min-width: max-content;
+}
+.cb-span2 {
+  grid-column: span 2;
+}
+.cb-span3 {
+  grid-column: span 3;
+}
+.cb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cb-label-row {
+  display: flex;
+  align-items: baseline;
+}
+.cb-label-row .flabel {
+  flex-grow: 1;
+}
+.cb-len {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.cb-page .ink {
+  color: var(--ink);
+}
+.cb-page .ink-2 {
+  color: var(--ink-2);
+}
+.cb-page .nw {
+  white-space: nowrap;
+}
+.cb-page .hint .n {
+  color: var(--ink-2);
+}
+.cb-page .err .n {
+  color: inherit;
+}
+/* A field you changed (LaptopConfigBuilder's `edited`). */
+.cb-page .input.edited {
+  border: 1.5px solid var(--ink);
+  font-weight: 500;
+}
+.cb-issues {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cb-issues .err {
+  display: block;
+}
+
+/* Number of states: − [11] +, and the count under it. */
+.cb-states {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cb-states .input {
+  width: 68px;
+  text-align: center;
+}
+.cb-count {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Which topologies: the segmented choice, then the chosen one's field. */
+.cb-which {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.cb-which legend {
+  padding: 0;
+  margin-bottom: 6px;
+}
+.cb-which .seg {
+  align-self: flex-start;
+}
+/* Locked while a save waits: the choice grays with its fields. */
+.cb-which:disabled .seg label {
+  color: var(--ink-4);
+  cursor: not-allowed;
+}
+.cb-sub {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+/* IDs and Find custom topology… (#222): the row is the button's 30 px. */
+.cb-idsrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+.cb-sublabel {
+  font-weight: 400;
+  color: var(--ink-2);
+}
+.cb-sample {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cb-sample .input {
+  width: 80px;
+  flex-shrink: 0;
+}
+.cb-fits,
+.cb-worked {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.cb-all {
+  color: var(--ink-2);
+}
+
+/*
+ * Specific IDs' drawings (#212): each id in a box the size of the largest
+ * drawing and 8 px, as many a row as fit, 10 px from what's above and below.
+ */
+.tiles {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 4px 0;
+}
+.tile {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.tbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--ground);
+  box-sizing: border-box;
+}
+.tcap {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.tcap .mono {
+  color: var(--ink);
+  font-weight: 500;
+}
+.cb-fixed {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  background: var(--ground);
+  border-radius: 10px;
+  color: var(--ink-3);
+}
+.cb-fixed svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.cb-fixed .hint {
+  color: var(--ink-2);
+}
+
+/* Log every [200] generations. */
+.cb-affix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.cb-affix .input {
+  padding-right: 100px;
+}
+.cb-affix > span {
+  position: absolute;
+  right: 12px;
+  font-size: 13px;
+  color: var(--ink-3);
+  pointer-events: none;
+}
+
+/* Advanced: one bar, its summary on the same baseline, opening onto the search settings and bounds. */
+.cb-adv {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.cb-adv-bar {
+  width: 100%;
+  height: 42px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink-2);
+  text-align: left;
+}
+.cb-adv-bar:hover {
+  background: var(--ground);
+}
+.cb-adv.open .cb-adv-bar {
+  border-radius: 10px 10px 0 0;
+}
+.cb-adv-bar:active {
+  background: color-mix(in srgb, var(--ink) 7%, var(--ground));
+}
+.cb-adv-bar svg {
+  flex-shrink: 0;
+}
+.cb-adv-words {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+.cb-adv-name {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--ink);
+}
+.cb-adv-sum {
+  font-size: 13px;
+  color: var(--ink-3);
+  min-width: 0;
+  padding: 5px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cb-adv-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
+  padding: 8px 16px 18px;
+}
+.cb-adv-body .check {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 13px;
+  align-self: flex-start;
+}
+.cb-adv-body .check input {
+  align-self: center;
+}
+.cb-indent {
+  padding-left: 26px;
+}
+.cb-indent:empty {
+  display: none;
+}
+.cb-rule {
+  border-top: 1px solid var(--line);
+}
+.cb-bounds {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cb-bounds .input {
+  width: 72px;
+  text-align: right;
+}
+.cb-to {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/*
+ * The aside: Work, then Data. It stays in view 28 px under the header as
+ * the form scrolls (CF19); Save stays in the page head, and ⌘↵ saves from
+ * anywhere. Taller than the window under the 52 px header, as with many
+ * protocols, it scrolls within, 28 px clear of the window's foot too.
+ */
+.cb-aside {
+  position: sticky;
+  top: 28px;
+  box-sizing: border-box;
+  max-height: calc(100vh - 108px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  min-width: 0;
+}
+.cb-aside h2 {
+  margin: 0;
+}
+.cb-work {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cb-work > .label {
+  margin-bottom: 4px;
+}
+.cb-total {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.cb-total-n {
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.cb-total-n.over {
+  color: var(--red);
+}
+.cb-total-w {
+  font-size: 18px;
+}
+.cb-times {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.cb-times.cb-quiet {
+  color: var(--ink-3);
+}
+/* Each start: 8 px from the line above and below it (#180, round 2). */
+.cb-each {
+  margin: 10px 0 0;
+  display: flex;
+  flex-direction: column;
+}
+.cb-kv {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 16px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  align-items: baseline;
+}
+.cb-kv dt {
+  color: var(--ink-3);
+}
+.cb-kv dd {
+  margin: 0;
+  min-width: 0;
+}
+.cb-data {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.cb-data-head {
+  display: flex;
+  align-items: baseline;
+}
+.cb-data-head .label {
+  flex-grow: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cb-data-head .label .mono {
+  font-size: inherit;
+}
+.cb-data-head .link {
+  font-size: 13px;
+}
+.cb-thumbs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.cb-thumb {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.cb-thumb svg {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--bg);
+  box-sizing: border-box;
+}
+.cb-thumb-base {
+  stroke: var(--line);
+}
+.cb-thumb-dots {
+  fill: var(--ink);
+}
+.cb-thumb-name {
+  font-size: 12px;
+  color: var(--ink-3);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cb-data .hint {
+  margin: 2px 0 0;
+}
+
+/* Another computer's save or delete, under the head. */
+.cb-note {
+  margin-top: -4px;
+}
+
+/* New config from these…: where its settings came from (#339's from-results). */
+.cb-from {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--cobalt-soft);
+}
+.cb-from p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  /* Two lines of the same length, not one with "then save." on its own. */
+  text-wrap: balance;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cb-from svg {
+  flex-shrink: 0;
+  margin-top: 4px;
+  color: var(--ink-2);
+}

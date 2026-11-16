@@ -1,0 +1,63 @@
+/*
+ * Design tokens, from the canvas's LaptopStyles board (light) and its dark
+ * Run detail board (dark). Everything is built on these so dark mode
+ * follows; the boards' hard-coded hexes map onto the derived tokens below.
+ * `data-theme` on <html> is set by `src/theme.ts`.
+ */
+:root {
+  color-scheme: light;
+  --bg: #fdfdfc;
+  --ground: #f4f4f2;
+  --ink: #111214;
+  --ink-2: #44464c;
+  --ink-3: #6a6c72;
+  --line: #ebebe8;
+  --line-2: #d6d6d2;
+  --control: #8e9095;
+  --track: #e7e7e3;
+  --cobalt: #2448d8;
+  --cobalt-2: #1b37a8;
+  --cobalt-mid: #93a6ee;
+  --cobalt-soft: #eef1fd;
+  --red: #b8321f;
+  --red-soft: #fbefec;
+
+  /* Derived: the boards hard-code these. */
+  --surface: #fff; /* a control's or card's fill */
+  --ink-4: #a4a6aa; /* text of a control that can't be used */
+  --shadow: rgba(17, 18, 20, 0.28);
+  --scrim: rgba(17, 18, 20, 0.32); /* behind a modal dialog */
+  --brand: #2448d8; /* the logo's dot, the same in both themes */
+  /* What a rule doesn't name in a drawing that breaks it (#222); --red names the rest. */
+  --dim: color-mix(in srgb, var(--ink-3) 45%, var(--ground));
+  /* Behind a dialog you work in, as Find custom topology and ⌘K are (#222). */
+  --scrim-soft: rgba(17, 18, 20, 0.2);
+
+  --font-sans: "Instrument Sans Variable", "Instrument Sans", -apple-system, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e0f11;
+  --ground: #17181b;
+  --ink: #ecedef;
+  --ink-2: #b3b5bb;
+  --ink-3: #8b8e95;
+  --line: #2c2e34;
+  --line-2: #464952;
+  --control: #6e7178;
+  --track: #26272c;
+  --cobalt: #7f9bff;
+  --cobalt-2: #a9bbff;
+  --cobalt-mid: #5068c8;
+  --cobalt-soft: #161c33;
+  --red: #f07a68;
+  --red-soft: #2a1714;
+
+  --surface: var(--bg);
+  --ink-4: #5c5f66;
+  --shadow: rgba(0, 0, 0, 0.6);
+  --scrim: rgba(0, 0, 0, 0.55);
+  --scrim-soft: rgba(0, 0, 0, 0.4);
+}

@@ -1,0 +1,742 @@
+/*
+ * Settings: a section list beside the page, and a card per platform that
+ * opens into its form. From LaptopSettings and LaptopPlatformForm.
+ */
+.page.settings-page {
+  display: grid;
+  grid-template-columns: 164px minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+.sub {
+  position: sticky;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 26px;
+}
+.sub a {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  color: var(--ink-2);
+  font-weight: 500;
+  text-decoration: none;
+}
+.sub a:hover,
+.sub a.on {
+  background: var(--ground);
+  color: var(--ink);
+}
+/* The column fills the page; its prose keeps a reading width (#451, SF11). */
+.settings-main {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+.settings-main .hint,
+.settings-main .general-hint {
+  max-width: 960px;
+}
+.settings-page .ink {
+  color: var(--ink);
+}
+.settings-page .ink-2 {
+  color: var(--ink-2);
+}
+.settings-page .nowrap {
+  white-space: nowrap;
+}
+
+/* The platforms section */
+.platforms {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+}
+.section-head h2 {
+  margin: 0;
+  flex-grow: 1;
+}
+/* When ICMM opens: a sentence beside Add compute platform. */
+.launch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.launch:not(:last-child) {
+  margin-right: 16px;
+}
+.launch label {
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.launch select {
+  width: auto;
+  max-width: 320px;
+  text-overflow: ellipsis;
+}
+.section-head h2:focus,
+.surface-card h3:focus,
+.confirm-title:focus {
+  outline: none;
+}
+.note-bad {
+  background: var(--red-soft);
+  border-radius: 12px;
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.note-bad p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.note-bad .hint {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.note-bad .term {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+/* A failed read or save of setup's parts (#117): #116's three lines across
+   the box, its buttons at the bottom right (LaptopFirstRun's `.ebox`). */
+.fail-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--red-soft);
+}
+/* A note that opens a card, with no buttons (LaptopFirstRun's `.notebad`). */
+.fail-box.compact {
+  padding: 12px 14px;
+}
+.fail-say {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.fail-what {
+  font-size: 14px;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.fail-next {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.fail-raw {
+  margin-top: 3px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.fail-raw .ink-2 {
+  color: var(--ink-2);
+}
+.fail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* A card */
+.surface-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+}
+.surface-card.editing {
+  border-color: var(--line-2);
+  box-shadow: 0 8px 24px -16px var(--shadow);
+}
+.surface-card h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.platform-top {
+  padding: 18px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+.platform-facts {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.platform-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+/* The launch platform's tag beside its name. */
+.lmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--ground);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.lmark svg {
+  flex-shrink: 0;
+}
+.platform-where {
+  font-size: 13px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.platform-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-3);
+  margin-top: 6px;
+}
+.platform-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+/* The actions, with "Its runs keep going." under Disconnect and Stop reconnecting */
+.platform-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.platform-side .hint {
+  margin: 0;
+}
+
+/* A card's form */
+.form-head {
+  padding: 18px 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* An edit form's status sits centered on its title (#117); a hint takes the next line. */
+.form-head.row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+}
+.form-head.row h3 {
+  line-height: 24px;
+}
+.form-head .hint {
+  margin: 0;
+}
+.form-head.row .hint {
+  flex-basis: 100%;
+}
+.form-head .platform-status {
+  margin-top: 0;
+  display: inline-flex;
+}
+.platform-form {
+  margin: 0;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) 76px;
+  gap: 14px 16px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+/* The port's column is narrow: its issue stays on one line, ending under it. */
+.field.port .field-issue {
+  align-self: flex-end;
+  white-space: nowrap;
+  text-align: right;
+}
+.field.span-2 {
+  grid-column: span 2;
+}
+.key-hint {
+  grid-column: 1 / -1;
+  margin: -4px 0 0;
+}
+.advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+/* Aligned on text baselines, so the row sits right at any half-pixel offset (#71). */
+.advanced-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.disc {
+  border: 0;
+  background: none;
+  padding: 0;
+  height: 24px;
+  line-height: 24px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.disc svg {
+  align-self: center;
+}
+.disc:hover {
+  color: var(--ink);
+}
+.advanced-grid,
+.local-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px 16px;
+  align-items: start;
+}
+.local-form {
+  margin: 0;
+  padding: 16px 20px;
+}
+.beside-field {
+  margin: 0;
+  padding-top: 25px;
+}
+/* In First launch's narrower card the hint goes under its field (LaptopFirstRun's `local-edit`). */
+.fl-one .advanced-grid,
+.fl-one .local-form {
+  grid-template-columns: minmax(0, 1fr);
+  row-gap: 6px;
+}
+.fl-one .beside-field {
+  padding-top: 0;
+}
+
+/* "Fill in from ~/.ssh/config" above the details (LaptopPlatformForm), its
+   hint beside it; under it in First launch's narrower form (LaptopFirstRun) */
+.fill-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.fill-row.under {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.fill-row.under .hint {
+  margin: 0;
+}
+.fill-block {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.flabel-mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+}
+.or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.or::before,
+.or::after {
+  content: "";
+  flex-grow: 1;
+  height: 1px;
+  background: var(--line);
+}
+.with-button {
+  display: flex;
+  gap: 8px;
+}
+.with-button .btn {
+  flex-shrink: 0;
+}
+.input.dirty {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+.input[aria-invalid="true"] {
+  border-color: var(--red);
+  box-shadow: 0 0 0 1px var(--red);
+}
+.field-issue {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--red);
+}
+
+/* A card's footer: its note, then its buttons */
+.cfoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 0 0 12px 12px;
+}
+.cfoot-note {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  font-size: 13px;
+  color: var(--ink-3);
+  min-width: 0;
+}
+.cfoot-note.end {
+  justify-content: flex-end;
+  padding-right: 8px;
+}
+.unsaved {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+}
+.g-unsaved {
+  background: var(--ink);
+}
+.cfoot.confirm {
+  background: var(--red-soft);
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 20px;
+}
+.confirm-text {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  min-width: 0;
+}
+.confirm-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+/* The Active platform's Platform settings, in its card's foot (LaptopSettings) */
+.platform .strip:not(:last-child) {
+  border-radius: 0;
+}
+.settings-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.settings-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+.settings-title {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.settings-title h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+.settings-title p {
+  margin: 0;
+}
+.chg {
+  color: var(--ink);
+}
+/* Another computer saved: a question, so cobalt-soft, as the host-key strip */
+.note-ask {
+  background: var(--cobalt-soft);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.note-ask:focus {
+  outline: none;
+}
+.note-ask p {
+  margin: 0;
+  flex-grow: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+.note-ask .hint {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink-2);
+}
+.setup-message.waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+  align-self: center;
+}
+/* A changed field, locked while its save waits for the connection */
+.input.dirty:disabled {
+  border-color: var(--ink-3);
+  box-shadow: 0 0 0 1px var(--ink-3);
+}
+
+/* General: one card of rows, each applying at once. */
+.general {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.general h2 {
+  margin: 0;
+}
+.general-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 20px;
+}
+.general-row + .general-row {
+  border-top: 1px solid var(--line);
+}
+.general-text {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.general-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.general-hint {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.general-said {
+  margin-top: 2px;
+  color: var(--ink-2);
+}
+/* The logs folder, as text to copy. */
+.general-path {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.general-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+/* Reset: alone below a rule, outside any card; it asks in place. */
+.reset {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+.reset-rest {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.reset-rest .general-text {
+  gap: 2px;
+}
+.reset-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 20px;
+  border-radius: 12px;
+  background: var(--red-soft);
+  border: 1px solid color-mix(in srgb, var(--red) 22%, var(--red-soft));
+  /* Scrolled into view as it opens, it stops the column's gap above the window's edge. */
+  scroll-margin-bottom: 28px;
+}
+.reset-say {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.reset-panel h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 500;
+}
+.reset-panel h3:focus {
+  outline: none;
+}
+.reset-panel p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.reset-lists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 32px;
+}
+.reset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.reset-list h4 {
+  margin: 0;
+  font-size: 13px;
+}
+.reset-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.reset-list li {
+  position: relative;
+  padding-left: 13px;
+  overflow-wrap: anywhere;
+}
+.reset-list li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+/* ICMM's key is the one line that changes with the checkbox below the lists. */
+.reset-list li.reset-key {
+  color: var(--ink);
+}
+.reset-also {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--red) 16%, var(--red-soft));
+}
+.reset-also .check {
+  font-size: 14px;
+}
+.reset-also .hint {
+  padding-left: 26px;
+  color: var(--ink-2);
+}
+.reset-panel .reset-file {
+  color: var(--ink);
+}
+.reset-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.reset-actions .grow {
+  flex-grow: 1;
+}
+
+/* The versions: plain text to copy into a report. */
+.versions {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+/* Open logs folder and Report a problem…, side by side (#126). */
+.general-controls.general-logs {
+  gap: 8px;
+}

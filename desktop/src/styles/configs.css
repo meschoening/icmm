@@ -1,0 +1,405 @@
+/*
+ * Configs (#184): LaptopConfigs, on tokens so dark mode follows. The list
+ * at 340 px beside the config it chose.
+ */
+
+/* LaptopConfigs' main sets its parts 28 px apart. */
+.cf-page {
+  gap: 28px;
+}
+
+/* The head: the heading over its facts, and New config at the right with its reason. */
+.cf-page-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+}
+.cf-new {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+/* Why a button can't be used, under it (LaptopConfigs' `.why`). */
+.cf-why {
+  margin: 0;
+  max-width: 300px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  text-align: right;
+  text-wrap: pretty;
+}
+.cf-why.err {
+  color: var(--red);
+}
+
+.cf-body {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 40px;
+  align-items: start;
+}
+
+/* The list, under its filter */
+.cf-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.cf-filter {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.cf-filter svg {
+  position: absolute;
+  left: 12px;
+  color: var(--ink-3);
+  pointer-events: none;
+}
+.cf-filter .input {
+  padding-left: 34px;
+  padding-right: 36px;
+}
+.cf-filter .input::-webkit-search-cancel-button {
+  display: none;
+}
+.cf-filter .kbd {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+}
+.cf-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cf-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* The board's 14 px at the right, less 2: its rows' facts are a hair over 310 px here. */
+  padding: 11px 12px 11px 16px;
+  border-radius: 0 10px 10px 0;
+  color: var(--ink);
+}
+.cf-item:hover {
+  background: var(--ground);
+}
+.cf-item.sel {
+  background: var(--ground);
+  box-shadow: inset 2px 0 0 var(--ink);
+}
+.cf-item-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.cf-item-name {
+  flex-grow: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.cf-item-runs {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.cf-item-facts {
+  font-size: 13px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.cf-item.sel .cf-item-facts {
+  color: var(--ink-2);
+}
+/* A deleted dataset, quiet as Runs marks it: one step darker than its line (CF11). */
+.cf-del {
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.cf-item.sel .cf-del {
+  color: var(--ink);
+}
+.cf-item-facts .g {
+  margin-right: 7px;
+  transform: translateY(-1px);
+}
+.cf-none {
+  margin: 0;
+  padding: 11px 16px;
+  font-size: 13px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* A config's detail */
+.cf-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+.cf-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cf-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+.cf-title {
+  margin: 0;
+  flex-grow: 1;
+  min-width: 0;
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 36px;
+  overflow-wrap: anywhere;
+}
+.cf-title-plain {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+.cf-title .del-word {
+  margin-left: 10px;
+}
+.cf-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.cf-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cf-gone {
+  color: var(--ink-3);
+}
+
+/* ··· and its menu (LaptopConfigs' `menu`) */
+.cf-more {
+  position: relative;
+  margin-left: 4px;
+}
+.cf-menu {
+  position: absolute;
+  right: 0;
+  top: 44px;
+  z-index: 5;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 24px 64px -24px var(--shadow);
+}
+.cf-menu [role="menuitem"] {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  text-align: left;
+  white-space: nowrap;
+}
+.cf-menu [role="menuitem"]:hover,
+.cf-menu [role="menuitem"]:focus-visible {
+  background: var(--ground);
+}
+.cf-menu [role="menuitem"]:active:not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--ink) 9%, var(--bg));
+}
+.cf-menu [role="menuitem"][aria-busy="true"] {
+  color: var(--ink-2);
+  cursor: progress;
+}
+.cf-menu .danger {
+  color: var(--red);
+}
+.cf-menu .danger:hover,
+.cf-menu .danger:focus-visible {
+  background: var(--red-soft);
+}
+.cf-menu .danger:active {
+  background: color-mix(in srgb, var(--red) 18%, var(--red-soft));
+}
+.cf-menu-rule {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--line);
+}
+.cf-menu .swap {
+  place-items: center start;
+}
+
+/* Data, Topology and Optimization, then the runs (LaptopConfigs' 9fr | 11fr) */
+.cf-sections {
+  display: grid;
+  grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
+  gap: 28px 36px;
+  align-items: start;
+}
+.cf-section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cf-section h3 {
+  margin: 0 0 6px;
+}
+.cf-section dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.cf-side {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+.cf-kv {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 16px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  align-items: baseline;
+}
+.cf-kv dt {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.cf-kv dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.cf-v {
+  font-size: 13px;
+}
+.cf-aside,
+.cf-quiet {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.cf-quiet {
+  font-size: 14px;
+}
+.cf-kv .del-word {
+  margin-left: 8px;
+  font-size: 13px;
+}
+.cf-note {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  text-wrap: pretty;
+}
+/* Optimization's opening sentence (CF02), over its rows. */
+.cf-lead {
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.cf-section .ds-none {
+  padding: 10px 0;
+}
+
+/* Runs from this config (#236): status, the run and how far it has got, its best Val RMSE. */
+.cf-runs-head {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+.cf-runs-head .label {
+  margin: 0;
+  flex-grow: 1;
+}
+.cf-runs-all {
+  font-size: 13px;
+}
+.cf-runs {
+  display: flex;
+  flex-direction: column;
+}
+.cf-run {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 104px;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  align-items: baseline;
+  color: var(--ink);
+  text-decoration: none;
+}
+.cf-run:last-child {
+  border-bottom: 1px solid var(--line);
+}
+.cf-run.cf-run-heads {
+  padding: 0 0 6px;
+  border-top: 0;
+}
+.cf-run .st {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.cf-run .st.st-failed {
+  color: var(--red);
+}
+.cf-run-what {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.cf-run-lines {
+  display: flex;
+  flex-direction: column;
+  color: var(--ink-3);
+  text-wrap: balance;
+}
+.cf-run-num {
+  text-align: right;
+}
+.cf-run-best {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  font-size: 13px;
+}
+.cf-run-metric {
+  color: var(--ink-3);
+}
+.cf-run-by {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}

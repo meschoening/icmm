@@ -1,0 +1,905 @@
+/*
+ * Topology (LaptopTopology, #233; built in #238). The header is the drawing,
+ * 360 px, beside the status line, heading, buttons and tiles; then the
+ * starts' grid and the list that counts them beside where the finished starts
+ * ended, whose dots open their starts (#359); then Optimization progress
+ * (#286); then Best starts with the Failed group under it, at their content's
+ * width; then the parameters across the Top 10 (#287).
+ * Every color is a token, so dark mode follows.
+ */
+.topo-page {
+  gap: 32px;
+}
+.topo-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.topo-wait {
+  padding-top: 14px;
+}
+.topo-of {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.topo-header {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 36px;
+  align-items: stretch;
+  padding-top: 2px;
+}
+
+/* Structure: the drawing on --ground, its caption under it. */
+.topo-struct {
+  margin: 0;
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.topo-sbox {
+  flex-grow: 1;
+  min-height: 136px;
+  padding: 14px 12px 12px;
+  border-radius: 10px;
+  background: var(--ground);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.topo-cap {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.topo-cap .mono {
+  color: var(--ink);
+  font-weight: 500;
+}
+.topo-cap .n {
+  color: var(--ink);
+}
+
+.topo-headtext {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.topo-status {
+  margin: 0;
+  align-items: baseline;
+  white-space: normal;
+  font-size: 14px;
+}
+.topo-status > .g {
+  align-self: center;
+}
+.topo-word {
+  color: var(--ink);
+}
+.topo-line {
+  color: var(--ink-3);
+}
+.topo-line .raw {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.topo-titlerow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.topo-titlerow > .page-heading {
+  flex-grow: 1;
+  min-width: 0;
+  margin: 0;
+}
+.topo-acts {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.topo-unread {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.topo-unread svg {
+  flex-shrink: 0;
+  transform: translateY(2px);
+  color: var(--ink-3);
+}
+.topo-tiles {
+  margin: auto 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 36px;
+  padding-top: 12px;
+}
+.topo-tiles > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.topo-tiles dt {
+  white-space: nowrap;
+}
+.topo-tiles dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.topo-tiles dd .n {
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.topo-tiles dd .vbest {
+  color: var(--cobalt);
+}
+.topo-tiles dd .tx {
+  font-size: 15px;
+  line-height: 26px;
+  color: var(--ink);
+}
+/* The rank's second line: its place on its dataset, under its place in its run (#359). */
+.topo-tiles dd + dd {
+  margin-top: -2px;
+}
+
+/* A section's head: its mono label, and what it shows beside it. */
+.topo-h {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 0;
+}
+.topo-h > .label {
+  margin: 0;
+  line-height: 19px;
+  white-space: nowrap;
+}
+.topo-hint {
+  font-size: 13px;
+  color: var(--ink-3);
+  min-width: 0;
+}
+
+/* Starts: 10 across, 18 px squares 4 px apart. */
+.topo-starts {
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  gap: 48px;
+  align-items: start;
+}
+.topo-gridcol {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.topo-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 18px);
+  gap: 4px;
+}
+.topo-sq,
+.topo-sw {
+  display: block;
+  box-sizing: border-box;
+  border-radius: 3.5px;
+}
+.topo-sq {
+  width: 18px;
+  height: 18px;
+}
+/* Hovered or focused, or its dot is (#359): its dot rings the same way. */
+a.topo-sq:hover,
+a.topo-sq.is-hover {
+  outline: 1.5px solid var(--ink-3);
+  outline-offset: 1.5px;
+}
+a.topo-sq:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+.topo-sw {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.sq-near {
+  background: var(--cobalt);
+}
+.sq-far {
+  background: color-mix(in oklab, var(--ink) 40%, var(--bg));
+}
+.topo-sq.sq-best,
+.topo-sq.sq-best:hover,
+.topo-sq.sq-best.is-hover {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.sq-running {
+  box-shadow: inset 0 0 0 1.5px var(--cobalt);
+  background: radial-gradient(circle, var(--cobalt) 0 2px, transparent 2.5px);
+}
+.topo-sq.sq-running {
+  animation: pulse 1.8s ease-in-out infinite;
+}
+.sq-queued {
+  border: 1px dashed var(--ink-3);
+}
+.sq-failed {
+  background-color: var(--red-soft);
+  box-shadow: inset 0 0 0 1px var(--red);
+  background-image:
+    linear-gradient(45deg, transparent 46%, var(--red) 46% 54%, transparent 54%),
+    linear-gradient(-45deg, transparent 46%, var(--red) 46% 54%, transparent 54%);
+  background-size: 10px 10px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.topo-sw.sq-failed {
+  background-size: 7px 7px;
+}
+.sq-canceled {
+  box-shadow: inset 0 0 0 1px var(--ink-3);
+  background-image: linear-gradient(-45deg, transparent 46%, var(--ink-3) 46% 54%, transparent 54%);
+  background-size: 10px 10px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.topo-sw.sq-canceled {
+  background-size: 7px 7px;
+}
+.sq-unsent {
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+/* Still improving at its end (#234): a down arrow in the square's contrast color. */
+.topo-imp {
+  display: block;
+  margin: 4px;
+}
+.sq-near .topo-imp {
+  color: var(--bg);
+}
+.sq-far .topo-imp {
+  color: var(--ink);
+}
+.topo-imp-sw {
+  color: var(--ink);
+}
+/*
+ * The Starts list: the grid's counts and its legend in one (#359), a row a kind: its swatch, its
+ * count, its words. The rows share one grid, so every count's column is the widest's.
+ */
+.topo-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 12px minmax(28px, max-content) minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 6px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.topo-list li {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+}
+.topo-ln {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.topo-lsub {
+  color: var(--ink-3);
+}
+.topo-red,
+.topo-ln.topo-red {
+  color: var(--red);
+}
+
+/* Where the finished starts ended. */
+.topo-ended {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.topo-dots {
+  position: relative;
+  height: 182px;
+}
+.topo-dots svg {
+  display: block;
+  overflow: visible;
+}
+/*
+ * Each dot opens its start (#359): a pointer shortcut over the chart, which stays one image; the
+ * grid is the keyboard's and a screen reader's way. Hovered, or its square is, it's ringed as a
+ * hovered square is, with its square's words in the app's tooltip.
+ */
+.topo-dotlayer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.topo-pt {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--ink) 40%, var(--bg));
+  pointer-events: auto;
+}
+.topo-pt.near {
+  background: var(--cobalt);
+}
+/* A little more to aim at than the dot, short of its neighbors' centers. */
+.topo-pt::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+}
+.topo-pt.best::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12.5px;
+  height: 12.5px;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.topo-pt:hover,
+.topo-pt.is-hover {
+  z-index: 3;
+  outline: 1.5px solid var(--ink-3);
+  outline-offset: 1.5px;
+}
+.topo-pt.best:hover,
+.topo-pt.best.is-hover {
+  outline-offset: 4.6px;
+}
+.tooltip.topo-dtip {
+  position: absolute;
+  top: auto;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: none;
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* Near the chart's ends it runs inward from the dot, so it stays over the chart. */
+.tooltip.topo-dtip.start {
+  left: -6px;
+  transform: none;
+}
+.tooltip.topo-dtip.end {
+  left: auto;
+  right: -6px;
+  transform: none;
+}
+.topo-pt.best .topo-dtip {
+  bottom: calc(100% + 12px);
+}
+.topo-band {
+  fill: var(--cobalt-soft);
+}
+.topo-lead {
+  fill: none;
+  stroke: var(--cobalt);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.topo-axis {
+  fill: none;
+  stroke: var(--line-2);
+  vector-effect: non-scaling-stroke;
+}
+.topo-guide {
+  fill: none;
+  stroke: var(--line);
+  stroke-dasharray: 2 3;
+  vector-effect: non-scaling-stroke;
+}
+.topo-tlab {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.topo-tlab.mid {
+  transform: translateX(-50%);
+}
+.topo-tlab.end {
+  transform: translateX(-100%);
+}
+.topo-tlab.best {
+  color: var(--ink);
+}
+.topo-tlab.lead {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cobalt);
+}
+.topo-dotkey {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  padding-left: 40px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.topo-dotkey > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.topo-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--ink) 40%, var(--bg));
+}
+.topo-dot.near {
+  background: var(--cobalt);
+}
+.topo-buckets {
+  margin: 8px 0 0 40px;
+  display: grid;
+  grid-template-columns: repeat(5, max-content);
+  gap: 4px 40px;
+}
+.topo-buckets dd {
+  margin: 0;
+  font-size: 15px;
+}
+.topo-buckets .topo-of {
+  font-size: 13px;
+}
+.topo-empty {
+  box-sizing: border-box;
+  min-height: 280px;
+  border: 1px dashed var(--line-2);
+  border-radius: 10px;
+  padding: 22px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+.topo-empty p {
+  margin: 0;
+  max-width: 640px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.topo-empty .meta {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+/* Optimization progress: each start's line, the best's over them all. */
+.topo-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.topo-progress-h {
+  align-items: center;
+}
+.topo-progress-h > .seg {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.topo-progress .topo-empty {
+  min-height: 120px;
+}
+.topo-prog {
+  position: relative;
+  height: 236px;
+}
+.topo-prog svg {
+  display: block;
+  overflow: visible;
+}
+.topo-prog path {
+  fill: none;
+  vector-effect: non-scaling-stroke;
+}
+.topo-prog-grid {
+  stroke: var(--line);
+}
+.topo-prog-done {
+  stroke: var(--ink-3);
+  stroke-opacity: 0.22;
+}
+.topo-prog-stopped {
+  stroke: var(--ink-3);
+  stroke-opacity: 0.6;
+  stroke-dasharray: 3 3;
+}
+.topo-prog-live {
+  stroke: var(--cobalt-mid);
+  stroke-opacity: 0.8;
+}
+.topo-prog path.topo-prog-end {
+  fill: var(--cobalt-mid);
+}
+.topo-prog path.topo-prog-band {
+  fill: var(--ink-3);
+  fill-opacity: 0.16;
+}
+.topo-prog-median {
+  stroke: var(--ink-2);
+  stroke-width: 1.5;
+}
+.topo-prog-best {
+  stroke: var(--cobalt);
+  stroke-width: 2;
+}
+.topo-prog-bestend {
+  fill: var(--cobalt);
+}
+.topo-tlab.topo-plab-name {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.topo-tlab.topo-plab-best {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cobalt);
+}
+.topo-tlab.topo-plab-median {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.topo-prog-key {
+  padding-left: 52px;
+}
+.topo-prog-key .n {
+  font-size: 12px;
+}
+.topo-key-line {
+  width: 16px;
+  height: 1px;
+  flex-shrink: 0;
+  background: var(--ink-3);
+}
+.topo-key-line.best {
+  height: 2px;
+  background: var(--cobalt);
+}
+.topo-key-line.live {
+  background: var(--cobalt-mid);
+}
+.topo-key-line.stopped {
+  height: 0;
+  border-top: 1px dashed var(--ink-3);
+  background: none;
+}
+.topo-key-line.band {
+  height: 8px;
+  background: var(--ink-3);
+  opacity: 0.3;
+}
+
+/* Best starts, then Failed: rows that open a start. */
+.topo-low,
+.topo-bestcol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.topo-num {
+  font-family: var(--font-mono);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+/*
+ * Best starts and Failed at their content's width (#359), as Results' leaderboard (#358): one grid
+ * a table, each row a subgrid of it. Rank, Start and Train are `tracksOf`'s, shared, so Failed's
+ * Start and Train sit under Best starts'; every other track is its widest entry plus 8 px (its
+ * cells' padding), 12 px apart, and the spare width sits after the last, inside the rows' rules.
+ * A 0 px track at each edge, with the gap, insets the rows' content by 12 px.
+ */
+.topo-table,
+.topo-ftable {
+  display: grid;
+  column-gap: 12px;
+  align-content: start;
+}
+.topo-table {
+  grid-template-columns:
+    0 var(--topo-rank) var(--topo-start) var(--topo-train) repeat(3, auto)
+    minmax(0, 1fr) 0;
+}
+.topo-table.noval {
+  grid-template-columns:
+    0 var(--topo-rank) var(--topo-start) var(--topo-train) repeat(2, auto)
+    minmax(0, 1fr) 0;
+}
+.topo-ftable {
+  grid-template-columns:
+    0 var(--topo-rank) var(--topo-start) var(--topo-train) auto auto
+    minmax(0, max-content) auto minmax(0, 1fr) 0;
+}
+.topo-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+}
+.topo-row > :first-child {
+  grid-column-start: 2;
+}
+.topo-row > :nth-child(n + 4) {
+  padding-left: 8px;
+}
+.topo-shead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: 32px;
+  background: var(--bg);
+  box-shadow: 0 1px 0 var(--line);
+}
+.topo-trow,
+.topo-ftrow {
+  min-height: 42px;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+.topo-trow:hover,
+.topo-ftrow:hover {
+  background: var(--ground);
+}
+.topo-trow:focus-visible,
+.topo-ftrow:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: -2px;
+}
+.topo-trow.topo-best {
+  background: var(--cobalt-soft);
+}
+.topo-rank {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.topo-start {
+  font-size: 14px;
+  font-weight: 500;
+}
+.topo-train {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+}
+.topo-best .topo-train {
+  color: var(--cobalt);
+}
+.topo-imp-row {
+  flex-shrink: 0;
+  color: var(--ink-2);
+}
+.topo-imp-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.topo-val {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.topo-wall {
+  font-size: 14px;
+  color: var(--ink-2);
+  text-align: right;
+  white-space: nowrap;
+}
+.topo-wall .n {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.topo-scroll,
+.topo-fscroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-bottom: 1px solid var(--line);
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-2) transparent;
+}
+.topo-scroll {
+  max-height: 488px;
+}
+.topo-fscroll {
+  max-height: 260px;
+}
+.topo-scroll.short,
+.topo-fscroll.short {
+  max-height: none;
+}
+.topo-scroll:focus-visible,
+.topo-fscroll:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+.topo-fade {
+  grid-column: 1 / -1;
+  position: sticky;
+  bottom: 0;
+  height: 14px;
+  margin-top: -14px;
+  pointer-events: none;
+  background: linear-gradient(transparent, var(--bg));
+}
+.topo-scroll.short .topo-fade {
+  display: none;
+}
+.topo-tempty {
+  margin: 0;
+  padding: 18px 12px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.topo-failed {
+  display: flex;
+  flex-direction: column;
+}
+.topo-fgrp {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 16px 12px 6px;
+}
+.topo-ftable .topo-shead {
+  height: 30px;
+}
+.topo-dash {
+  font-size: 14px;
+  color: var(--ink-3);
+}
+.topo-try {
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.topo-cause {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--red);
+  white-space: nowrap;
+}
+.topo-why {
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.topo-open {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+/* Not connected: what was last read stays, its glyphs still. */
+.topo-page.stale .g-running,
+.topo-page.stale .live,
+.topo-page.stale .topo-sq.sq-running {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .topo-sq.sq-running {
+    animation: none;
+  }
+}
+
+/* Parameters across the top 10 starts (#287): each part's strip, then its spread. */
+.topo-params {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.prm-strip {
+  display: block;
+}
+.prm-strip * {
+  vector-effect: non-scaling-stroke;
+}
+.prm-axis {
+  stroke: var(--line);
+}
+.prm-stops {
+  stroke: var(--line-2);
+}
+.prm-others,
+.prm-sw-others {
+  fill: color-mix(in oklab, var(--ink) 16%, var(--bg));
+}
+.prm-near {
+  fill: var(--cobalt);
+  fill-opacity: 0.75;
+}
+.prm-tick {
+  stroke: var(--cobalt);
+  stroke-width: 2.5;
+}
+.prm-spread {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: right;
+  color: var(--ink-2);
+}
+.prm-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+  margin: 0;
+  padding: 0 0 0 68px;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.prm-key li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.prm-key .n {
+  font-size: 12px;
+}
+.prm-sw-best {
+  width: 3px;
+  height: 12px;
+  background: var(--cobalt);
+}
+.prm-sw-near,
+.prm-sw-others {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.prm-sw-near {
+  background: var(--cobalt);
+  opacity: 0.75;
+}
+.prm-sw-others {
+  background: color-mix(in oklab, var(--ink) 16%, var(--bg));
+}

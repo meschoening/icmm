@@ -1,0 +1,5 @@
+# Keep equal to RUST_VERSION in scripts/ci/pins.env (tests/test_manifests.py checks).
+[toolchain]
+channel = "1.98.1"
+profile = "minimal"
+components = ["clippy", "rustfmt"]

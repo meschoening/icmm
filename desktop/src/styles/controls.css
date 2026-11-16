@@ -1,0 +1,804 @@
+/* Buttons, fields and choices. From LaptopStyles, on tokens. */
+
+/* Buttons */
+.btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line-2);
+  background: var(--surface);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 14px;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+.btn:hover {
+  border-color: var(--ink-3);
+}
+.btn-primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+.btn-primary:hover {
+  /* The boards' #2a2c31 light, #d6d7da dark. */
+  --hover: color-mix(in srgb, var(--ink) 89%, var(--bg));
+  background: var(--hover);
+  border-color: var(--hover);
+  color: var(--bg);
+}
+.btn-danger {
+  background: var(--red-soft);
+  border-color: var(--red);
+  color: var(--red);
+}
+.btn-danger:hover {
+  background: var(--red);
+  border-color: var(--red);
+  color: var(--bg);
+}
+.btn-text {
+  height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-2);
+  font-size: 14px;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+.btn-text:hover {
+  color: var(--ink);
+  background: var(--ground);
+}
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--surface);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-2);
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.btn-icon:hover,
+.btn-icon[aria-expanded="true"] {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+.btn-sm {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 13px;
+  border-radius: 6px;
+  gap: 6px;
+}
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--ink-2);
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.icon-btn:hover,
+.icon-btn.on {
+  background: var(--ground);
+  color: var(--ink);
+}
+.icon-btn.btn-sm {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 6px;
+}
+/* Pressed: one step past hover, and nothing moves. */
+.btn:active:not(:disabled, [aria-disabled="true"]),
+.btn-icon:active:not(:disabled, [aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--ink) 7%, var(--bg));
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+.btn-primary:active:not(:disabled, [aria-disabled="true"]) {
+  --pressed: color-mix(in srgb, var(--ink) 80%, var(--bg));
+  background: var(--pressed);
+  border-color: var(--pressed);
+  color: var(--bg);
+}
+.btn-danger:active:not(:disabled, [aria-disabled="true"]) {
+  --pressed: color-mix(in srgb, var(--red) 80%, var(--ink));
+  background: var(--pressed);
+  border-color: var(--pressed);
+  color: var(--bg);
+}
+.btn-text:active:not(:disabled, [aria-disabled="true"]),
+.icon-btn:active:not(:disabled, [aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--ink) 11%, var(--bg));
+  color: var(--ink);
+}
+/*
+ * A control that can't be used keeps its boundary and drops its fill and
+ * ink. A working one is `aria-disabled` too, but keeps its own colors.
+ */
+.btn:disabled,
+.btn[aria-disabled="true"]:not([aria-busy="true"]),
+.btn-icon:disabled,
+.btn-icon[aria-disabled="true"]:not([aria-busy="true"]) {
+  background: var(--ground);
+  border-color: var(--line);
+  color: var(--control);
+  cursor: not-allowed;
+}
+.btn-text:disabled,
+.btn-text[aria-disabled="true"]:not([aria-busy="true"]),
+.icon-btn:disabled,
+.icon-btn[aria-disabled="true"]:not([aria-busy="true"]) {
+  color: var(--ink-4);
+  background: transparent;
+  cursor: not-allowed;
+}
+/* Gray until its progress shows (`ui/gray.ts`): the disabled look, waiting. */
+.btn[aria-disabled="true"][data-wait="true"] {
+  cursor: progress;
+}
+
+/*
+ * Working (WorkingButton): the label becomes dots and what it's doing, in
+ * the button's own colors, and a hover changes nothing. Both labels share
+ * one grid cell, so the button is as wide as the wider.
+ */
+.btn[aria-busy="true"] {
+  cursor: progress;
+}
+.btn[aria-busy="true"]:hover {
+  border-color: var(--line-2);
+}
+.btn-primary[aria-busy="true"]:hover {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+.btn-danger[aria-busy="true"]:hover {
+  background: var(--red-soft);
+  border-color: var(--red);
+  color: var(--red);
+}
+.swap {
+  display: inline-grid;
+  place-items: center;
+}
+.swap > span {
+  grid-area: 1 / 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.swap > span + span,
+[aria-busy="true"] .swap > span:first-child {
+  visibility: hidden;
+}
+[aria-busy="true"] .swap > span + span {
+  visibility: visible;
+}
+/*
+ * Export's GrowingButton (#140): as wide as its word at rest. Working, the
+ * dots and the word's ending open from no width; each opening part has 4 px
+ * above and below, so a descender isn't clipped while it opens. Its parts
+ * are named `grow-…`: `.grow` is a row's spacer (#168).
+ */
+.grow-label {
+  display: inline-flex;
+  align-items: center;
+}
+.grow-r {
+  display: inline-grid;
+  grid-template-columns: 0fr;
+  transition: grid-template-columns 0.22s ease;
+}
+.grow-r > span {
+  display: inline-flex;
+  align-items: center;
+  overflow: hidden;
+  min-width: 0;
+  white-space: nowrap;
+  padding: 4px 0;
+  margin: -4px 0;
+}
+.grow-gap {
+  display: inline-block;
+  width: 7px;
+  flex-shrink: 0;
+}
+.grow-btn[aria-busy="true"] .grow-r {
+  grid-template-columns: 1fr;
+}
+@media (prefers-reduced-motion: reduce) {
+  .grow-r {
+    transition: none;
+  }
+}
+/* Not the Reading line's `.dots`: these take the button's own ink. */
+.btn-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.btn-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: btn-dots 1.1s ease-in-out infinite;
+}
+.btn-dots i:nth-child(2) {
+  animation-delay: 0.18s;
+}
+.btn-dots i:nth-child(3) {
+  animation-delay: 0.36s;
+}
+@keyframes btn-dots {
+  0%,
+  70%,
+  100% {
+    opacity: 0.28;
+  }
+  35% {
+    opacity: 1;
+  }
+}
+/* The dots stop, and the words carry it. */
+@media (prefers-reduced-motion: reduce) {
+  .btn-dots i {
+    animation: none;
+  }
+}
+
+/* Fields */
+.input {
+  height: 36px;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--control);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 0 12px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+.input.mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.input::placeholder {
+  color: var(--control);
+}
+.input:hover {
+  border-color: var(--ink-3);
+}
+/* Text fields match :focus-visible on click too, so the ring is on :focus. */
+.input:focus {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 1px;
+  border-color: var(--cobalt);
+}
+.input:disabled,
+.input[readonly][aria-disabled="true"] {
+  background: var(--ground);
+  border-color: var(--line-2);
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 32px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink-2) 50%, var(--ink-2) 62%, transparent 62%),
+    linear-gradient(-45deg, transparent 50%, var(--ink-2) 50%, var(--ink-2) 62%, transparent 62%);
+  background-size:
+    6px 6px,
+    6px 6px;
+  background-repeat: no-repeat;
+  background-position:
+    right 17px center,
+    right 12px center;
+}
+.input-sm {
+  height: 30px;
+  font-size: 13px;
+  padding: 0 8px;
+  border-radius: 6px;
+}
+select.input-sm {
+  padding-right: 24px;
+  background-position:
+    right 13px center,
+    right 8px center;
+}
+
+/*
+ * Checkboxes and radios are drawn, not native (old ADR-0024): before
+ * Safari 26.2, `accent-color: var(--ink)` draws a white check on a
+ * near-white box in dark mode.
+ */
+input[type="checkbox"],
+input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 1px solid var(--control);
+  border-radius: 4px;
+  background: var(--surface);
+  display: inline-grid;
+  place-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+input[type="radio"] {
+  border-radius: 50%;
+}
+input[type="checkbox"]::before,
+input[type="radio"]::before {
+  content: "";
+  background: var(--bg);
+  transform: scale(0);
+}
+input[type="checkbox"]::before {
+  width: 10px;
+  height: 10px;
+  clip-path: polygon(12% 48%, 0 62%, 40% 100%, 100% 20%, 86% 7%, 39% 72%);
+}
+input[type="radio"]::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+input[type="checkbox"]:checked::before,
+input[type="radio"]:checked::before {
+  transform: scale(1);
+}
+input[type="checkbox"]:hover:not(:checked, :disabled),
+input[type="radio"]:hover:not(:checked, :disabled) {
+  border-color: var(--ink-3);
+}
+input[type="checkbox"]:disabled,
+input[type="radio"]:disabled {
+  background: var(--ground);
+  border-color: var(--line-2);
+  cursor: not-allowed;
+}
+input[type="checkbox"]:checked:disabled,
+input[type="radio"]:checked:disabled {
+  background: var(--ink-4);
+  border-color: var(--ink-4);
+}
+/*
+ * Windows High Contrast replaces author colors, and a drawn box whose fill
+ * and check land on one palette entry loses the check, so name the system
+ * colors a native box uses (the old app's ADR-0024 recipe). WebKit has no
+ * forced colors, so this only reaches WebView2.
+ */
+@media (forced-colors: active) {
+  input[type="checkbox"],
+  input[type="radio"] {
+    border-color: ButtonBorder;
+    background: Canvas;
+  }
+  input[type="checkbox"]::before,
+  input[type="radio"]::before {
+    background: HighlightText;
+  }
+  input[type="checkbox"]:checked,
+  input[type="radio"]:checked {
+    border-color: Highlight;
+    background: Highlight;
+  }
+  input[type="checkbox"]:disabled,
+  input[type="radio"]:disabled {
+    border-color: GrayText;
+    background: Canvas;
+  }
+  input[type="checkbox"]:checked:disabled::before,
+  input[type="radio"]:checked:disabled::before {
+    background: GrayText;
+  }
+}
+.opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.opt.dis {
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+
+/* Chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--control);
+  border-radius: 6px;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+.chip:hover {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+.chip input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+}
+.chip input[type="checkbox"]::before {
+  width: 8px;
+  height: 8px;
+}
+.chip.on {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.chip[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+.chip:active:not(.off) {
+  background: color-mix(in srgb, var(--ink) 11%, var(--bg));
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+.chip[aria-pressed="true"]:active {
+  --pressed: color-mix(in srgb, var(--ink) 80%, var(--bg));
+  background: var(--pressed);
+  border-color: var(--pressed);
+  color: var(--bg);
+}
+.chip.off {
+  border-color: var(--line);
+  border-style: dashed;
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+
+/* Segmented control: the group is the control and carries the boundary. */
+.seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--ground);
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.seg button {
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.seg button:hover {
+  color: var(--ink);
+}
+.seg button[aria-pressed="true"],
+.seg button[aria-checked="true"],
+.seg button[aria-selected="true"] {
+  background: var(--surface);
+  border-color: var(--line-2);
+  color: var(--ink);
+}
+.seg label {
+  position: relative;
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.seg label:hover {
+  color: var(--ink);
+}
+.seg label.on {
+  background: var(--surface);
+  border-color: var(--line-2);
+  color: var(--ink);
+}
+.seg button:active,
+.seg label:active {
+  background: color-mix(in srgb, var(--ink) 9%, var(--ground));
+  color: var(--ink);
+}
+.seg button[aria-pressed="true"]:active,
+.seg button[aria-checked="true"]:active,
+.seg button[aria-selected="true"]:active,
+.seg label.on:active {
+  background: color-mix(in srgb, var(--ink) 7%, var(--bg));
+}
+.seg input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+/* The radio inside is invisible, so its label shows the focus. */
+.seg label:has(:focus-visible) {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+.seg-sm {
+  padding: 2px;
+}
+.seg-sm button,
+.seg-sm label {
+  height: 24px;
+  padding: 0 10px;
+}
+
+/*
+ * Switch: a setting that applies at once, at the end of its row. 34 × 20, ink
+ * when on; the checkbox inside is invisible and takes the whole hit area.
+ */
+.switch {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.switch input[type="checkbox"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.switch input:disabled {
+  cursor: not-allowed;
+}
+.switch .trk {
+  width: 34px;
+  height: 20px;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--control);
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  transition: background 0.15s;
+  /* Paints over the checkbox; a press anywhere on it is the checkbox's. */
+  pointer-events: none;
+}
+.switch .trk::after {
+  content: "";
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--bg);
+  transition: transform 0.15s;
+}
+.switch:hover .trk {
+  background: var(--ink-3);
+}
+.switch input:checked + .trk {
+  background: var(--ink);
+}
+.switch:hover input:checked + .trk {
+  background: color-mix(in srgb, var(--ink) 88%, var(--bg));
+}
+.switch input:checked + .trk::after {
+  transform: translateX(14px);
+}
+.switch input:disabled + .trk,
+.switch:hover input:disabled + .trk {
+  background: var(--track);
+}
+.switch:active input:not(:disabled) + .trk {
+  background: var(--ink-2);
+}
+.switch:active input:checked:not(:disabled) + .trk {
+  background: color-mix(in srgb, var(--ink) 80%, var(--bg));
+}
+/*
+ * A switch that's blocked, with its reason (old ADR-0028): a button with
+ * `role="switch"`, which nothing toggles, in the disabled look and still a
+ * Tab stop.
+ */
+.switch-btn {
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+}
+.switch-btn[aria-checked="true"] .trk {
+  background: var(--ink);
+}
+.switch-btn[aria-checked="true"] .trk::after {
+  transform: translateX(14px);
+}
+.switch-btn[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+.switch-btn[aria-disabled="true"] .trk,
+.switch-btn[aria-disabled="true"]:hover .trk {
+  background: var(--track);
+}
+.switch-btn:focus-visible {
+  outline: none;
+}
+.switch-btn:focus-visible .trk {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+.switch input:focus-visible + .trk {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .switch .trk,
+  .switch .trk::after {
+    transition: none;
+  }
+}
+/* Drawn in system colors, as the checkbox is, so the state survives forced colors. */
+@media (forced-colors: active) {
+  .switch .trk {
+    forced-color-adjust: none;
+    border: 1px solid ButtonBorder;
+    background: Canvas;
+  }
+  .switch .trk::after {
+    background: ButtonText;
+  }
+  .switch input:checked + .trk,
+  .switch:hover input:checked + .trk {
+    border-color: Highlight;
+    background: Highlight;
+  }
+  .switch input:checked + .trk::after {
+    background: HighlightText;
+  }
+  .switch input:disabled + .trk,
+  .switch:hover input:disabled + .trk {
+    border-color: GrayText;
+    background: Canvas;
+  }
+  .switch input:disabled + .trk::after,
+  .switch-btn[aria-disabled="true"] .trk::after {
+    background: GrayText;
+  }
+  .switch-btn[aria-disabled="true"] .trk,
+  .switch-btn[aria-disabled="true"]:hover .trk {
+    border-color: GrayText;
+    background: Canvas;
+  }
+}
+
+/*
+ * `.stepper` (#52; LaptopStyles, `ui/Stepper.tsx`): a whole number typed or
+ * stepped by its stacked arrows. An arrow at its end is gray and inert.
+ */
+.stepper {
+  display: inline-flex;
+  align-items: stretch;
+  height: 30px;
+  border: 1px solid var(--control);
+  border-radius: 6px;
+  background: var(--surface);
+  box-sizing: border-box;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.stepper:hover {
+  border-color: var(--ink-3);
+}
+.stepper:focus-within {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 1px;
+  border-color: var(--cobalt);
+}
+.stepper input {
+  width: 40px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  padding: 0 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+}
+.stepper .arr {
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--line-2);
+}
+.stepper .arr button {
+  flex: 1;
+  width: 22px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.stepper .arr button + button {
+  border-top: 1px solid var(--line-2);
+}
+.stepper .arr button:hover {
+  background: var(--ground);
+  color: var(--ink);
+}
+.stepper .arr button:active:not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--ink) 9%, var(--bg));
+}
+.stepper .arr button[aria-disabled="true"] {
+  color: var(--line-2);
+  background: transparent;
+  cursor: not-allowed;
+}
+
+/*
+ * Hover word (#213, LaptopStyles): a count that lists what it counts, bold
+ * with a dotted underline so it never reads as a link, a Tab stop whose hover
+ * or focus opens its `.tooltip-list` (`ui/TipWord.tsx`).
+ */
+.tipword {
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: underline dotted var(--ink-2);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  cursor: default;
+  border-radius: 3px;
+}

@@ -1,0 +1,72 @@
+[project]
+name = "icmm"
+version = "0.1.0"
+description = "Ion Channel Model Maker: fits Markov-state kinetic models of ion channels with CMA-ES"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+authors = [{ name = "Max Schoening", email = "meschoening@wustl.edu" }]
+# One interpreter everywhere: dev, the local engine bundle and the cluster
+# bundle all run python-build-standalone 3.12 from this one lock.
+requires-python = "==3.12.*"
+dependencies = [
+    "cma>=4.5.0",
+    "numpy>=2.5.4",
+    "pydantic>=2.12",
+]
+
+[project.scripts]
+# Regenerates the Rust and TS sides of the wire from engine/icmm/wire (a dev tool).
+icmm-wire = "icmm.wire.codegen.cli:main"
+
+[dependency-groups]
+dev = [
+    "codespell>=2.4",
+    "networkx>=3.5",
+    "pyright[nodejs]>=1.1.414",
+    "pytest>=8.4",
+    "pytest-timeout>=2.4",
+    "pytest-xdist>=3.8",
+    "ruff>=0.14",
+    "zstandard>=0.25",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.14,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv]
+# Match CI and the engine bundles: a uv-managed CPython, never a system one.
+python-preference = "only-managed"
+
+[tool.uv.build-backend]
+# The package directory is engine/icmm: its name is the import name, so
+# `import icmm` means the same thing in a checkout, a wheel and on the cluster.
+module-root = "engine"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["tests/fixtures"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.pyright]
+include = ["engine/icmm", "scripts", "tests"]
+exclude = ["tests/fixtures"]
+# Tests import scripts/engine_bundle.py as `engine_bundle` (pytest's pythonpath).
+extraPaths = ["scripts"]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests", "scripts"]
+addopts = ["-q", "--strict-markers"]
+# The hang detector, and the suite's one clock: no test fails for being slow (ADR-0022), so a test
+# that runs this long has hung. It prints every thread's stack. `--timeout=5` shortens it for a run
+# you expect to fail.
+timeout = 600
+markers = [
+    "cluster: needs real SLURM or the amd64 engine container; set ICMM_CLUSTER_TESTS=1 to run",
+]

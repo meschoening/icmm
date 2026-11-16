@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use ICMM in your research, please cite it as below."
+type: software
+title: "ICMM: Ion Channel Model Maker"
+abstract: >-
+  ICMM fits Markov-state kinetic models of ion channels to voltage-clamp
+  summary data, searching many candidate topologies with CMA-ES on a laptop
+  or a SLURM cluster.
+authors:
+  - family-names: Schoening
+    given-names: Max
+    affiliation: Washington University in St. Louis
+version: 1.0.0-rc.1
+license: BSD-3-Clause
+keywords:
+  - ion channels
+  - Markov models
+  - electrophysiology
+  - patch clamp
+  - CMA-ES

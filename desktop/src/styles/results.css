@@ -1,0 +1,389 @@
+/* Results, the leaderboard (LaptopResults, #339). */
+.page.lb {
+  gap: 20px;
+}
+.lb.stale .g-running,
+.lb.stale .live {
+  animation: none;
+}
+.lb-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.lb-impw {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.lb-imp {
+  display: inline-block;
+  flex-shrink: 0;
+  margin-right: 4px;
+  vertical-align: -1px;
+  color: var(--ink-2);
+}
+.lb-impw .lb-imp {
+  margin: 0;
+}
+.lb-imp-note {
+  margin: 0 4px 0 2px;
+}
+
+/* What's ranked: Dataset and Data, over the table's own toolbar. */
+.lb-scope {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+.lb-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* Fixed widths, as LaptopResults draws them, so switching datasets moves nothing under the
+   pointer; a long name ends in an ellipsis, whole in its title (#449's SF18). */
+.lb-field .input {
+  text-overflow: ellipsis;
+}
+.lb-field .lb-dataset {
+  width: 210px;
+}
+.lb-field .lb-data {
+  width: 136px;
+}
+.lb-gnote {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.lb-gnote svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.lb-board {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.lb-bar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding-bottom: 2px;
+}
+.lb-fi {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.lb-fi select.input {
+  width: auto;
+}
+.lb-fi .lb-max {
+  width: 72px;
+}
+.lb-chk {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/*
+ * The table: ☐ · # · Topology · Run · States · Params · Starts · Near best · Train · Val · Spread.
+ * One grid sizes every column, and each row is a subgrid of it, so the columns line up across
+ * rows (#358, RF01): each takes its content's width from the left, a number's track its widest
+ * value plus 8 px (`.lb-num`'s padding), so numbers sit 20 px apart, and the spare width sits
+ * after Spread. A 0 px track at each edge, with the gap, insets the rows' content by 12 px while
+ * their hover and rules run edge to edge. Without validation there's no Val, and when every row
+ * is one run's no Run.
+ */
+.lb-table {
+  display: grid;
+  grid-template-columns: 0 20px 30px repeat(8, auto) minmax(0, 1fr) 0;
+  column-gap: 12px;
+}
+.lb-table.lb-nv,
+.lb-table.lb-one {
+  grid-template-columns: 0 20px 30px repeat(7, auto) minmax(0, 1fr) 0;
+}
+.lb-table.lb-nv.lb-one {
+  grid-template-columns: 0 20px 30px repeat(6, auto) minmax(0, 1fr) 0;
+}
+.lb-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+}
+.lb-row > :first-child {
+  grid-column-start: 2;
+}
+.lb-colhead {
+  align-items: end;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--line-2);
+}
+.lb-colhead > span {
+  display: flex;
+}
+.lb-colhead .lb-r {
+  justify-content: flex-end;
+}
+/* A number's head and cells sit 8 px in from their track's start: the 20 px between numbers. */
+.lb-colhead .lb-numh,
+.lb-trow .lb-num:not(.lb-rank) {
+  padding-left: 8px;
+}
+.lb-trow {
+  min-height: 46px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  box-sizing: border-box;
+  border-bottom: 1px solid var(--line);
+}
+.lb-trow:hover,
+.lb-trow.lb-sel {
+  background: var(--ground);
+}
+.lb-cb {
+  display: flex;
+  align-items: center;
+}
+.lb-sort {
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-3);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  cursor: pointer;
+  border-radius: 3px;
+}
+.lb-sort:hover,
+.lb-sort.on {
+  color: var(--ink);
+}
+.lb-sort:active {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--ink) 9%, var(--bg));
+}
+.lb-sort:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+.lb-ar {
+  width: 9px;
+  display: inline-flex;
+  justify-content: center;
+}
+.lb-num {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+/* States · Params, lined up on its dot: the states right of it, the parameters left. */
+.lb-sp {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+.lb-sps {
+  text-align: right;
+}
+.lb-spp {
+  text-align: left;
+}
+/* Its dot keeps its spaces, though a grid item's edges would drop them. */
+.lb-spd {
+  white-space: pre;
+}
+/* Its head's arrow hangs past the button, so the dot stays over the rows' dots. */
+.lb-colhead .lb-sph {
+  justify-content: stretch;
+}
+.lb-sph .lb-sort {
+  position: relative;
+  width: 100%;
+}
+.lb-sph .lb-sp {
+  width: 100%;
+}
+.lb-sph .lb-ar {
+  position: absolute;
+  left: 100%;
+  margin-left: 4px;
+}
+/* A live number's and the ↓'s tooltip: a Tab stop, with the focus ring the sort buttons have. */
+.lb-num [tabindex="0"] {
+  border-radius: 3px;
+}
+.lb-num [tabindex="0"]:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+.lb-impt {
+  display: inline-flex;
+  vertical-align: -1px;
+}
+.lb-rank {
+  color: var(--ink-3);
+}
+.lb-short {
+  color: var(--ink);
+}
+.lb-vb {
+  color: var(--ink);
+  font-weight: 500;
+}
+.lb-vbest {
+  color: var(--cobalt);
+  font-weight: 600;
+}
+.lb-tid {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 3px;
+}
+.lb-tid:hover {
+  text-decoration-color: var(--ink);
+}
+.lb-rid {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.lb-runc {
+  display: flex;
+  min-width: 0;
+}
+.lb-rlink {
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lb-rlink:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--ink-3);
+  text-underline-offset: 3px;
+}
+/*
+ * A row's state, as a caption line under its names, from the Run column to the row's end (from
+ * Topology without one), so it never widens a column; the numbers stay on the names' line.
+ */
+.lb-rst {
+  grid-row: 2;
+  grid-column: 5 / -2;
+  justify-self: start;
+  margin-top: -1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.lb-rst.failed {
+  color: var(--red);
+}
+.lb-one .lb-rst {
+  grid-column: 4 / -2;
+}
+.lb-none {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 16px 12px;
+  font-size: 14px;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--line);
+}
+/* The table ends at Spread, so its footnote sits under Show more, left-aligned with the rows. */
+.lb-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 12px 0;
+}
+.lb-more {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.lb-note {
+  margin: 0;
+  max-width: 760px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+
+/* Nothing ranked, or nothing on the current data. */
+.lb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px 28px;
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+}
+.lb-empty p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-wrap: pretty;
+  max-width: 760px;
+}
+.lb-empty .lb-lead {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+/* Export CSV… ends the filters, on their right (#344, LaptopResults' `.tbar .grow`). */
+.lb-export {
+  position: relative;
+  display: inline-flex;
+  margin-left: auto;
+}

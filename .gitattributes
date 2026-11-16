@@ -1,0 +1,3 @@
+* text=auto eol=lf
+# The topology lists (engine/topology/) are xz; their sums are of the uncompressed files.
+*.xz binary

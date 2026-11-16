@@ -1,0 +1,16 @@
+{
+  "3": { "graph": 0, "open_state": 2 },
+  "4": { "graph": 2, "open_state": 3 },
+  "5": { "graph": 6, "open_state": 3 },
+  "6": { "graph": 15, "open_state": 5 },
+  "7": { "graph": 41, "open_state": 6 },
+  "8": { "graph": 121, "open_state": 7 },
+  "9": { "graph": 366, "open_state": 8 },
+  "10": { "graph": 1158, "open_state": 9 },
+  "11": { "graph": 1991, "open_state": 6 },
+  "12": { "graph": 12502, "open_state": 10 },
+  "13": { "graph": 42372, "open_state": 11 },
+  "14": { "graph": 146012, "open_state": 13 },
+  "15": { "graph": 509639, "open_state": 14 },
+  "16": { "graph": 1799622, "open_state": 15 }
+}

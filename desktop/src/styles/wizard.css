@@ -1,0 +1,1276 @@
+/*
+ * The Dataset wizard (#143): LaptopDatasetWizard, LaptopWizSheets,
+ * LaptopWizProtocols and LaptopWizReview, on tokens so dark mode follows.
+ */
+
+/* Datasets' head: its heading, and New dataset at the right. */
+.datasets-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.wizard {
+  display: grid;
+  grid-template-columns: clamp(200px, 18.5%, 224px) minmax(0, 1fr);
+  gap: 32px;
+  padding: 28px 32px 40px;
+  align-items: start;
+}
+.wizard-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+/* The steps down the left side */
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 2px;
+}
+.rail .label {
+  margin-bottom: 8px;
+}
+.rail ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.rail li {
+  display: flex;
+  flex-direction: column;
+}
+.rail-step {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+button.rail-step {
+  cursor: pointer;
+  border-radius: 6px;
+}
+button.rail-step:hover .rail-title {
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 3px;
+}
+.rail-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--line-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  font-size: 12px;
+  color: var(--ink-3);
+  background: var(--surface);
+}
+.rail-mark.done {
+  color: var(--ink-2);
+}
+.rail-mark.current {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--bg);
+}
+.rail-words {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-top: 1px;
+  min-width: 0;
+}
+.rail-title {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.rail li.current .rail-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+.rail li.done .rail-title {
+  color: var(--ink);
+}
+.rail-sub {
+  font-size: 13px;
+  color: var(--ink-3);
+  text-wrap: balance;
+}
+.rail li.current .rail-sub {
+  color: var(--ink-2);
+}
+.rail-file {
+  font-size: 13px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.rail-name {
+  color: var(--ink-2);
+  /* Whole on its line, as LaptopWizSheets draws it; broken only when longer than the line. */
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+.rail-line {
+  width: 1px;
+  height: 16px;
+  background: var(--line-2);
+  margin: 6px 0 6px 12px;
+}
+
+/* A step's head */
+.step-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hdr {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+}
+.hdr-text {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.hdr-text .title:focus {
+  outline: none;
+}
+.hdr-text .facts {
+  overflow-wrap: anywhere;
+}
+.hacts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+  max-width: 50%;
+}
+.acts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.astat {
+  font-size: 13px;
+  line-height: 22px;
+  color: var(--ink-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-align: right;
+}
+.astat.ink {
+  color: var(--ink);
+}
+.astat.ink .link {
+  color: var(--ink-2);
+}
+.astat.bad {
+  color: var(--red);
+}
+.astat.wait {
+  color: var(--ink-2);
+}
+.lede {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  max-width: 760px;
+  text-wrap: pretty;
+}
+.sec {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.sec > h2 {
+  margin: 0;
+}
+.label.ink {
+  color: var(--ink);
+}
+.unit {
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.def {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.err {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--red);
+  text-wrap: pretty;
+}
+.input.bad {
+  border-color: var(--red);
+  box-shadow: 0 0 0 1px var(--red);
+}
+.ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+/* A note that doesn't stop a save (#180, LaptopStyles' Field checks): one gray ⓘ line. */
+.fnote {
+  margin: 0;
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.fnote svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Source */
+.drop {
+  position: relative;
+  min-height: 212px;
+  border: 1.5px dashed var(--control);
+  border-radius: 12px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  box-sizing: border-box;
+  text-align: center;
+}
+.drop.over,
+.file.over {
+  border-color: var(--cobalt);
+  border-style: solid;
+  background: var(--cobalt-soft);
+}
+.drop-t {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.drop-s {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.wb {
+  flex-shrink: 0;
+  color: var(--ink-2);
+}
+.file {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.file-t {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex-grow: 1;
+}
+.file-name {
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.file-sheets {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.file-sheets .n,
+.sheet-names {
+  color: var(--ink-2);
+}
+.ebox {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--red-soft);
+}
+.fsay {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.fwhat {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+}
+.fnext {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.fraw {
+  margin-top: 3px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.name-sec {
+  gap: 8px;
+}
+.name-sec > h2 {
+  margin-bottom: 4px;
+}
+.name-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.name-input {
+  width: 320px;
+  max-width: 100%;
+}
+.taken {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+.taken-free {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.taken-free .mono {
+  color: var(--ink);
+}
+.taken-say {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+  max-width: 760px;
+  text-wrap: pretty;
+}
+
+/* Sheets */
+.sheets {
+  display: flex;
+  flex-direction: column;
+}
+.sheets-head,
+.sheet-row {
+  display: grid;
+  grid-template-columns: 20px 212px minmax(0, 1fr) 216px 148px;
+  gap: 12px 14px;
+}
+.sheets-head {
+  padding: 0 12px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.sheet-row {
+  align-items: start;
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.sheet-row:last-child {
+  border-bottom: 0;
+}
+.sheet-row.flag {
+  padding: 14.5px 10.5px;
+  margin: 10px 0;
+  border: 1.5px dashed var(--ink);
+  border-radius: 10px;
+}
+.sheet-row.off .dim {
+  opacity: 0.45;
+}
+.sr-use {
+  grid-column: 1;
+  grid-row: 1;
+  padding-top: 10px;
+}
+.sr-preview {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+.sr-sheet {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 7px;
+  min-width: 0;
+}
+.sr-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.sr-name {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.sr-rows {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.sr-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.fill-ink {
+  fill: var(--ink);
+}
+.fill-bg {
+  fill: var(--bg);
+}
+.stroke-bg {
+  stroke: var(--bg);
+}
+.stroke-ink {
+  stroke: var(--ink);
+}
+.sr-reason {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+/* What the row's template measures, in a line (#164). */
+.sr-line {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.sr-template {
+  grid-column: 4;
+  grid-row: 1;
+}
+.sr-template .input {
+  width: 100%;
+}
+.sr-template .input.flagged {
+  border-color: var(--ink);
+  border-width: 1.5px;
+}
+.sr-pname {
+  grid-column: 5;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sr-pname .input {
+  width: 100%;
+}
+.sr-values {
+  grid-column: 3 / span 3;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+.sr-panel {
+  grid-column: 3 / span 3;
+  padding: 12px 14px;
+  background: var(--ground);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.sr-panel-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex-grow: 1;
+}
+.sr-panel-title {
+  font-size: 13px;
+  font-weight: 500;
+}
+.mapper {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.mapper-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+}
+.mapper-line {
+  flex-basis: 100%;
+}
+.mapper-grid {
+  display: grid;
+  grid-template-columns: 150px 110px minmax(0, 1fr);
+  gap: 6px 12px;
+  align-items: center;
+  font-size: 13px;
+}
+.mapper-k {
+  color: var(--ink-2);
+}
+.mapper-r {
+  color: var(--ink);
+}
+.mapper-use {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.mapper-use .btn {
+  flex-shrink: 0;
+}
+.sheet-preview {
+  position: relative;
+  width: 212px;
+  height: 132px;
+}
+.sheet-preview svg {
+  display: block;
+}
+.sheet-preview .grid {
+  stroke: var(--line);
+}
+.sheet-preview .base {
+  stroke: var(--line-2);
+}
+.sheet-preview .whisker {
+  stroke: var(--ink-3);
+}
+.sheet-preview .dot {
+  fill: var(--ink);
+}
+.ax {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 14px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.ax.ink {
+  color: var(--ink);
+}
+.pv {
+  display: grid;
+  width: max-content;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.pv.open {
+  max-height: 244px;
+  overflow-y: auto;
+  border-bottom: 1px solid var(--line);
+}
+.pv-row {
+  display: contents;
+}
+.pv-h {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 20px 6px 0;
+  background: var(--bg);
+}
+.pv.open .pv-h {
+  border-bottom: 1px solid var(--line);
+}
+.pv-k {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.pv-r,
+.pv-c {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.pv-c {
+  padding: 2px 20px 2px 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.pv-row:nth-child(2) .pv-c {
+  padding-top: 7px;
+}
+.unit-select {
+  width: 56px;
+}
+.unit-note {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.pv-toggle {
+  margin-left: -10px;
+}
+.pv-toggle svg.up {
+  transform: rotate(180deg);
+}
+
+/* Protocols */
+.protocols {
+  display: grid;
+  grid-template-columns: 216px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+.plist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pitem {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: flex-start;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  box-sizing: border-box;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.pitem:hover {
+  background: var(--ground);
+}
+.pitem[aria-current="true"] {
+  background: var(--ground);
+  border-color: var(--line-2);
+}
+.pitem:active {
+  background: color-mix(in srgb, var(--ink) 8%, var(--bg));
+}
+.pn {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+h2.pn {
+  font-size: 17px;
+}
+.ps {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-3);
+}
+.ps .mono {
+  color: var(--ink-2);
+}
+.pmeta {
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--ink-3);
+}
+.pmeta .mono {
+  color: var(--ink-2);
+}
+.pbad {
+  color: var(--red);
+}
+/* An issue from the last answer while its value is checked again (#424 KF21): gray, and its
+   field's ring dims. */
+.pbad.chk,
+.err.chk {
+  color: var(--ink-3);
+}
+.err .chkw {
+  color: var(--ink-2);
+}
+.input.chk {
+  border-color: color-mix(in srgb, var(--red) 40%, var(--line-2));
+}
+.protocol {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.protocol-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.charts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+.chart-fig {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.chart-fig figcaption {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.chart-fig figcaption .hint {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.data-chart {
+  position: relative;
+  height: 176px;
+}
+.data-chart .plot {
+  position: absolute;
+  left: 40px;
+  right: 6px;
+  top: 6px;
+  bottom: 22px;
+}
+.data-chart .gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--line);
+}
+.data-chart .baseline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--line-2);
+}
+.data-chart .whisker {
+  position: absolute;
+  width: 5px;
+  box-sizing: border-box;
+  border: solid var(--ink);
+  border-width: 1px 0;
+  opacity: 0.55;
+  background: linear-gradient(var(--ink), var(--ink)) center / 1px 100% no-repeat;
+}
+/*
+ * A point (#52, #53): measured ●, interpolated ◆, hollow when it's a
+ * validation point; an interpolated point out of its measure's range is
+ * drawn red and ringed. Placed at its center.
+ */
+.data-chart .mark {
+  position: absolute;
+  width: 4.8px;
+  height: 4.8px;
+  translate: -2.4px -2.4px;
+  border-radius: 50%;
+  background: var(--ink);
+}
+.data-chart .mark.held {
+  width: 6.8px;
+  height: 6.8px;
+  translate: -3.4px -3.4px;
+  box-sizing: border-box;
+  border: 1.3px solid var(--ink);
+  background: var(--bg);
+}
+.data-chart .mark.added {
+  width: 5.2px;
+  height: 5.2px;
+  translate: -2.6px -2.6px;
+  border-radius: 0;
+  rotate: 45deg;
+}
+.data-chart .mark.added.held {
+  width: 6.4px;
+  height: 6.4px;
+  translate: -3.2px -3.2px;
+  border-width: 1.2px;
+}
+.data-chart .mark.bad {
+  background: var(--red);
+}
+.data-chart .mark.bad.held {
+  border-color: var(--red);
+  background: var(--bg);
+}
+.data-chart .bad-ring {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  translate: -7.5px -7.5px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--red);
+  border-radius: 50%;
+}
+/*
+ * One hit layer over a plot (#168): the pointer is on the point nearest it
+ * along x, which draws as hovered. Each point is a button for the keyboard
+ * and screen readers, and the pointer goes through it to the layer.
+ */
+.vlayer {
+  position: absolute;
+  inset: 0;
+}
+.vlayer.switch {
+  cursor: pointer;
+}
+/* Each point as a button that switches it, and the pointed-at or focused one's tip. */
+.vhit {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  translate: -9px -9px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  pointer-events: none;
+}
+.vhit.near {
+  background: color-mix(in srgb, var(--ink) 12%, transparent);
+}
+.vlayer:active ~ .vhit.near {
+  background: color-mix(in srgb, var(--ink) 20%, transparent);
+}
+.vhit:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 0;
+}
+.vtip {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--ink) 28%, transparent);
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.vtip b {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--ink);
+}
+/* A legend's marks: ◆ interpolated, ○ ◇ validation, the red ring of a point out of range. */
+.glyph {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--ink);
+}
+.glyph.added {
+  border-radius: 0;
+  rotate: 45deg;
+  margin: 0 1px;
+}
+.glyph.held {
+  width: 7px;
+  height: 7px;
+  border: 1.3px solid var(--ink);
+  background: var(--bg);
+}
+.glyph.added.held {
+  width: 6.4px;
+  height: 6.4px;
+  border-width: 1.2px;
+}
+.glyph.bad-ring {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--red);
+  background: none;
+}
+.lg.bad,
+.hint .bad {
+  color: var(--red);
+}
+.hint.wide,
+.err.wide {
+  max-width: 600px;
+}
+.log-x {
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+/* A redraw over points picked by hand asks in place first (#166; LaptopWizProtocols view ask). */
+.redraw-ask {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  background: var(--ground);
+  border-radius: 8px;
+  max-width: 640px;
+  box-sizing: border-box;
+}
+.redraw-ask p {
+  margin: 0;
+  flex-grow: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.redraw-ask .hint {
+  display: block;
+  margin-top: 2px;
+}
+.redraw-ask .btn {
+  flex-shrink: 0;
+}
+.cbx {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.lgs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.lg {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.vcmd {
+  position: relative;
+  height: 198px;
+}
+.vcmd svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 176px;
+  overflow: visible;
+}
+.vcmd .measured {
+  fill: var(--ground);
+}
+.vcmd .grid {
+  stroke: var(--line);
+  vector-effect: non-scaling-stroke;
+}
+.vcmd .family {
+  stroke: var(--line-2);
+  vector-effect: non-scaling-stroke;
+  fill: none;
+}
+.vcmd .sweep {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+  fill: none;
+}
+.vcmd .ax[style*="calc(100%"] {
+  top: 181px !important;
+}
+.sgrid {
+  display: grid;
+  grid-template-columns: 120px max-content max-content minmax(0, 1fr);
+  column-gap: 18px;
+  align-items: stretch;
+}
+.sg-row {
+  display: contents;
+}
+.sgrid .th {
+  padding-bottom: 6px;
+}
+.sgrid .c {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  box-sizing: border-box;
+}
+.sgrid .c.k {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+/* The step table's issues, 8 px under its last row: its rows never grow (#191). */
+.serrs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: -10px;
+}
+.serrs .who {
+  font-weight: 500;
+}
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.cell .err {
+  max-width: 240px;
+}
+.ln {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+}
+.vin {
+  width: 72px;
+}
+.win {
+  width: 72px;
+}
+.swept {
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.swept .mono {
+  color: var(--ink);
+}
+.mtag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.mtag::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--ink);
+}
+.kv3 {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 10px 18px;
+  align-items: center;
+  padding-top: 6px;
+}
+.kv3 .k {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.kv3 .k.top {
+  align-self: start;
+  line-height: 30px;
+}
+.kv3 .v {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.kv3 .v.col {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.kv3 .v .hint {
+  text-wrap: pretty;
+}
+.window-menu {
+  width: 268px;
+}
+.window-words {
+  max-width: 440px;
+}
+.decay-sketch {
+  position: relative;
+  display: block;
+  width: 440px;
+  height: 98px;
+}
+.decay-sketch .band {
+  fill: var(--ground);
+}
+.decay-sketch .level {
+  stroke: var(--line-2);
+  stroke-dasharray: 3 3;
+}
+.decay-sketch .drop {
+  stroke: var(--ink-3);
+  stroke-dasharray: 2 2;
+}
+.decay-sketch .base {
+  stroke: var(--line-2);
+}
+.decay-sketch .trace {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+.decay-sketch .bracket {
+  stroke: var(--ink);
+}
+.protocol-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--ground);
+}
+.note.bad {
+  background: var(--red-soft);
+}
+.note p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.note p b {
+  font-weight: 500;
+  color: var(--ink);
+}
+.note-i {
+  flex-shrink: 0;
+  color: var(--ink-2);
+  margin-top: 1px;
+}
+.note-line {
+  display: block;
+}
+.note .link,
+.sec .hint .link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Review */
+.rtable {
+  display: grid;
+  grid-template-columns:
+    150px minmax(0, 1.4fr) minmax(0, 1fr) 56px minmax(0, 1fr) 80px minmax(0, 1.4fr)
+    56px;
+  column-gap: 16px;
+}
+.rrow {
+  display: contents;
+}
+.rrow > * {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.rrow > .th {
+  padding: 0 0 8px;
+}
+.rtable .rt-num {
+  text-align: right;
+  white-space: nowrap;
+}
+.rtable .dim {
+  color: var(--ink-3);
+}
+.vnone {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink);
+}

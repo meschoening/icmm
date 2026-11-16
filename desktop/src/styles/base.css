@@ -1,0 +1,262 @@
+/* Type, links and the rules every element shares. From LaptopStyles. */
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  /* Also grayscale-antialiases on WebKitGTK; no effect on WebView2. */
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+/* The boards set every paragraph's margin; spacing comes from the layout. */
+p {
+  margin: 0;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* The one focus indicator: keyboard focus only, cobalt, following the radius. */
+:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* WebKit draws the marker unless both rules are there. */
+summary {
+  list-style: none;
+  cursor: pointer;
+}
+summary::-webkit-details-marker {
+  display: none;
+}
+
+/*
+ * A table-like row is a real box on subgrid, never `display: contents`,
+ * which hides the row from VoiceOver before Safari 17.
+ */
+.subgrid-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+.n {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  color: var(--ink);
+}
+
+/* Labels */
+.title {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--ink);
+}
+.title-id {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.facts {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.facts .mono,
+.facts .n {
+  color: var(--ink);
+}
+/*
+ * A list page's facts line while it reads (#445, SF08): the dots, the words, and Home's Try
+ * again once it's slow, in the line's own height, so the head and its buttons hold still.
+ */
+.facts.f-read {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.facts.f-read .dots {
+  flex-shrink: 0;
+}
+.facts.f-read .btn {
+  margin: -5px 0 -5px 6px;
+}
+/* None on the platform yet (#445, SF14): one dashed card for every list page, its prose capped. */
+.list-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 24px 28px;
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+}
+.list-empty p {
+  margin: 0;
+  max-width: 720px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.label {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.th {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.hint {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.flabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.term {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.kv {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) minmax(0, 1fr);
+  gap: 8px 24px;
+  align-items: baseline;
+  margin: 0;
+}
+.kv dt {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.kv dd {
+  margin: 0;
+  color: var(--ink);
+}
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  padding: 0 5px;
+  color: var(--ink-3);
+  line-height: 18px;
+}
+.tok {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  padding: 0 5px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  color: var(--ink-2);
+  background: var(--surface);
+  justify-self: start;
+}
+
+/* Links: `.link` goes somewhere and never acts. */
+.link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 3px;
+}
+.link:hover {
+  text-decoration-color: var(--ink);
+}
+.link[aria-disabled="true"] {
+  color: var(--control);
+  text-decoration: none;
+  cursor: not-allowed;
+}
+.row-link {
+  color: var(--ink);
+}
+.row-link:hover {
+  color: var(--cobalt);
+}
+/* Inert as `.link` is; after the hover rule (same specificity), so hovering it stays gray. */
+.row-link[aria-disabled="true"] {
+  color: var(--control);
+  cursor: not-allowed;
+}
+
+/* The bubble a blocked control opens (src/ui/Tooltip.tsx). */
+.tooltip {
+  position: fixed;
+  z-index: 60;
+  max-width: 280px;
+  padding: 5px 9px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 12px 32px -16px var(--shadow);
+}
+.tooltip[hidden] {
+  display: none;
+}
+/*
+ * A count's list (.tipword): one a line, each whole, so the bubble is as wide
+ * as the longest (a name is at most 64 characters). At most half the window
+ * tall, so it fits on the roomier side of its word; a longer list scrolls.
+ */
+.tooltip-list {
+  max-width: none;
+  max-height: calc(50vh - 24px);
+  overflow-y: auto;
+  white-space: pre;
+  font-family: var(--font-mono);
+  line-height: 20px;
+}

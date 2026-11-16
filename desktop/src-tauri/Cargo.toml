@@ -1,0 +1,94 @@
+[package]
+name = "icmm-desktop"
+version = "1.0.0-rc.1"
+description = "ICMM desktop app"
+authors = ["Max Schoening <meschoening@wustl.edu>"]
+license = "BSD-3-Clause"
+edition = "2024"
+publish = false
+# The integration tests are modules of one binary (tests/main.rs), so a build
+# links them once rather than once per file.
+autotests = false
+
+# wire-gen is a dev tool that `icmm-wire gen` runs; the app never links it.
+[workspace]
+members = ["wire-gen"]
+
+[lib]
+name = "icmm_desktop"
+
+[[test]]
+name = "integration"
+path = "tests/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2.6", features = [] }
+# A release build reads the engine bundles it carries (src/engine/bundle.rs).
+ruzstd = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tar = { version = "0.4", default-features = false }
+
+[dependencies]
+# Reads the Dataset wizard's .xlsx workbooks on this computer (old ADR-0006), in pure Rust on
+# every OS. 0.x minors break: pin the minor.
+calamine = "0.36"
+# Tells a workbook protected by a password, an OLE file that holds an encrypted package, from a
+# damaged one (#168).
+cfb = "0.7"
+fastrand = "2"
+# Hashed known_hosts names: HMAC-SHA1, at the versions russh itself uses.
+hmac = "0.13"
+# ICMM's key (`connection::icmm_key`), at the rand_core russh's keys use.
+rand = "0.10"
+# 0.x minors break: pin the minor, and take its security patches (docs/research/rust-ssh.md).
+russh = "0.63"
+# Unpacks an engine bundle's .tar.zst on This computer, in pure Rust.
+ruzstd = "0.9"
+serde = { version = "1", features = ["derive"] }
+# A workbook's numbers cross the page's JSON on their way to the agent: parse each
+# to the double it was written from, not one a bit off.
+serde_json = { version = "1", features = ["float_roundtrip"] }
+sha1 = "0.11"
+# Reads ~/.ssh/config where there's no `ssh` to ask (docs/research/rust-ssh.md §5).
+ssh2-config = "0.8"
+tar = { version = "0.4", default-features = false }
+tauri = { version = "2.11", features = [] }
+tauri-plugin-dialog = "2.7"
+# Run notifications, and General's Send a test. Held at the minor that builds
+# on tauri 2.11: 2.5 needs 2.12, which `@tauri-apps/api` would have to match.
+tauri-plugin-notification = "~2.4"
+# Opens the window where it was left; Reset forgets it. Held as above.
+tauri-plugin-window-state = "~2.4"
+tokio = { version = "1", features = ["io-util", "macros", "net", "process", "rt-multi-thread", "sync", "time"] }
+tracing = "0.1"
+tracing-appender = "0.2.3"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+# Drops the password ICMM adds its key with (ADR-0012).
+zeroize = "1"
+
+# Runs the right-click menus' Cut, Copy, Paste and Select All as WebKitGTK's own editing
+# commands (`src/edit.rs`), at the version wry uses.
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "2.0"
+
+# Prebuilt NASM objects for aws-lc-sys (russh's crypto), so Windows builds need no NASM.
+[target.'cfg(windows)'.dependencies]
+aws-lc-rs = { version = "1", features = ["prebuilt-nasm"] }
+
+[dev-dependencies]
+# Writes the workbooks the reader's tests read.
+rust_xlsxwriter = "0.99"
+shell-words = "1"
+tempfile = "3"
+# The paused clock, for the supervisor's timing tests.
+tokio = { version = "1", features = ["test-util"] }
+
+# Finding an engine bundle decodes its archive, which an unoptimized decoder
+# does about 4× slower: every debug launch, launch smoke and connection test
+# pays it.
+[profile.dev.package.ruzstd]
+opt-level = 3
+
+[profile.dev.package.tar]
+opt-level = 3

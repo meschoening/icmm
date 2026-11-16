@@ -1,0 +1,10 @@
+/*
+ * An export's note under its page's head, where it went with Show in
+ * Finder, and the line under it when Show in Finder fails (#344,
+ * `export/save.tsx`); a failed write uses the red box (`.ebox`).
+ */
+.ex-note .err {
+  display: block;
+  margin-top: 4px;
+  color: var(--red);
+}

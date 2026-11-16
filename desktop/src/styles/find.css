@@ -1,0 +1,415 @@
+/*
+ * Find custom topology (#222; LaptopConfigBuilder's dlg-* views): a dialog
+ * you work in, 680 px wide and 88 px from the top, over a lighter scrim than
+ * a question's. Its drawings are Specific IDs' at 28 px, in boxes of --ground.
+ */
+.fd-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: var(--scrim-soft);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 88px 16px 16px;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+.fd {
+  width: 680px;
+  max-width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  box-shadow:
+    0 24px 64px -24px var(--shadow),
+    0 2px 6px -2px color-mix(in srgb, var(--shadow) 22%, transparent);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+.fd p {
+  margin: 0;
+}
+.fd-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 16px 0 24px;
+}
+.fd-title {
+  flex-grow: 1;
+  min-width: 0;
+}
+.fd-head h2 {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.btn-icon.fd-close {
+  width: 30px;
+  height: 30px;
+  margin-top: -3px;
+  border-color: transparent;
+  background: transparent;
+}
+.btn-icon.fd-close:hover {
+  background: var(--ground);
+}
+.fd-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 24px 20px;
+  min-width: 0;
+}
+.fd-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  gap: 16px;
+  align-items: start;
+}
+.fd-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+/* The transitions wrap and the field grows with them. */
+.input.fd-area {
+  display: block;
+  height: auto;
+  min-height: 36px;
+  padding: 7px 12px;
+  line-height: 20px;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.fd-read {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.fd-checks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+select.input.fd-ph {
+  color: var(--ink-3);
+}
+.fd-fig {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.fd-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 96px;
+  padding: 16px;
+  border-radius: 10px;
+  background: var(--ground);
+  box-sizing: border-box;
+  min-width: 0;
+}
+.fd-empty .fd-ph {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.fd-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.fd-cap {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.fd-cap .mono {
+  color: var(--ink);
+  font-weight: 500;
+}
+.fd-foot {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px 14px 24px;
+  border-top: 1px solid var(--line);
+}
+
+/*
+ * ⌘K (LaptopCommandPalette): 616 px wide, 88 px from the top, over the same
+ * scrim, at most 680 px tall. A query, a strip saying as of when while the
+ * connection is down, rows under their group's label, and the keys that
+ * move. The list scrolls; the query, the strip and the foot keep their place.
+ * Dark, the palette is raised above the page (#409).
+ */
+.palette {
+  --panel: var(--surface);
+  --opt-on: var(--ground);
+  width: 616px;
+  max-width: 100%;
+  max-height: min(680px, calc(100vh - 104px));
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-radius: 14px;
+  box-shadow:
+    0 24px 64px -24px var(--shadow),
+    0 2px 6px -2px color-mix(in srgb, var(--shadow) 22%, transparent);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+:root[data-theme="dark"] .palette {
+  --panel: #1c1d21;
+  --opt-on: color-mix(in srgb, var(--ink) 8%, var(--panel));
+}
+.pinput,
+.pstrip,
+.pfoot {
+  flex-shrink: 0;
+}
+.pinput {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+}
+.pinput svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.pinput input {
+  flex-grow: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 16px;
+  color: var(--ink);
+  padding: 0;
+  text-overflow: ellipsis;
+}
+.pinput input::placeholder {
+  color: var(--ink-3);
+}
+.pstrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--ink-2);
+  background: var(--ground);
+  border-bottom: 1px solid var(--line);
+}
+.plist {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.plist-in {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 8px 8px;
+}
+.plist-in:empty {
+  padding: 0;
+}
+.grp {
+  display: block;
+  padding: 10px 12px 4px;
+}
+.grp-n {
+  padding-top: 16px;
+}
+.opt {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  min-height: 40px;
+  border-radius: 8px;
+  color: var(--ink);
+  cursor: default;
+}
+/* Only the chosen row is tinted: the pointer's move chooses its row (KF08). */
+.opt.on {
+  background: var(--opt-on);
+}
+.palette .ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-3);
+}
+.palette .ic svg {
+  display: block;
+}
+.palette .txt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.palette .nm {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.palette .nm-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.palette .nm .mono {
+  font-size: 13px;
+}
+.palette.typed .nmc {
+  color: var(--ink-2);
+}
+.palette .nmc.hit,
+.hit {
+  color: var(--ink);
+  font-weight: 600;
+}
+.palette .idc,
+.palette .dim {
+  color: var(--ink-3);
+}
+/* "on herg-wt" after a run found by its dataset's name reads as Results' "in" (KF10). */
+.palette .nm-mono .via {
+  font-family: var(--font-sans);
+  font-size: 14px;
+}
+.palette .gone {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-left: 6px;
+}
+.side {
+  flex: none;
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.side .mono {
+  color: var(--ink);
+}
+.palette .kc {
+  justify-self: end;
+  display: flex;
+}
+.opt.more .nm {
+  color: var(--ink-2);
+}
+/* A Do row that needs the platform while it isn't connected (#412). */
+.palette .opt.dis {
+  cursor: default;
+}
+.palette .opt.dis .nm,
+.palette .opt.dis .nm .mono,
+.palette .opt.dis .nm .nmc {
+  color: var(--ink-3);
+}
+.palette .opt.dis .ic {
+  color: var(--control);
+}
+/* Connect, from its press until the connection's next state (KF14). */
+.palette .opt[data-wait="true"] {
+  cursor: progress;
+}
+/* A group still reading, or whose read failed, in its rows' place. */
+.prow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.pfail {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 4px 6px 4px 12px;
+}
+.pfail p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+/* A read still out at 10 s says how long, with Try again on the failed row's grid (KF04). */
+.pslow .ic {
+  color: var(--ink-3);
+}
+.pslow .n {
+  line-height: 1;
+}
+/* Nothing matches: what was typed, and how things are found. */
+.pnone {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 28px 24px 32px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.pnone p {
+  margin: 0;
+}
+.pnone .what {
+  font-size: 14px;
+  color: var(--ink);
+}
+.pnone .hint .mono {
+  color: var(--ink);
+}
+.pfoot {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 9px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.pkeys {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pgap {
+  flex-grow: 1;
+}

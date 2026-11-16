@@ -1,0 +1,452 @@
+/*
+ * First launch: four steps, step 1's card on the left and the rest down the
+ * right, with Platform setup and its summary in the card's foot. From
+ * LaptopFirstRun.
+ */
+.page.first-launch {
+  gap: 22px;
+}
+.first-launch .ink {
+  color: var(--ink);
+}
+.first-launch .ink-2 {
+  color: var(--ink-2);
+}
+.first-launch .nowrap {
+  white-space: nowrap;
+}
+
+.fl-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  column-gap: 48px;
+  align-items: start;
+}
+.fl-steps h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 28px;
+}
+.fl-steps h2:focus,
+.setup-head h4:focus,
+.setup-summary p:focus {
+  outline: none;
+}
+
+.num {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+.num-on {
+  background: var(--ink);
+  color: var(--bg);
+}
+.num-off {
+  border: 1px solid var(--line-2);
+  color: var(--ink-3);
+}
+.num-done {
+  border: 1.5px solid var(--ink);
+  color: var(--ink);
+}
+
+/* Step 1 */
+.fl-one {
+  grid-column: 1;
+  grid-row: 1 / span 4;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.fl-one-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 28px;
+}
+.fl-one-head h2 {
+  white-space: nowrap;
+}
+.fl-track {
+  flex-grow: 1;
+  height: 1px;
+  background: var(--line-2);
+  margin: 0 -36px 0 -4px;
+}
+.surface-card.step-card,
+.step-box {
+  border-color: var(--line-2);
+}
+.step-box {
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  padding: 18px 20px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* A strip above the foot keeps square corners; the foot takes the card's. */
+.step-card .strip:not(:last-child) {
+  border-radius: 0;
+}
+.card-foot {
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 0 0 12px 12px;
+  padding: 16px 20px 18px;
+}
+.card-foot .note-bad {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 16px;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.card-foot .note-bad p {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+/* The connect form */
+.connect-form {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+/* Settings' grid (`.form-grid`): Name, Login host and Port, then Username and SSH key (#190). */
+.connect-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) 76px;
+  gap: 12px 16px;
+}
+/* Keep the narrow Port's error inside its column, clear of Login host's error. */
+.connect-grid .field.port .field-issue {
+  align-self: stretch;
+  white-space: normal;
+  text-align: left;
+}
+.span-all {
+  grid-column: 1 / -1;
+}
+.connect-grid .advanced {
+  padding-top: 10px;
+}
+.connect-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 2px;
+}
+.connect-buttons .btn {
+  justify-content: center;
+}
+.then {
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 12px;
+  font-size: 13px;
+}
+.then dt {
+  color: var(--ink-3);
+}
+.then dd {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+/* Platform setup */
+.setup,
+.setup-form,
+.setup-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.setup-form {
+  margin: 0;
+}
+.setup-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.setup-head h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+}
+.setup-head p {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.lrow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.lrow .hint {
+  white-space: nowrap;
+}
+.setup-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+  align-items: start;
+}
+.setup-four {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 14px;
+  align-items: start;
+}
+.setup-jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.with-unit {
+  position: relative;
+}
+.with-unit .input {
+  padding-right: 64px;
+}
+.with-unit .unit {
+  position: absolute;
+  right: 12px;
+  top: 8px;
+  font-size: 13px;
+  color: var(--ink-3);
+  pointer-events: none;
+}
+select.input.placeholder {
+  color: var(--ink-3);
+}
+
+/* Connect when ICMM opens: a switch at the end of its row, which takes Save's rule */
+.lsw {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.lsw > div {
+  flex-grow: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+.setup-summary + .lsw {
+  margin-top: 14px;
+}
+.lsw + .setup-end {
+  padding-top: 0;
+  border-top: 0;
+}
+
+/* The foot's last row: Advanced and its contents, then Save */
+.setup-end {
+  /* Scrolled into view under a save's failure, it stops short of the window's edge. */
+  scroll-margin-bottom: 28px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 14px 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.setup-end > .disc {
+  grid-row: 1;
+  grid-column: 1;
+}
+.setup-end-hint {
+  grid-row: 1;
+  grid-column: 2;
+}
+/* A value under a field, kept on one line. */
+.setup-form .hint .whole {
+  white-space: nowrap;
+}
+.setup-end-hint .elsewhere {
+  color: var(--ink-2);
+}
+.setup-advanced {
+  grid-row: 2;
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.setup-message {
+  grid-row: 1;
+  grid-column: 2;
+  justify-self: end;
+  text-align: right;
+}
+.setup-save {
+  grid-row: 1;
+  grid-column: 3;
+  display: flex;
+  gap: 8px;
+}
+/* Settings' Cancel under a lookup that failed, where Save would be (LaptopSettings `engine-error`). */
+.lookup-cancel {
+  display: flex;
+  justify-content: flex-end;
+}
+.setup-end.open .setup-message,
+.setup-end.open .setup-save {
+  grid-row: 3;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+/* A checkbox's hint and what it opens sit under its label, past the box. */
+.check-hint {
+  padding-left: 26px;
+}
+.setup-container {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 12px 14px;
+  align-items: start;
+  padding-left: 26px;
+}
+.reading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ink-3);
+  padding: 4px 0 2px;
+}
+.dots {
+  display: inline-flex;
+  gap: 4px;
+}
+.dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cobalt-mid);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+.dots i:nth-child(2) {
+  animation-delay: 0.3s;
+}
+.dots i:nth-child(3) {
+  animation-delay: 0.6s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dots i {
+    animation: none;
+  }
+}
+
+/* The summary once set up */
+.sum {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 20px;
+  margin: 0;
+  font-size: 13px;
+}
+.sum dt {
+  color: var(--ink-3);
+}
+.sum dd {
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.setup-summary > p {
+  font-size: 13px;
+}
+
+/* Steps 2 to 4 */
+.fl-later {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  column-gap: 16px;
+  min-width: 0;
+}
+.fl-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: stretch;
+}
+.fl-vtrack {
+  flex-grow: 1;
+  width: 1px;
+  background: var(--line-2);
+  margin: 10px 0;
+}
+.fl-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.fl-later:not(:last-child) .fl-body {
+  padding-bottom: 20px;
+}
+.fl-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fl-later h2 {
+  color: var(--ink-2);
+}
+.fl-later p {
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.fl-later.current h2 {
+  color: var(--ink);
+}
+.fl-later.current p {
+  color: var(--ink-2);
+}
+.lock {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.lock svg {
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+/* Step 2 done: the newest dataset · N protocols. */
+.fl-done {
+  font-size: 13px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}

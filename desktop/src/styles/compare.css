@@ -1,0 +1,922 @@
+/* Compare (LaptopCompare, #54; built in #342; #361's fixes in #366). */
+.page.cmp {
+  gap: 28px;
+}
+.cmp.stale .g-running,
+.cmp.stale .live {
+  animation: none;
+}
+.cmp-head {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.cmp-trow {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+}
+.cmp-ttext {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-grow: 1;
+  min-width: 0;
+}
+.cmp-blk {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.cmp-exported .err {
+  display: block;
+  margin-top: 4px;
+  color: var(--red);
+}
+
+/* ---- the chips ---- */
+.cmp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cmp .cchip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 42px;
+  padding: 0 6px 0 4px;
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--bg);
+  box-sizing: border-box;
+}
+.cmp .cchip .open {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 6px;
+  border-radius: 6px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.cmp .cchip .open:hover {
+  background: var(--ground);
+}
+.cmp .cchip .open:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 1px;
+}
+.cmp .cchip .let {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.cmp .cid,
+.cmp-tcap .tid {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.cmp .cchip .cid {
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 3px;
+}
+.cmp .rid {
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.cmp .cchip .cds {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.cmp .cchip .cfit {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.cmp .addc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px dashed var(--line-2);
+  border-radius: 10px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  box-sizing: border-box;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.cmp .addc:hover {
+  border-color: var(--ink-3);
+  color: var(--ink);
+}
+.cmp .addc:active:not([aria-disabled="true"]) {
+  background: color-mix(in srgb, var(--ink) 11%, var(--bg));
+}
+.cmp .addc:focus-visible {
+  outline: 2px solid var(--cobalt);
+  outline-offset: 2px;
+}
+.cmp .addc[aria-disabled="true"] {
+  color: var(--ink-4);
+  border-color: var(--line);
+  cursor: not-allowed;
+}
+
+/* ---- fewer than 2 ---- */
+.cmp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 24px 28px;
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+}
+.cmp-empty p {
+  margin: 0;
+  max-width: 760px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.cmp-empty .lead {
+  font-size: 15px;
+  color: var(--ink);
+}
+
+/* ---- the fit by protocol ---- */
+.cmp-fit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cmp-fhead {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-height: 30px;
+}
+.cmp-fhead .label {
+  margin: 0;
+}
+.cmp-grow {
+  flex-grow: 1;
+}
+.cmp-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.cmp-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cmp-ptsw {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.cmp-ptsw .seg button .who {
+  margin-left: 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.cmp-cav {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--cobalt-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.cmp-cav svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--ink-2);
+}
+.cmp-cav b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.cmp-warn {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.cmp-warn > svg {
+  flex-shrink: 0;
+  transform: translateY(2px);
+  color: var(--ink-3);
+}
+.cmp-warn .wl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+}
+.cmp-fgrid {
+  display: grid;
+  grid-template-columns: repeat(5, 212px);
+  justify-content: space-between;
+  column-gap: 16px;
+  row-gap: 24px;
+}
+.cmp-fcell {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.cmp-fname {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cmp-fname .mono {
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+/* Whose points a chart draws when Points from's data lack its protocol. Every chart of the band
+   keeps the line once one has it, so the charts stay aligned. */
+.cmp-pfrom {
+  min-height: 18px;
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.cmp-flabel {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.cmp-plot,
+.cmp-strip {
+  position: relative;
+  display: block;
+  width: 212px;
+}
+.cmp-plot svg,
+.cmp-strip svg {
+  display: block;
+}
+.cmp-whisk {
+  stroke: var(--ink);
+  stroke-opacity: 0.45;
+}
+.cmp-sbox {
+  fill: var(--ground);
+}
+.cmp-szero {
+  stroke: var(--ink-3);
+}
+.cmp-stab {
+  display: flex;
+  flex-direction: column;
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+}
+.cmp .srow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  border-bottom: 1px solid var(--line);
+}
+.cmp .srow > svg {
+  flex-shrink: 0;
+}
+.cmp .srow .sl {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.cmp .srow .sn {
+  flex-grow: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.cmp .srow .sv {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.cmp .srow .sv.lo {
+  font-weight: 600;
+  color: var(--ink);
+}
+/* Its candidate's metric, when the selection ranks by more than one. */
+.cmp .srow .sv .mw {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.cmp .ldot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: transparent;
+}
+.cmp .ldot.on {
+  background: var(--cobalt);
+}
+.cmp-foot,
+.cmp-mfoot {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.cmp-mfoot {
+  margin-top: 2px;
+}
+.cmp-foot .k,
+.cmp-mfoot .k {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cmp-mfoot .impa {
+  margin-left: 6px;
+}
+
+/* ---- Metrics, the spread and the parameters ---- */
+.cmp-mid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 440px;
+  gap: 40px;
+  align-items: start;
+}
+.cmp-met,
+.cmp-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.cmp-met .label,
+.cmp-aside .label {
+  margin: 0;
+}
+/* One grid sizes every column, and each row is a subgrid of it (#358's rule): columns sized to
+   their content from the left, the spare width after the last, inside the rules. */
+.cmp .mtab {
+  display: grid;
+  column-gap: 20px;
+}
+.cmp .mrow {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  height: 40px;
+  border-bottom: 1px solid var(--line);
+}
+.cmp .mrow.mh {
+  align-items: end;
+  height: auto;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-2);
+}
+.cmp .mrow .ml {
+  font-size: 14px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.cmp .mrow .mc {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+.cmp .mrow .mt {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+.cmp .mrow .mt.mono {
+  font-family: var(--font-mono);
+}
+.cmp .mrow .mt.lo {
+  font-weight: 600;
+  color: var(--ink);
+}
+/* A wall time still running (#373): its underline sits below the box, so the cell can't clip it. */
+.cmp .mrow .mt.lv {
+  overflow: visible;
+}
+.cmp .mrow .mt .dim {
+  color: var(--ink-3);
+}
+.cmp .mrow.k-run {
+  height: auto;
+  min-height: 52px;
+  padding: 6px 0;
+  box-sizing: border-box;
+}
+.cmp .mrow .mt .rl {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  max-width: 100%;
+  line-height: 1.35;
+  color: inherit;
+  text-decoration: none;
+}
+/* A run's name is an identifier: it wraps to a second line rather than cut (#449's SF06). */
+.cmp .mrow .mt .rl .rn {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: right;
+  white-space: normal;
+  font-size: 12px;
+}
+.cmp .mrow .mt .rl:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--ink-3);
+  text-underline-offset: 3px;
+}
+.cmp .mhc {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  min-width: 0;
+}
+.cmp .mhc .l1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  white-space: nowrap;
+}
+.cmp .mhc .l1 .link {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.cmp .mhc .l2 {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.cmp .mhc .l3 {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.cmp .impa {
+  display: inline-block;
+  margin-right: 4px;
+  vertical-align: -1px;
+  color: var(--ink-2);
+}
+.cmp-asub {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  text-wrap: pretty;
+}
+.cmp-spread {
+  display: flex;
+  flex-direction: column;
+  margin-top: 2px;
+}
+.cmp-srow,
+.cmp-saxis {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: center;
+}
+.cmp-srow {
+  height: 48px;
+  border-bottom: 1px solid var(--line);
+}
+.cmp-saxis {
+  padding-top: 6px;
+}
+.cmp-who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cmp-whoid {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.cmp-whoid .mono {
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.cmp-basis {
+  padding-left: 28px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.cmp-basis.np {
+  padding-left: 0;
+}
+.cmp-sbox {
+  position: relative;
+  height: 24px;
+}
+.cmp-sbox svg {
+  display: block;
+}
+.cmp-sgrid {
+  stroke: var(--line);
+}
+.cmp-swhisk {
+  stroke: var(--ink-2);
+}
+.cmp-sq {
+  fill: var(--cobalt-soft);
+  stroke: var(--cobalt-2);
+  stroke-width: 1.2;
+}
+.cmp-smed {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+.cmp-smedn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.cmp-snone {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.cmp-sticks {
+  position: relative;
+  height: 14px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--ink-3);
+}
+.cmp-sticks > span {
+  position: absolute;
+}
+.cmp-ph {
+  margin-top: 18px !important;
+}
+.cmp-plines {
+  display: flex;
+  flex-direction: column;
+}
+.cmp-prow {
+  display: grid;
+  grid-template-columns: 132px 104px minmax(0, 1fr) auto;
+  column-gap: 12px;
+  align-items: center;
+  height: 40px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.cmp-pn {
+  color: var(--ink);
+}
+.cmp-po {
+  color: var(--ink-2);
+}
+
+/* ---- one topology: drawn once beside Metrics, its parameters lined up below (#361) ---- */
+.cmp-tone {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cmp-lu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.cmp-luhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+}
+.cmp-luhead .label {
+  margin: 0;
+}
+.cmp-lufacts {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.cmp-lukey {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 18px;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.cmp-lukey .k {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.cmp-lukey .kband {
+  width: 18px;
+  height: 8px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--cobalt) 24%, var(--bg));
+}
+/* A candidate's mark: A solid, B dashed, C dotted, in their lines' colors. */
+.cmp-lm {
+  display: inline-block;
+  width: 2px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.cmp-lm.a {
+  background: var(--cobalt);
+}
+.cmp-lm.b {
+  background: repeating-linear-gradient(to bottom, var(--cobalt-2) 0 4px, transparent 4px 6.5px);
+}
+.cmp-lm.c {
+  background: repeating-linear-gradient(to bottom, var(--cobalt-2) 0 2px, transparent 2px 4px);
+}
+.cmp-lut {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cmp-luh,
+.cmp-lur {
+  display: grid;
+  column-gap: 12px;
+  align-items: center;
+}
+.cmp-luh {
+  align-items: end;
+  height: 58px;
+  border-bottom: 1px solid var(--line-2);
+}
+.cmp-luh > span {
+  padding-bottom: 7px;
+}
+.cmp-lukind,
+.cmp-luk {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.cmp-luk {
+  display: grid;
+  column-gap: 12px;
+  row-gap: 3px;
+  min-width: 0;
+}
+.cmp-lutitle {
+  grid-column: 1 / -1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmp-lupn {
+  margin-left: 8px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.cmp-lupn.first {
+  margin-left: 0;
+}
+.cmp-lupn sub,
+.cmp-lupn sup {
+  font-size: 0.72em;
+  line-height: 0;
+}
+.cmp-lul {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  font-size: 12px;
+}
+.cmp-luends {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.cmp-lur {
+  height: 34px;
+  border-bottom: 1px solid var(--line);
+}
+.cmp-lur.open {
+  margin: 0 -8px;
+  padding: 0 8px;
+  background: var(--cobalt-soft);
+}
+.cmp-lulabel {
+  display: flex;
+  align-items: center;
+}
+.cmp-lunote {
+  grid-column: 2 / -1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.cmp-lunote b {
+  font-weight: 500;
+  color: var(--ink);
+}
+.cmp-luv {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.cmp-luspr {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  text-align: right;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.cmp-luh .cmp-luspr {
+  color: var(--ink-3);
+  /* Its word is wider than the column: it takes half the gap before it (#449's SF06). */
+  margin-left: -6px;
+}
+/* A part's strip: its range's ends and middle, the Top 10's band on one run, each mark. */
+.cmp-lus {
+  position: relative;
+  height: 20px;
+  min-width: 0;
+}
+.cmp-lus > .ax {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 9.5px;
+  height: 1px;
+  background: var(--line-2);
+}
+.cmp-lus > .e0,
+.cmp-lus > .e1,
+.cmp-lus > .md {
+  position: absolute;
+  top: 5px;
+  width: 1px;
+  height: 10px;
+  background: var(--line-2);
+}
+.cmp-lus > .e0 {
+  left: 0;
+}
+.cmp-lus > .e1 {
+  right: 0;
+}
+.cmp-lus > .md {
+  left: 50%;
+  top: 7px;
+  height: 6px;
+}
+.cmp-lus > .bd {
+  position: absolute;
+  top: 5px;
+  height: 10px;
+  border-radius: 2px;
+  background: color-mix(in oklab, var(--cobalt) 24%, var(--bg));
+}
+.cmp-lus > .cmp-lm {
+  position: absolute;
+  top: 1px;
+  height: 18px;
+}
+
+/* ---- the topologies ---- */
+.cmp-tsec {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.cmp-tsec .label {
+  margin: 0;
+}
+.cmp-tgrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.cmp-tcol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.cmp-tbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 150px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--ground);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+.cmp-tbox .tdraw {
+  max-height: 100%;
+  width: auto;
+}
+.cmp-tcap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.cmp-tcap .tc {
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.cmp-tcap .link {
+  font-size: 14px;
+  white-space: nowrap;
+}

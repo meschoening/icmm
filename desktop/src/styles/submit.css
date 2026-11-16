@@ -1,0 +1,663 @@
+/*
+ * Submit run (#235): LaptopSubmitRun, on tokens so dark mode follows. The
+ * head with Submit run at its right, the four tiles, the config card and its
+ * picker, and the platform's aside at 480 px.
+ */
+
+/* The head: breadcrumb, heading and facts at the left, Submit run and its reason at the right. */
+.sub-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+}
+.sub-head-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex-grow: 1;
+  min-width: 0;
+}
+.sub-head-text .facts {
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.sub-platform {
+  color: var(--ink);
+}
+.sub-submit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+/* Why Submit run can't be pressed, or that a run can be canceled. */
+.sub-why {
+  max-width: 400px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  text-align: right;
+  text-wrap: pretty;
+}
+
+/* That the run keeps going without ICMM, on a line of its own above the rest (#324). */
+.sub-keep {
+  display: block;
+}
+
+/* The config at the left, the platform's aside at the right. */
+.sub-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 480px;
+  gap: 40px;
+  align-items: start;
+}
+.sub-main {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+.sub-config {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.sub-config .label {
+  margin: 0;
+}
+/* No platform to go to: the config alone. */
+.sub-body.solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* The card, and the picker that opens under its head. */
+.sub-card {
+  --pad-l: 18px;
+  --pad-r: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 12px var(--pad-r) 14px var(--pad-l);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: var(--bg);
+}
+/* The head and the picker under it, wherever the head wraps to. */
+.sub-card-top {
+  position: relative;
+}
+.sub-card-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.sub-name {
+  min-width: 0;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.sub-gone {
+  min-width: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.sub-spacer {
+  flex-grow: 1;
+}
+.sub-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.sub-quiet {
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.sub-dim {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+/* Data and Topology at the left of Optimization (LaptopSubmitRun's 9fr | 11fr). */
+.sub-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 9fr) minmax(0, 11fr);
+  gap: 20px 28px;
+  align-items: start;
+}
+.sub-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.sub-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sub-group h3 {
+  margin: 0 0 6px;
+}
+.sub-group dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+/*
+ * Labels sit in Configs' 132 px column (#41's fold, canvas v157), Optimization's
+ * included: Voltage dependence bounds wraps inside it and the values line up. At
+ * the 1200 px window Optimization's values column is 157 px, wider than
+ * "1,000,000 per start", so that stays on one line.
+ */
+.sub-kv {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 16px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  align-items: baseline;
+}
+/* Data and Topology's labels are short: a narrow column. */
+.sub-group.short .sub-kv {
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+.sub-kv dt {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+.sub-kv dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.sub-v {
+  font-size: 13px;
+}
+.sub-foot {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  text-wrap: pretty;
+}
+.sub-newer {
+  color: var(--ink-2);
+}
+
+/* None on the platform. */
+.sub-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 24px 28px;
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+}
+.sub-empty p {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+/* The picker: under the card's head, over its settings. */
+.sub-picker {
+  position: absolute;
+  /* 10 px under the head, from the card's edge to its edge. */
+  top: calc(100% + 10px);
+  left: calc(-1px - var(--pad-l));
+  right: calc(-1px - var(--pad-r));
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px -24px var(--shadow);
+}
+.sub-picker-top {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.sub-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  min-width: 0;
+}
+.sub-search svg {
+  position: absolute;
+  left: 12px;
+  color: var(--ink-3);
+  pointer-events: none;
+}
+.sub-search .input {
+  padding-left: 34px;
+}
+.sub-search .input::-webkit-search-cancel-button {
+  display: none;
+}
+.sub-create {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.sub-choices {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+/*
+ * The rows are square: the list's own corners round them. A long list scrolls
+ * within five rows or so, so the picker stays within the window.
+ */
+.sub-items {
+  display: flex;
+  flex-direction: column;
+  max-height: min(340px, 45vh);
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.sub-item {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 11px 16px;
+  color: var(--ink);
+  cursor: pointer;
+}
+.sub-item + .sub-item {
+  border-top: 1px solid var(--line);
+}
+.sub-item:hover {
+  background: var(--ground);
+}
+.sub-item.sel {
+  background: var(--ground);
+  box-shadow: inset 2px 0 0 var(--ink);
+}
+.sub-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.sub-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.sub-item-spec {
+  font-size: 13px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.sub-item-spec .g {
+  margin-right: 7px;
+  transform: translateY(-1px);
+}
+.sub-none {
+  margin: 0;
+  padding: 11px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+/* The four tiles: Work, Time, Begins and Output, equal columns across the page. */
+.sub-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.sub-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+/* The big words, then a unit in the text face; a glyph sits level with the words' middle. */
+.sub-tile-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+  min-width: 0;
+}
+.sub-tile-main .g {
+  align-self: center;
+  margin-right: 2px;
+}
+.sub-big {
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.sub-big-mono {
+  font-family: var(--font-mono);
+  letter-spacing: -0.03em;
+}
+.sub-unit {
+  font-size: 16px;
+}
+/* A line under the words even where it's empty, so a tile that is still reading keeps its height. */
+.sub-tile-hint {
+  display: block;
+  min-height: 1.45em;
+  margin: 0;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+/* A past-the-limit line: a red cross and the words. */
+.sub-warn {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.sub-warn .g {
+  margin-top: 5px;
+}
+dd > .sub-warn {
+  margin-top: 6px;
+}
+
+/* The Platform aside: where it runs, when it begins, how long, and the stages. */
+.sub-aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.sub-akv .sub-kv {
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+.sub-akv .nv {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+.sub-plat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.sub-plat-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.sub-plat-head .label {
+  margin: 0;
+  flex-grow: 1;
+}
+.sub-plat-link {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.sub-plat-name {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.sub-plat-sub {
+  font-size: 13px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+.sub-plat-rows,
+.sub-rows {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sub-plat-rows {
+  margin-top: 8px;
+}
+.sub-plat-gap {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+
+/* The forecast: the user's jobs or this computer's slots as blocks of cells, then what it means. */
+.sub-fc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--ground);
+  border-radius: 10px;
+}
+/* Unread SLURM jobs (#452): a failure's three lines at the box's 13 px, Try again at their
+   bottom right (LaptopSubmitRun's `.fc-say`). */
+.sub-fc-fail {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+.sub-fc-fail .fail-say {
+  flex-grow: 1;
+}
+.sub-fc-fail .fail-what {
+  font-size: 13px;
+  line-height: 1.45;
+}
+.sub-fc-fail > .btn {
+  flex-shrink: 0;
+}
+.sub-fc-msg {
+  margin: 0;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+.sub-fc-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.sub-fc-title {
+  flex-grow: 1;
+  min-width: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.sub-fc-count {
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.sub-fc-count .mono {
+  color: var(--ink);
+}
+.sub-fc-blocks {
+  display: grid;
+  gap: 4px 10px;
+}
+.sub-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.sub-track {
+  display: grid;
+  gap: 2px;
+}
+.sub-track.dense {
+  gap: 0;
+}
+.sub-cell {
+  height: 8px;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--ink) 9%, var(--ground));
+}
+.sub-cell.on {
+  background: var(--cobalt);
+}
+/* Jobs that aren't a run's starts hold a slot too, so they read darker than a free one. */
+.sub-cell.used {
+  background: color-mix(in srgb, var(--ink) 24%, var(--ground));
+}
+.sub-block-text {
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.sub-block-id {
+  font-weight: 500;
+}
+.sub-block-quiet {
+  color: var(--ink-3);
+}
+.sub-eta {
+  display: block;
+  min-height: 1.4em;
+  color: var(--ink-3);
+}
+/* While a submit works the block's link is inert (`.row-link`), and its ETA goes gray with it. */
+.row-link[aria-disabled="true"] .sub-eta {
+  color: inherit;
+}
+.sub-fc-say {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+.sub-fc-line {
+  margin: 0;
+  display: flex;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink);
+  text-wrap: pretty;
+}
+.sub-fc-line .g {
+  margin-top: 5px;
+}
+.sub-fc-raw {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-3);
+  padding-left: 17px;
+  overflow-wrap: anywhere;
+}
+.sub-fc-hint {
+  margin: 0;
+  padding-left: 17px;
+  text-wrap: pretty;
+}
+
+/* What happens after a submit: four stages down a rail. */
+.sub-stages {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.sub-stages-sum {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 28px;
+  color: var(--ink-2);
+}
+.sub-stages-name {
+  flex-grow: 1;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+}
+.sub-stages-count {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.sub-stages-list {
+  display: flex;
+  flex-direction: column;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sub-stage {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 12px;
+}
+.sub-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.sub-node {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  border: 1.5px solid var(--ink-3);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.sub-line {
+  flex-grow: 1;
+  width: 1px;
+  background: var(--line-2);
+}
+.sub-stage:last-child .sub-line {
+  display: none;
+}
+.sub-stage-text {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 10px;
+  min-width: 0;
+}
+.sub-stage-name {
+  font-size: 13px;
+}
+.sub-stage-what {
+  font-size: 13px;
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+/* The run page's state, after its config's name and a ·: air, so the glyph and the dot don't read as one. */
+.run-state {
+  margin-left: 3px;
+}

@@ -1,0 +1,139 @@
+/*
+ * The Parameters rows (#41; built in #287), which Topology, Start and Result
+ * share: a 56 px label column, then each row's two parts with a 16 px gap
+ * between them. Each part lays its cells out as its page says
+ * (`--prm-part`), so its head lines up with its rows. Every color is a
+ * token, so dark mode follows.
+ */
+
+/* A state or an edge as the topology drawing draws it, the open state filled. */
+.state-g {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.3px solid var(--ink);
+  background: var(--bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1;
+  color: var(--ink);
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.state-g.open {
+  background: var(--ink);
+  color: var(--bg);
+}
+.edge-g {
+  display: inline-flex;
+  align-items: center;
+}
+.edge-g > i {
+  display: block;
+  width: 8px;
+  height: 1.3px;
+  background: var(--ink-3);
+}
+
+.prm {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.prm-row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) 16px minmax(0, 1fr);
+  column-gap: 12px;
+  align-items: center;
+  height: 24px;
+}
+.prm-label {
+  display: flex;
+  align-items: center;
+}
+.prm-label .edge-g {
+  transform: scale(0.9);
+  transform-origin: left center;
+}
+.prm-part {
+  display: grid;
+  grid-template-columns: var(--prm-part);
+  column-gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+/* Heads: a part's title and name, then its strip's two ends over the strip. */
+.prm-head {
+  height: 52px;
+  align-items: end;
+  align-content: end;
+  row-gap: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line-2);
+}
+.prm-curve {
+  height: 84px;
+}
+.prm-kind,
+.prm-phead {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-3);
+  text-align: left;
+}
+.prm-curvename {
+  grid-column: 1 / -1;
+  white-space: nowrap;
+}
+.prm-phead {
+  row-gap: 3px;
+}
+.prm-title {
+  grid-column: 1 / -1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prm-name {
+  margin-left: 8px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.prm-name sub,
+.prm-name sup {
+  font-size: 0.72em;
+  line-height: 0;
+}
+.prm-ends {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+/* A head wider than its cell reaches left into the gap, never past the table. */
+.prm-after {
+  justify-self: end;
+  white-space: nowrap;
+}
+
+/* The open state: the reference every other state is read against. */
+.prm-open {
+  margin: 0 -8px;
+  padding: 0 8px;
+  background: var(--cobalt-soft);
+}
+.prm-note {
+  grid-column: 2 / -1;
+  font-size: 13px;
+  color: var(--ink-2);
+  /* It wraps rather than cut at 1200 (#449's SF06). */
+  text-wrap: pretty;
+}
+.prm-note b {
+  font-weight: 500;
+  color: var(--ink);
+}
