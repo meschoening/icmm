@@ -51,6 +51,8 @@ export interface Choice {
   mapped?: boolean;
   /** Its sheet is named for a rise: as a decay time, its window starts at 10 → 90 % (#166). */
   rise?: boolean;
+  /** Its sheet is named for a half-decay: as a decay time, its window starts at 100 → 50 % (#469). */
+  half?: boolean;
   /**
    * What the Protocol builder handed back for it, unsaved (#144), and the
    * template the engine found its steps to have; kept while another template
@@ -74,6 +76,7 @@ export function choicesOf(reads: SheetRead[]): Choice[] {
     roles: r.roles,
     seconds: r.seconds,
     ...(r.rise ? { rise: true } : {}),
+    ...(r.half ? { half: true } : {}),
   }));
 }
 
@@ -176,10 +179,21 @@ export function parsed(text: string): number | null {
 /** A rise time's window, as a sheet named for a rise starts it (#166): 10 → 90 % of the peak. */
 const RISE_WINDOW: Measure = { kind: "decay_time", from: 0.1, to: 0.9 };
 
+/** A half-decay's window, as a sheet named for one starts it (#469): 100 → 50 % of the peak. */
+const HALF_WINDOW: Measure = { kind: "decay_time", from: 1, to: 0.5 };
+
 /** The voltage a sheet's test pulse column gives each fixed step, by template. */
 export const PULSE_STEPS: Partial<Record<TemplateName, number[]>> = {
   steady_state_inactivation: [1],
   recovery: [0, 2],
+};
+
+/**
+ * The fixed steps a template holds at its holding potential, by template:
+ * recovery's gap, as the old app's datasets recover at holding (#469).
+ */
+export const HOLDING_STEPS: Partial<Record<TemplateName, number[]>> = {
+  recovery: [1],
 };
 
 /** Every used sheet with a template, in sheet order, keyed by sheet name in `edits`. */
@@ -251,35 +265,51 @@ export function formOf(read: SheetRead, choice: Choice, edits: Edits, made?: Mad
   };
   const pulse = read.values.pulse;
   const pulseSteps = PULSE_STEPS[template] ?? [];
+  const holding = field(
+    "holding",
+    read.values.holding ?? preset.holding_mV,
+    read.values.holding !== undefined,
+    shownVoltage,
+  );
+  // A step held at the holding potential follows it, as typed while it's a number.
+  const held = parsed(holding.value) ?? read.values.holding ?? preset.holding_mV;
+  const heldSteps = HOLDING_STEPS[template] ?? [];
   const steps = preset.steps.map((s, j): StepForm => {
     const fromPulse = pulse !== undefined && pulseSteps.includes(j);
+    const v = s.voltage_mV;
     return {
       voltage:
-        s.voltage_mV === "swept"
+        v === "swept"
           ? null
-          : field(`v${j}`, fromPulse ? pulse : s.voltage_mV, fromPulse, shownVoltage),
+          : field(
+              `v${j}`,
+              fromPulse ? pulse : heldSteps.includes(j) ? held : v,
+              fromPulse,
+              shownVoltage,
+            ),
       duration: s.duration_ms === "swept" ? null : field(`d${j}`, s.duration_ms, false),
       measure: s.measure?.kind ?? null,
     };
   });
   const measured =
-    choice.rise && template === "decay_time"
+    template === "decay_time" && choice.rise
       ? RISE_WINDOW
-      : preset.steps.find((s) => s.measure !== null)?.measure;
+      : template === "decay_time" && choice.half
+        ? HALF_WINDOW
+        : preset.steps.find((s) => s.measure !== null)?.measure;
   const percent = (key: string, fraction: number): Field => {
     const typed = edits[key];
     return typeof typed === "string"
       ? { key, value: typed, default: false }
       : { key, value: shown(Number((fraction * 100).toPrecision(12))), default: false };
   };
-  const holding = read.values.holding;
   const normalized = edits.normalized;
   return {
     sheet: choice.sheet,
     name: choice.name,
     template,
     base: preset,
-    holding: field("holding", holding ?? preset.holding_mV, holding !== undefined, shownVoltage),
+    holding,
     steps,
     window:
       measured?.kind === "decay_time"

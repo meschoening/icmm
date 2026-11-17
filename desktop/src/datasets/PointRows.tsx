@@ -351,7 +351,7 @@ export function ValidationRow({
           <span className="unit">% proposed ·</span>{" "}
           <span className="vcount">
             <span className="mono">{held}</span> of <span className="mono">{points.length}</span>{" "}
-            points
+            {points.length === 1 ? "point" : "points"}
           </span>
           <button
             type="button"

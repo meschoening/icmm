@@ -1,28 +1,27 @@
 /**
  * The Config builder's aside (LaptopConfigBuilder): Work, the starts a run
- * of the config holds and the evaluations each runs (#180: starts only),
- * and Data, the chosen dataset's protocols, each a thumbnail of its points.
+ * of the config holds (#180: starts only); Time, how long that run takes and
+ * each start's evaluations and time (#471); and Data, the chosen dataset's
+ * protocols, each a thumbnail of its points.
  */
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { logX, templateWords } from "../../datasets/detail/words";
 import { useDataset } from "../../datasets/detail/read";
+import type { TimeView } from "../../submit/plan";
 import type { Protocol, Template, Work as WorkCounts } from "../../wire/types.gen";
 import { whole } from "../words";
 
 /** The most starts a run holds (ADR-0017). */
-const MAX_RUN_STARTS = 100_000;
+export const MAX_RUN_STARTS = 100_000;
 
 export function Work({
   work,
-  evaluations,
   perTopology,
   uncounted,
 }: {
   /** The engine's work for the fields as they are; `undefined` before it answers. */
   work: WorkCounts | undefined;
-  /** What each start runs, as the engine counts it; `null` until it can. */
-  evaluations: number | null;
   /** Starts per topology, from the answer `work` is (CF09); `null` without one. */
   perTopology: number | null;
   /** Why it can't count yet, when the fields have none of the engine's counts. */
@@ -57,12 +56,58 @@ export function Work({
           More than a run holds (<span className="n">{whole(MAX_RUN_STARTS)}</span>).
         </p>
       )}
+    </section>
+  );
+}
+
+/**
+ * The run's time as Submit run says it (`time.ts`): the whole run at the
+ * running cap, where that comes from, and each start's evaluations and time,
+ * with its time limit on SLURM. Past the limit, each start's time is red and
+ * Submit's sentence takes the place of where the time comes from.
+ */
+export function Time({
+  time,
+  evaluations,
+}: {
+  time: TimeView;
+  /** What each start runs, as the engine counts it; `null` until it can. */
+  evaluations: number | null;
+}) {
+  return (
+    <section aria-labelledby="cb-time" className="cb-time">
+      <h2 id="cb-time" className="label">
+        Time
+      </h2>
+      <span className="cb-time-head">
+        <span className="cb-time-big">{time.big}</span>
+        {/* Not drawn in a flex row, but read between the two. */}
+        {time.after !== undefined && (
+          <>
+            {" "}
+            <span className="cb-time-after">{time.after}</span>
+          </>
+        )}
+      </span>
+      {time.hint !== undefined && <span className="hint cb-time-hint">{time.hint}</span>}
+      {time.past !== undefined && (
+        <p className="cb-time-past">
+          <span className="g g-failed" aria-hidden="true" />
+          <span>{time.past}</span>
+        </p>
+      )}
       <dl className="cb-each">
         <div className="cb-kv">
           <dt>Each start</dt>
-          <dd>
-            <span className="mono">{evaluations === null ? "—" : whole(evaluations)}</span>{" "}
-            evaluations
+          <dd className="cb-each-dd">
+            <span>
+              <span className="mono">{evaluations === null ? "—" : whole(evaluations)}</span>{" "}
+              evaluations
+            </span>
+            <span className={time.over ? "cb-each-time over" : "cb-each-time"}>
+              {time.each}
+              {time.limit !== undefined && <span className="cb-each-limit"> · {time.limit}</span>}
+            </span>
           </dd>
         </div>
       </dl>

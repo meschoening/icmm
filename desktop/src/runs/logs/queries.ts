@@ -17,7 +17,7 @@ import { useConnection } from "../../shell/connection";
 import { commands } from "../../wire/api.gen";
 import type { StartLogPoint, WireError } from "../../wire/types.gen";
 import { useStartWatch, type StartRef } from "../start/queries";
-import { logHead, logLine } from "./words";
+import { logText } from "./words";
 
 /** How often a running try's job log is read again, as the watch stats a Start log. */
 export const FOLLOW_EVERY_MS = 5000;
@@ -248,8 +248,10 @@ export async function readWhole(source: LogSource, validation: boolean): Promise
     after = page.next;
   }
   if (source.kind !== "start") return pages.map((p) => p.text).join("");
-  const lines = pages.flatMap((p) => p.points.map((point) => logLine(point, validation)));
-  return [logHead(validation), ...lines].join("\n") + "\n";
+  return logText(
+    pages.flatMap((p) => p.points),
+    validation,
+  );
 }
 
 /** A run's coordinating jobs that ran, the latest first, for the generation select. */

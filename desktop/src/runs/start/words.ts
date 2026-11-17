@@ -139,6 +139,9 @@ function reached(c: StartContext): string {
   return `at ${evaluationsWords(evaluations)}${of} evaluations`;
 }
 
+/** Why a start whose end reason is `overflow` ended early, yet finished (#468, #478). */
+export const OVERFLOWED = "CMA-ES’s step size overflowed";
+
 /** Whether it has a best to show, which never counts once it stopped short. */
 const hasBest = (c: StartContext) => c.start.best !== null || c.points.length > 0;
 
@@ -224,6 +227,8 @@ export function statusParts(phase: Phase, c: StartContext, bestOf?: string): Par
     case "running":
     case "finished": {
       if (phase === "finished" && bestOf !== undefined) say(` · best start of ${bestOf}`);
+      if (phase === "finished" && c.start.end_reason === "overflow")
+        say(` · ended ${reached(c)}: ${OVERFLOWED}`);
       parts.push(...tryParts(c.start), ...whereParts(c));
       if (started !== undefined) say(` · started ${clock(started, c.now)}`);
       if (phase === "finished" && ended !== undefined) {
@@ -306,10 +311,11 @@ export interface Tile {
   bar?: { done: number; look: "live" | "ended" | "red" | "still" };
 }
 
-/** A share as the tiles say it: "+0.9 %", "−2.1 %". */
-function signedPercent(x: number): string {
-  const p = (x * 100).toFixed(1);
-  return x < 0 ? `−${p.slice(1)} %` : `+${p} %`;
+/** A share as the tiles say it: "+0.9 %", "−2.1 %"; one that rounds to none, "0.0 %", unsigned. */
+export function signedPercent(x: number): string {
+  const p = Math.abs(x * 100).toFixed(1);
+  if (Number(p) === 0) return `${p} %`;
+  return `${x < 0 ? "−" : "+"}${p} %`;
 }
 
 /**
@@ -317,7 +323,9 @@ function signedPercent(x: number): string {
  * still-improving mark weighs (`start.py`'s, from generation 9/10 of its
  * budget), so a finished start's is its stored `still_improving_change`.
  * Another's covers its latest tenth of the budget, from the last log point at
- * or before a tenth back; before it has run a tenth, it's "not yet".
+ * or before a tenth back; before it has run a tenth, it's "not yet". So does
+ * one whose step size overflowed: its stored change is null, as it ended
+ * before the budget's last tenth (#478).
  */
 function lastTenth(phase: Phase, c: StartContext): Tile {
   const budget = budgetOf(c.run);
@@ -329,7 +337,7 @@ function lastTenth(phase: Phase, c: StartContext): Tile {
     { t: signedPercent(x), cls: "n" },
     { t: " train RMSE", cls: "tx" },
   ];
-  if (phase === "finished") {
+  if (phase === "finished" && c.start.end_reason !== "overflow") {
     const stored = c.start.still_improving_change;
     return { label, parts: stored === null ? dash : change(stored) };
   }
@@ -864,20 +872,46 @@ function elapsedWords(s: number): string {
   return `${Math.floor(t / 3600)}:${mm}:${ss}`;
 }
 
-const pad = (s: string, w: number) => s.padEnd(w);
+/** The gap between the Start log's columns. */
+const GAP = 2;
 
-/** The Start log's column heads: `time · gen · evals · best · val · σ`, val only with validation. */
-export function logHead(validation: boolean): string {
-  return `${pad("time", 9)}${pad("gen", 7)}${pad("evals", 9)}${pad("best", 8)}${validation ? pad("val", 8) : ""}σ`;
+/** A Start log point's cells, under `time · gen · evals · best · val · σ`, val only with validation. */
+function logCells(p: StartLogPoint, validation: boolean): string[] {
+  const value = (x: number | null) => (x === null ? "—" : x.toFixed(4));
+  return [
+    elapsedWords(p.elapsed_s),
+    String(p.generation),
+    String(p.evaluations),
+    value(p.train_rmse),
+    ...(validation ? [value(p.val_rmse)] : []),
+    // "4.4e5", not "4.4e+5": a σ grown huge keeps the Log box's columns in its width.
+    p.sigma.toPrecision(2).replace("e+", "e"),
+  ];
 }
 
-/** A Start log point under `logHead`'s columns. */
-export function logLine(p: StartLogPoint, validation: boolean): string {
-  const value = (x: number | null) => (x === null ? "—" : x.toFixed(4));
-  return (
-    `${pad(elapsedWords(p.elapsed_s), 9)}${pad(String(p.generation), 7)}${pad(String(p.evaluations), 9)}` +
-    `${pad(value(p.train_rmse), 8)}${validation ? pad(value(p.val_rmse), 8) : ""}${p.sigma.toPrecision(2)}`
+/**
+ * The Start log as a table (#469 R07): its head and a line a point, each column as wide as its
+ * widest value or head and two spaces apart, so no two values ever run together; σ, last, isn't
+ * padded.
+ */
+export function logTable(
+  points: StartLogPoint[],
+  validation: boolean,
+): { head: string; lines: string[] } {
+  const heads = ["time", "gen", "evals", "best", ...(validation ? ["val"] : []), "σ"];
+  const rows = points.map((p) => logCells(p, validation));
+  const widths = heads.map(
+    (h, i) => rows.reduce((w, r) => Math.max(w, r[i].length), h.length) + GAP,
   );
+  const line = (cells: string[]) =>
+    cells.map((c, i) => (i === cells.length - 1 ? c : c.padEnd(widths[i]))).join("");
+  return { head: line(heads), lines: rows.map(line) };
+}
+
+/** The Start log as Copy copies it: `logTable`'s head and lines, a line each. */
+export function logText(points: StartLogPoint[], validation: boolean): string {
+  const { head, lines } = logTable(points, validation);
+  return [head, ...lines].join("\n") + "\n";
 }
 
 /** The log's head and its last `n` lines, `time · gen · evals · best · val · σ`, newest last. */
@@ -886,10 +920,7 @@ export function logTail(
   validation: boolean,
   n = 8,
 ): { head: string; lines: string[] } {
-  return {
-    head: logHead(validation),
-    lines: points.slice(-n).map((p) => logLine(p, validation)),
-  };
+  return logTable(points.slice(-n), validation);
 }
 
 // ── around it ─────────────────────────────────────────────────────────────────────────────────

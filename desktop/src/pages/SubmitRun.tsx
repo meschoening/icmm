@@ -45,6 +45,7 @@ import { besideProps } from "../ui/working";
 import { WorkingButton } from "../ui/WorkingButton";
 import type { WireError } from "../wire/types.gen";
 import { useShownPath } from "../ui/paths";
+import { ReportFromHere } from "../report/ReportFromHere";
 
 /** Submit run's reason, under it. */
 const WHY_ID = "sub-why";
@@ -261,6 +262,7 @@ export function SubmitRunPage() {
           </p>
         </div>
       </section>
+      <ReportFromHere name="Submit run" />
       {platform !== undefined && plan.tiles !== undefined && <Tiles tiles={plan.tiles} />}
       <div className={platform === undefined ? "sub-body solo" : "sub-body"}>
         <div className="sub-main">

@@ -3,6 +3,7 @@ Python 3.11+ runs it on any runner:
 
     python .github/release_check.py tag vX.Y.Z[-rc.N]      # the tag matches every version file
     python .github/release_check.py secrets                # the six Apple secrets are set
+    python .github/release_check.py deb-depends <bundle dir>  # the .deb names each package once
     python .github/release_check.py stage <bundle dir> <version> <arch> <os> <out dir>
     python .github/release_check.py selfcheck <archive>    # a built engine bundle imports and loads
     python .github/release_check.py assets <version> <name>... # exactly the four installers
@@ -118,19 +119,62 @@ def check_secrets(env: Mapping[str, str]) -> None:
 # --- the installers ---------------------------------------------------------------------------
 
 
+def _one_built(bundle_dir: Path, ext: str) -> Path:
+    found = sorted(bundle_dir.glob(f"*.{ext}"))
+    if len(found) != 1:
+        names = ", ".join(p.name for p in found) or "none"
+        raise Failed(f"expected one .{ext} in {bundle_dir}, found {names}")
+    return found[0]
+
+
 def stage(bundle_dir: Path, version: str, arch: str, os_name: str, out: Path) -> Path:
     """Copies the one installer Tauri built in `bundle_dir` to `out` under its asset name."""
     ext = next((e for a, o, e in INSTALLERS if (a, o) == (arch, os_name)), None)
     if ext is None:
         raise Failed(f"no installer is {arch}-{os_name}")
-    found = sorted(bundle_dir.glob(f"*.{ext}"))
-    if len(found) != 1:
-        names = ", ".join(p.name for p in found) or "none"
-        raise Failed(f"expected one .{ext} in {bundle_dir}, found {names}")
+    built = _one_built(bundle_dir, ext)
     out.mkdir(parents=True, exist_ok=True)
     dest = out / asset_name(version, arch, os_name, ext)
-    shutil.copy2(found[0], dest)
+    shutil.copy2(built, dest)
     return dest
+
+
+def one_depends(depends: str) -> str:
+    """A `Depends` value with each package named once, by its first entry.
+
+    Tauri's deb bundler appends `libwebkit2gtk-4.1-0` and `libgtk-3-0` after the config's own
+    `depends`, unversioned and whatever the config says, so the config's `(>= 2.50)` came out
+    beside a bare duplicate. An entry with alternatives (`a | b`) counts as its own.
+    """
+    kept: dict[str, str] = {}
+    for entry in (e.strip() for e in depends.split(",")):
+        name = entry if "|" in entry else re.split(r"[\s(:]", entry, maxsplit=1)[0]
+        kept.setdefault(name, entry)
+    return ", ".join(kept.values())
+
+
+def deb_control(control: str) -> str:
+    """DEBIAN/control with its `Depends` through `one_depends`, every other line as it was."""
+    line = re.search(r"^Depends: (.*)$", control, re.M)
+    if line is None:
+        raise Failed("the .deb's control file has no Depends")
+    return control[: line.start(1)] + one_depends(line.group(1)) + control[line.end(1) :]
+
+
+def deb_depends(bundle_dir: Path) -> str:
+    """Rewrites the one .deb in `bundle_dir` with each package in its Depends once (Linux), and
+    answers its Depends line."""
+    deb = _one_built(bundle_dir, "deb")
+    with tempfile.TemporaryDirectory() as tmp:
+        tree = Path(tmp) / "tree"
+        subprocess.run(["dpkg-deb", "--raw-extract", str(deb), str(tree)], check=True)
+        control = tree / "DEBIAN" / "control"
+        written = deb_control(control.read_text(encoding="utf-8"))
+        control.write_text(written, encoding="utf-8")
+        # Its files belong to root, as Tauri built them, not to the runner's user.
+        build = ["dpkg-deb", "--root-owner-group", "-Zxz", "--build", str(tree), str(deb)]
+        subprocess.run(build, check=True)
+    return next(line for line in written.splitlines() if line.startswith("Depends: "))
 
 
 def bundle_python(unpacked: Path, platform: str) -> Path:
@@ -349,6 +393,8 @@ def main(argv: list[str] | None = None) -> int:
     tag = commands.add_parser("tag")
     tag.add_argument("tag")
     commands.add_parser("secrets")
+    dd = commands.add_parser("deb-depends")
+    dd.add_argument("bundle_dir", type=Path)
     st = commands.add_parser("stage")
     for name in ("bundle_dir", "version", "arch", "os", "out"):
         st.add_argument(name)
@@ -369,6 +415,8 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "secrets":
             check_secrets(os.environ)
             print(f"all {len(APPLE_SECRETS)} Apple secrets are set")
+        elif args.command == "deb-depends":
+            print(deb_depends(args.bundle_dir))
         elif args.command == "stage":
             dest = stage(Path(args.bundle_dir), args.version, args.arch, args.os, Path(args.out))
             _output(asset=dest.name, path=str(dest))

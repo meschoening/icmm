@@ -274,7 +274,7 @@ fn write_report(params: &SaveReportParams) -> Result<(SavedReport, String), Wire
     let logs = facts.logs();
     let report = crate::report::Report {
         failure: params.failure.as_ref(),
-        start: params.start.as_ref(),
+        page: params.page.as_ref(),
         versions: &facts.versions,
         platform: facts.platform,
         logs: &logs,

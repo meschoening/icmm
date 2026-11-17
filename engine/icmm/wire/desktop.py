@@ -563,24 +563,31 @@ class ReportFailure(WireModel):
     """The raw line, when the page shows one."""
 
 
-class ReportStart(WireModel):
-    """A failed start's part of its report: where it is, its job log and its run."""
+class ReportPage(WireModel):
+    """The page a report is from (#470): a start, a topology, a run, or another page by its
+    name."""
 
+    kind: Literal["start", "topology", "run", "page"]
     name: str
-    """`#214/T12 · start 37`."""
-    job_log: str
-    """The end of its latest try's job log, as the log view reads it."""
-    run: str
-    """The run as it was submitted, as JSON: its config's settings, search seed and engine."""
+    """`start 23 of #214/T12.3`, `#214/T12.3`, `#214 herg-wt-11state`, or another page's name:
+    `Datasets`."""
+    job_log: str | None
+    """A start's: the end of its latest try's job log, as the log view reads it; `null` for any
+    other page."""
+    run: str | None
+    """A start's, a topology's or a run's: its run as it was submitted, as JSON: its config's
+    settings, search seed and engine; `null` for another page."""
 
 
 class SaveReportParams(WireModel):
     stamp: str
     """When, on this computer's clock, written `2026-11-12-0914`: the file's name ends with it."""
     failure: ReportFailure | None
-    """`null` for a report from Settings' Diagnostic logs, which is about no one failure."""
-    start: ReportStart | None
-    """A failed start's report adds it; `null` otherwise."""
+    """`null` for a report about no one failure: from Settings' Diagnostic logs, or from a
+    page's ··· or ⌘K."""
+    page: ReportPage | None
+    """The page it's from: a failed start's, or the one Report a problem… opened on from its ···
+    or ⌘K; `null` for a failure elsewhere and for Settings' Diagnostic logs."""
 
 
 class SavedReport(WireModel):

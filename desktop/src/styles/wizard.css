@@ -222,6 +222,11 @@ button.rail-step:hover .rail-title {
   color: var(--ink-3);
   white-space: nowrap;
 }
+/* A "default" gone from the step table keeps its room, so its columns stay put (#469 R04). */
+.def-room::before {
+  content: "default";
+  visibility: hidden;
+}
 .err {
   margin: 0;
   font-size: 13px;
@@ -1243,11 +1248,12 @@ h2.pn {
 }
 
 /* Review */
+/* A head's words never break inside one: its column is at least as wide as they are. */
 .rtable {
   display: grid;
   grid-template-columns:
-    150px minmax(0, 1.4fr) minmax(0, 1fr) 56px minmax(0, 1fr) 80px minmax(0, 1.4fr)
-    56px;
+    150px minmax(min-content, 1.4fr) minmax(min-content, 1fr) 56px minmax(min-content, 1fr)
+    80px minmax(min-content, 1.4fr) 56px;
   column-gap: 16px;
 }
 .rrow {
@@ -1261,6 +1267,7 @@ h2.pn {
 }
 .rrow > .th {
   padding: 0 0 8px;
+  overflow-wrap: normal;
 }
 .rtable .rt-num {
   text-align: right;

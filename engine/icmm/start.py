@@ -7,6 +7,10 @@ The search is the old `optimize.py`'s: pycma with σ0 = 1 in raw coordinates, `B
 every stop test off, so a start ends only at its budget, rounded up to a whole **Generation**. Every
 random choice comes from the start's own seed, drawn from the run's **Search seed**, its topology id
 and its start index, never from the clock or numpy's global state.
+
+With no stop test, a converged start's σ can grow until CMA-ES's state overflows and it can no
+longer sample (#468). The start ends there, finished with its best so far: the search is unchanged,
+only where it ends is reported.
 """
 
 from __future__ import annotations
@@ -146,36 +150,56 @@ def run_start(
         rmse_at_window: float | None = None
         shown_for: list[float] | None = None
         shown: list[SnapshotProtocol] = []
-        generation = 0
+        generation = logged = 0
+        steps = _steps(es, lower, upper)
         while generation < generations:
-            generation += 1
-            # pycma finds each candidate's sampled genotype by the array it asked with, so it's
-            # told those arrays, as the old engine told it; copies would be rebuilt through the
-            # bounds' inverse, changing the search.
-            asked = es.ask()
-            candidates = [x.tolist() for x in asked]
-            fits = [score(weights, s) for s in session.score_batch(candidates, threads)]
-            values = [fit.train.penalized for fit in fits]
-            es.tell(asked, values)
-            i = int(np.argmin(values))
-            if values[i] < best_f:
-                best_f, best_x, best_fit = values[i], candidates[i], fits[i]
+            try:
+                # pycma finds each candidate's sampled genotype by the array it asked with, so
+                # it's told those arrays, as the old engine told it; copies would be rebuilt
+                # through the bounds' inverse, changing the search.
+                asked = es.ask()
+            except Exception:
+                if best_fit is None or not _overflowed(es):
+                    raise
+                end_reason = "overflow"  # it ends at the generation it last scored
+            else:
+                generation += 1
+                candidates = [x.tolist() for x in asked]
+                fits = [score(weights, s) for s in session.score_batch(candidates, threads)]
+                values = [fit.train.penalized for fit in fits]
+                i = int(np.argmin(values))
+                if values[i] < best_f:
+                    best_f, best_x, best_fit = values[i], candidates[i], fits[i]
+                try:
+                    es.tell(asked, values)
+                except Exception:
+                    if not _overflowed(es):
+                        raise
+                    end_reason = "overflow"
+                if not _overflowed(es):
+                    steps = _steps(es, lower, upper)
+                assert best_fit is not None
+                if generation == window:
+                    rmse_at_window = best_fit.train.rmse
+                if (
+                    end_reason == "budget"
+                    and (reason := stop()) is not None
+                    and generation < generations
+                ):
+                    end_reason = reason
             assert best_fit is not None
-            if generation == window:
-                rmse_at_window = best_fit.train.rmse
-            if (reason := stop()) is not None and generation < generations:
-                end_reason = reason
-            if (
+            if logged != generation and (
                 generation in (1, generations)
                 or generation % job.log_every_generations == 0
                 or end_reason != "budget"
             ):
+                logged = generation
                 point = StartLogPoint(
                     generation=generation,
                     evaluations=generation * job.population,
                     elapsed_s=round(clock() - began, 3),
-                    sigma=float(es.sigma),
-                    largest_step=float(np.max(es.stds / (upper - lower))),
+                    sigma=steps[0],
+                    largest_step=steps[1],
                     **_errors(best_fit),
                 )
                 with job.log.open("ab") as log:
@@ -202,6 +226,13 @@ def run_start(
                     pass  # Windows: a reader has it open; the next log point replaces it
             if end_reason != "budget":
                 break
+    if end_reason == "overflow":
+        print(
+            f"ended at {generation * job.population:,} of {job.evaluation_budget:,} evaluations: "
+            "CMA-ES's step size overflowed",
+            file=sys.stderr,
+            flush=True,
+        )
     assert best_fit is not None
     result = StartResult(
         num_states=job.num_states,
@@ -238,6 +269,22 @@ def run_start(
     except PermissionError:
         pass  # Windows: a reader has it open; the result says the start ended
     return result
+
+
+def _steps(
+    es: cma.CMAEvolutionStrategy, lower: np.ndarray, upper: np.ndarray
+) -> tuple[float, float]:
+    """CMA-ES's step size σ, and its largest σ·√Cᵢᵢ over its parameter's range."""
+    return float(es.sigma), float(np.max(es.stds / (upper - lower)))
+
+
+def _overflowed(es: cma.CMAEvolutionStrategy) -> bool:
+    """Whether CMA-ES's state is no longer finite: its step size, mean, evolution paths or
+    covariance overflowed, so it can't sample again."""
+    with np.errstate(all="ignore"):
+        state = [es.sigma, es.mean, es.pc, es.stds, getattr(es.adapt_sigma, "ps", 0.0)]
+        state += [getattr(es.sm, "C", 0.0), getattr(es.sm, "D", 0.0)]  # the full sampler's
+        return not all(np.all(np.isfinite(part)) for part in state)
 
 
 def _change(before: float | None, after: float | None) -> float | None:

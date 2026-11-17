@@ -37,9 +37,9 @@ use super::types::{
 };
 
 /// The protocol this app speaks, `major.minor`.
-pub const PROTOCOL_VERSION: &str = "1.61";
+pub const PROTOCOL_VERSION: &str = "1.63";
 /// Identifies the wire schema this app was built from.
-pub const SCHEMA_HASH: &str = "7ee5d4c1092ce869cb28103221232d326a205ff44445c836a55033b060e6c2b9";
+pub const SCHEMA_HASH: &str = "3503fdc1f56c1a47dc56d4305107ec7ff110bd9dd5c442887bad45fc1b145bdf";
 /// The longest line either side sends or accepts, its newline included.
 pub const MAX_LINE_BYTES: usize = 16777216;
 

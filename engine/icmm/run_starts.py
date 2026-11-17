@@ -43,12 +43,16 @@ _STATES: dict[str, StartState] = {
 }
 """The wire's word for each of the runs database's start states."""
 
+_END_REASON = "CASE WHEN {0}.overflowed THEN 'overflow' ELSE {0}.end_reason END"
+"""A try's end reason: the runs database keeps an overflowed one's as 'budget', for older engines
+(migration 25)."""
+
 _SUMMARY = (
     "s.start_index",
     "s.state",
     "s.try",
     "t.cause",
-    "t.end_reason",
+    _END_REASON.format("t"),
     "t.train_rmse",
     "t.val_rmse",
     "t.live_generation",
@@ -91,7 +95,7 @@ _RESULT = (
     "t.val_points",
     "t.val_failed",
     "t.still_improving_change",
-    "(SELECT json_group_array(json_array(x.try, x.cause, x.end_reason, x.node, "
+    f"(SELECT json_group_array(json_array(x.try, x.cause, {_END_REASON.format('x')}, x.node, "
     "x.scheduler_state, x.exit_code, x.started_at, x.ended_at)) FROM start_tries x "
     "WHERE x.run_id = s.run_id AND x.graph = s.graph AND x.open_state = s.open_state "
     "AND x.start_index = s.start_index)",

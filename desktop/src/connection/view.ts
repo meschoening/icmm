@@ -7,10 +7,11 @@
  * The desktop publishes each step of a connect as it happens. The card shows
  * four fixed steps (This computer runs two of them):
  *
- * - **Installing engine** isn't known until the first exec finds the engine
- *   or doesn't, so until then it's a gray ring that says "checking…". When
- *   the engine was there it's done, "installed". When it wasn't, the first
- *   exec's time counts toward it, so the durations add up to the connect.
+ * - **Installing engine** is under way, "checking", while the first exec
+ *   looks for the engine, so only the step the connect is in is current
+ *   (#469 R05). When the engine was there it's done, "installed", and the
+ *   exec's time goes to Starting ICMM. When it wasn't, the exec's time
+ *   counts toward the install, so the durations add up to the connect.
  * - **Starting ICMM** is the exec that runs the engine; after an install,
  *   the one that follows it.
  * - **Checking scheduler** is hello, where the agent finds the scheduler and
@@ -277,13 +278,18 @@ const DOING: Record<ConnectStep, string> = {
   handing_over: "starting ICMM",
 };
 
-/** A reconnect's try: its step under way, and its time from its first step. */
+/**
+ * A reconnect's try: its step under way, and its time from its first step.
+ * While its first exec looks for the engine, the stepper's Installing engine
+ * says "checking", and so does the try (#481).
+ */
 function tryStep(c: Connection, kind: PlatformKind, now: number) {
   const last = c.steps[c.steps.length - 1];
   if (last === undefined || last.ended_at !== null) return null;
   // Hello is part of starting on This computer.
   const step = last.step === "checking" && kind === "local" ? "starting" : last.step;
-  return { name: DOING[step], soFar: duration(now - c.steps[0].started_at) };
+  const name = findingEngine(c.steps) ? "checking engine" : DOING[step];
+  return { name, soFar: duration(now - c.steps[0].started_at) };
 }
 
 const ONCE = "It needs your password once, and doesn’t keep it.";
@@ -369,6 +375,17 @@ function counted(steps: StepTime[]): StepTime | undefined {
   return steps.slice(install + 1).find((t) => t.step === "starting");
 }
 
+/** The first exec, still looking for the engine: the connect is in Installing engine. */
+function findingEngine(steps: StepTime[]): boolean {
+  const past = (name: ConnectStep) => steps.some((t) => t.step === name);
+  return (
+    !past("installing_engine") &&
+    !past("checking") &&
+    !past("handing_over") &&
+    counted(steps)?.ended_at === null
+  );
+}
+
 const MOVES = "This version of ICMM moves your runs in flight to its new engine.";
 
 /** A hand-over's line under the steps: what's happening, then from a minute of Starting ICMM on, why it's slow. */
@@ -393,7 +410,9 @@ function stepsOf(c: Connection, kind: PlatformKind, now: number): StepView[] {
   const start = counted(steps);
   const shown = (name: string, from: number | undefined, to: number | null | undefined) =>
     span(name, from, to, now);
+  const looking = findingEngine(steps);
   const starting = (to: number | null | undefined) => {
+    if (looking) return span("Starting ICMM", undefined, to, now);
     const view = shown("Starting ICMM", start?.started_at, to);
     if (handing === undefined || view.state !== "current") return view;
     return { ...view, figure: `moving runs ·\u00a0${view.figure}` };
@@ -421,8 +440,9 @@ function stepsOf(c: Connection, kind: PlatformKind, now: number): StepView[] {
     }
   } else if (checking !== undefined || handing !== undefined) {
     engine = { name: "Installing engine", state: "done", figure: "installed" };
-  } else if (start !== undefined) {
-    engine = { name: "Installing engine", state: "todo", figure: "checking…" };
+  } else if (looking) {
+    const so = duration(now - (start?.started_at ?? now));
+    engine = { name: "Installing engine", state: "current", figure: `checking · ${so}` };
   } else {
     engine = { name: "Installing engine", state: "todo", figure: "" };
   }

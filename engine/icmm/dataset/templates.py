@@ -52,6 +52,8 @@ TEMPLATES: dict[Template, TemplatePreset] = {
         normalized=True,
         time_resolution_ms=0.1,
     ),
+    # The gap recovers at the holding potential: the wizard and the builder move it with the
+    # holding a sheet gives (`HOLDING_STEPS` in desktop/src/datasets/draft.ts, #469).
     "recovery": _preset(
         [
             {"voltage_mV": -20, "duration_ms": 500},

@@ -158,6 +158,7 @@ class _Out:
     task: int
     job_id: str | None
     running: bool
+    """Whether it counts running: it started, and the scheduler hasn't said its task ended."""
     live_generation: int | None
     curve: str | None
     """Its **Progress curve** as its row keeps it; `None` before its log has been read."""
@@ -429,7 +430,8 @@ class Coordinator:
             self.db.connection()
             .execute(
                 "SELECT t.graph, t.open_state, t.start_index, t.try, t.array, t.array_task, "
-                "a.job_id, t.started_at IS NOT NULL, t.live_generation, t.curve "
+                "a.job_id, t.started_at IS NOT NULL AND t.task_ended_at IS NULL, "
+                "t.live_generation, t.curve "
                 "FROM start_tries t INDEXED BY start_tries_out JOIN arrays a "
                 "ON a.run_id = t.run_id AND a.number = t.array "
                 "WHERE t.run_id = ? AND t.ended_at IS NULL ORDER BY t.array, t.array_task",
@@ -447,6 +449,8 @@ class Coordinator:
         ended: list[tuple[_Out, StartResult | None, TaskState | None, Curve | None]] = []
         running: list[tuple[_Out, StartLogPoint | None, str | None, Curve | None]] = []
         withdrawn: list[_Out] = []
+        stopped: list[_Out] = []
+        """Tries whose task ended, their results awaited: no longer running."""
         for out in self._out():
             task = files.start_task(self.run.folder, out.topology, out.start, out.attempt)
             result = files.read_result(task)
@@ -471,12 +475,15 @@ class Coordinator:
                 if self.clock() - seen >= self.scheduler.result_grace_s:
                     files.forget_snapshot(task)
                     ended.append((out, None, state, files.log_curve(task, self.run.per_start)))
+                elif out.running:
+                    stopped.append(out)
             elif state.status == "running":
+                self._ended_seen.pop(out.key, None)  # requeued: its next end waits afresh
                 point = files.last_log_point(task)
                 generation = None if point is None else point.generation
                 if not out.running or generation != out.live_generation:
                     running.append((out, point, state.node, self._grown(task, out, point)))
-        if not (ended or running or withdrawn):
+        if not (ended or running or withdrawn or stopped):
             return
         wrote = sum(self._written(out) for out, *_ in ended)
         at = iso(self.wall_clock())
@@ -491,6 +498,8 @@ class Coordinator:
             for out in withdrawn:
                 self._withdraw(conn, out)
                 touched.add(out.topology)
+            for out in stopped:
+                self._mark_stopped(conn, out)
             for out, point, node, curve in running:
                 self._mark_running(conn, out, point, node, curve)
             completed = self._settle_topologies(conn, touched, ended_in, finished, at)
@@ -558,7 +567,7 @@ class Coordinator:
             if canceling and state.cause is None:
                 # Stopped by its run's cancel before it could write its best so far.
                 outcome, cause = "canceled", None
-        elif result.end_reason == "budget":
+        elif result.end_reason in ("budget", "overflow"):
             outcome, cause = "finished", None
         elif result.end_reason == "time_limit":
             outcome, cause = "failed", StartCause.TIME_LIMIT
@@ -661,8 +670,8 @@ class Coordinator:
             "UPDATE start_tries SET best = ?, generations = ?, evaluations = ?, elapsed_s = ?, "
             "cost = ?, val_cost = ?, train_rmse = ?, val_rmse = ?, penalized = ?, "
             "train_sse = ?, train_points = ?, train_failed = ?, val_sse = ?, val_points = ?, "
-            "val_failed = ?, end_reason = ?, still_improving = ?, still_improving_change = ?, "
-            "node = COALESCE(node, ?) "
+            "val_failed = ?, end_reason = ?, overflowed = ?, still_improving = ?, "
+            "still_improving_change = ?, node = COALESCE(node, ?) "
             "WHERE run_id = ? AND graph = ? AND open_state = ? AND start_index = ? AND try = ?",
             (
                 json.dumps(result.best),
@@ -680,14 +689,16 @@ class Coordinator:
                 json.dumps(result.val_sse),
                 json.dumps(result.val_points),
                 json.dumps(result.val_failed),
-                result.end_reason,
+                # An overflowed start finished: 'budget' to an older engine (migration 25).
+                "budget" if result.end_reason == "overflow" else result.end_reason,
+                1 if result.end_reason == "overflow" else None,
                 None if result.still_improving is None else int(result.still_improving),
                 result.still_improving_change,
                 result.host,
                 *key,
             ),
         )
-        if result.end_reason == "budget":
+        if result.end_reason in ("budget", "overflow"):
             (cpus,) = conn.execute(
                 "SELECT cpus FROM start_tries WHERE run_id = ? AND graph = ? AND open_state = ? "
                 "AND start_index = ? AND try = ?",
@@ -715,6 +726,17 @@ class Coordinator:
         )
         self._count(conn, out.topology, running=-out.running)
 
+    def _mark_stopped(self, conn: sqlite3.Connection, out: _Out) -> None:
+        """A try whose task the scheduler says ended, its result awaited for the grace: no longer
+        running, so the start the scheduler runs in its slot keeps the count at what runs. It's
+        collected as it would be; `_end_try` takes nothing more off."""
+        conn.execute(
+            "UPDATE start_tries SET task_ended_at = ? "
+            "WHERE run_id = ? AND graph = ? AND open_state = ? AND start_index = ? AND try = ?",
+            (now(), self.run.id, *out.key),
+        )
+        self._count(conn, out.topology, running=-1)
+
     def _mark_running(
         self,
         conn: sqlite3.Connection,
@@ -724,10 +746,11 @@ class Coordinator:
         curve: Curve | None,
     ) -> None:
         """A try now running, on its node, with its latest log point and its curve so far: lists
-        read them from here (ADR-0009)."""
+        read them from here (ADR-0009). One the scheduler had said ended, then runs again, as a
+        requeued task does, counts running again."""
         key = (self.run.id, *out.key)
         conn.execute(
-            "UPDATE start_tries SET started_at = COALESCE(started_at, ?), "
+            "UPDATE start_tries SET started_at = COALESCE(started_at, ?), task_ended_at = NULL, "
             "live_generation = COALESCE(?, live_generation), "
             "live_evaluations = COALESCE(?, live_evaluations), "
             "live_train_rmse = CASE WHEN ? THEN ? ELSE live_train_rmse END, "

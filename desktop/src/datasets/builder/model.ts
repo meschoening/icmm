@@ -10,7 +10,14 @@
 import { TEMPLATES, type TemplateName, type TemplatePreset } from "../../wire/templates.gen";
 import type { Issue, Measure, Point, Protocol, Source, Step, Template } from "../../wire/types.gen";
 import type { FieldMark } from "../../setup/form";
-import { NOT_A_WHOLE_NUMBER, parsed, PULSE_STEPS, shown, shownVoltage } from "../draft";
+import {
+  HOLDING_STEPS,
+  NOT_A_WHOLE_NUMBER,
+  parsed,
+  PULSE_STEPS,
+  shown,
+  shownVoltage,
+} from "../draft";
 import { joinAnd } from "../format";
 import type { SheetRead } from "../sheets";
 import {
@@ -124,9 +131,12 @@ function stepOf(s: Step): BuilderStep {
   };
 }
 
-/** A new protocol from Blank, under `name`. */
-export function blankDraft(name: string, roles: Mapping = {}): BuilderDraft {
-  return withPreset(
+/**
+ * A new protocol from Blank, under `name`: held, and its step, at `holding_mV`
+ * where its dataset's protocols share one (`sharedHolding`, #469).
+ */
+export function blankDraft(name: string, roles: Mapping = {}, holding_mV?: number): BuilderDraft {
+  const draft = withPreset(
     {
       name,
       holding: "",
@@ -141,6 +151,15 @@ export function blankDraft(name: string, roles: Mapping = {}): BuilderDraft {
     },
     "blank",
   );
+  if (holding_mV === undefined) return draft;
+  const held = shownVoltage(holding_mV);
+  return { ...draft, holding: held, steps: draft.steps.map((s) => ({ ...s, voltage: held })) };
+}
+
+/** The holding potential every one of `protocols` has; `undefined` when they differ, or there are none. */
+export function sharedHolding(protocols: { holding_mV: number }[]): number | undefined {
+  const holds = new Set(protocols.map((p) => p.holding_mV));
+  return holds.size === 1 ? [...holds][0] : undefined;
 }
 
 /**
@@ -452,7 +471,9 @@ export function withPreset(draft: BuilderDraft, name: PresetName): BuilderDraft 
 /**
  * The draft with a sheet's V0 and V1 (#168), as the wizard reads them: its
  * holding potential at V0, and the fixed steps its template's test pulse
- * takes (`PULSE_STEPS`) at V1. A value the sheet doesn't give stays.
+ * takes (`PULSE_STEPS`) at V1. A value the sheet doesn't give stays. A step
+ * the template holds at the holding potential (`HOLDING_STEPS`) goes to V0
+ * too, still a default to check: the sheet doesn't say it (#469).
  */
 export function withVoltages(
   draft: BuilderDraft,
@@ -460,10 +481,17 @@ export function withVoltages(
   template: Template | undefined,
 ): BuilderDraft {
   const { holding, pulse } = read.values;
-  const pulses =
-    template === undefined || template === "custom" ? [] : (PULSE_STEPS[template] ?? []);
+  const named = template === undefined || template === "custom" ? undefined : template;
+  const pulses = named === undefined ? [] : (PULSE_STEPS[named] ?? []);
+  const held = named === undefined ? [] : (HOLDING_STEPS[named] ?? []);
   const set = draft.steps.flatMap((s, j) =>
     pulse !== undefined && pulses.includes(j) && !s.voltageSwept ? [j] : [],
+  );
+  // Only a gap still at its default follows: one typed is the user's.
+  const gaps = draft.steps.flatMap((s, j) =>
+    holding !== undefined && held.includes(j) && !s.voltageSwept && draft.defaults.includes(`v${j}`)
+      ? [j]
+      : [],
   );
   // What the sheet gives isn't a template default.
   const cleared = [...(holding === undefined ? [] : ["holding"]), ...set.map((j) => `v${j}`)];
@@ -471,7 +499,11 @@ export function withVoltages(
     ...draft,
     holding: holding === undefined ? draft.holding : shownVoltage(holding),
     steps: draft.steps.map((s, j) =>
-      set.includes(j) ? { ...s, voltage: shownVoltage(pulse!) } : s,
+      set.includes(j)
+        ? { ...s, voltage: shownVoltage(pulse!) }
+        : gaps.includes(j)
+          ? { ...s, voltage: shownVoltage(holding!) }
+          : s,
     ),
     defaults: draft.defaults.filter((k) => !cleared.includes(k)),
   };

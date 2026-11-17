@@ -211,6 +211,13 @@
   gap: 6px;
   min-width: 0;
 }
+/*
+ * Random sample and All keep the room of a field's row and a check's line under it, so a check
+ * coming or going as the states change, or a switch between them, never moves the page (#469 R04).
+ */
+.cb-sub.cb-held {
+  min-height: calc(36px + 6px + 19px);
+}
 /* IDs and Find custom topology… (#222): the row is the button's 30 px. */
 .cb-idsrow {
   display: flex;
@@ -458,6 +465,59 @@
   color: var(--ink-2);
 }
 .cb-times.cb-quiet {
+  color: var(--ink-3);
+}
+/* Time (#471): Submit run's estimate, under its own line; Each start ends it, flush with Data's line. */
+.cb-time {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  margin-bottom: -20px;
+}
+.cb-time > .label {
+  margin-bottom: 4px;
+}
+.cb-time-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cb-time-big {
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.cb-time-after {
+  font-size: 18px;
+}
+.cb-time-hint {
+  font-size: 14px;
+}
+.cb-time-past {
+  margin: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+.cb-time-past .g {
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.cb-each-dd {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cb-each-time.over {
+  color: var(--red);
+}
+.cb-each-limit {
   color: var(--ink-3);
 }
 /* Each start: 8 px from the line above and below it (#180, round 2). */

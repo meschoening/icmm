@@ -262,6 +262,7 @@ function SheetRow({
       seconds: t === "recovery" && read.largestX !== null && read.largestX <= 10,
       mapped: false,
       rise: read.rise,
+      half: read.half,
     });
   };
 

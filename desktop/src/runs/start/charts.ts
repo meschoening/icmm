@@ -889,7 +889,7 @@ export function curveOf(a: number, b: number): Curve {
     mid: `M${f1(middle)} 14V74`,
     band: `M${f1(tx(half - b))} 20H${f1(tx(half + b))}V74H${f1(tx(half - b))}Z`,
     labels: [
-      { t: `half-way · ${signedMv(half)} mV`, ...placed(middle, 64), top: 2, kind: "now" },
+      { t: `half-way · −a = ${signedMv(half)} mV`, ...placed(middle, 70), top: 2, kind: "now" },
       {
         t: `most of the change: ${mV(half - b)} to ${mV(half + b)} mV`,
         ...placed(middle, 118),
@@ -901,7 +901,7 @@ export function curveOf(a: number, b: number): Curve {
       tick(hi, `${hi > 0 ? "+" : ""}${minus(String(hi))} mV`, "end"),
     ],
     aria:
-      `The voltage dependence curve tanh((V + a)/b): half-way at ${signedMv(half)} mV, most of its ` +
+      `The voltage dependence curve tanh((V + a)/b): half-way at −a = ${signedMv(half)} mV, most of its ` +
       `change between ${mV(half - b)} and ${mV(half + b)} mV.`,
   };
 }

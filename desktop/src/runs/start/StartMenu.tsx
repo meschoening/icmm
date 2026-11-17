@@ -1,7 +1,8 @@
 /**
  * A start's ··· menu (LaptopStart's `menu`): Open full log, its logs page
- * (#289), gray with why while it can't open, and Copy job ID, on a cluster
- * once the scheduler has taken its job. It opens under its button with
+ * (#289), gray with why while it can't open, Copy job ID, on a cluster
+ * once the scheduler has taken its job, and last, after a line, Report a
+ * problem… (#470). It opens under its button with
  * focus on its first item; the arrow keys, Home and End move between items,
  * Escape closes it and puts focus back on the button, and Tab or a press
  * outside closes it.
@@ -13,6 +14,7 @@ export function StartMenu({
   onOpenLog,
   logBlocked,
   onCopy,
+  onReport,
   buttonRef: button,
 }: {
   start: number;
@@ -21,6 +23,8 @@ export function StartMenu({
   logBlocked: string | undefined;
   /** Copies its job ID; none where it has none. */
   onCopy: (() => void) | undefined;
+  /** Report a problem…: its panel opens once the menu has closed, focus back on ···. */
+  onReport: () => void;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }) {
   const whyId = useId();
@@ -114,6 +118,18 @@ export function StartMenu({
               Copy job ID
             </button>
           )}
+          <span className="cf-menu-rule" role="separator" />
+          <button
+            type="button"
+            role="menuitem"
+            tabIndex={-1}
+            onClick={() => {
+              close(true);
+              onReport();
+            }}
+          >
+            Report a problem…
+          </button>
         </div>
       )}
     </div>

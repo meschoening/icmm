@@ -2,15 +2,16 @@
 //! ICMM's public issue page opened with its form filled in from the link.
 //!
 //! The report holds the failure, the versions, the platform's kind and the
-//! newest app and agent logs; a failed start's adds the end of its job log
-//! and its run. User names on this computer and its platforms are written
+//! newest app and agent logs; one from a page adds the page (#470): a
+//! start's the end of its job log and its run, a topology's or a run's its
+//! run, another page its name. User names on this computer and its platforms are written
 //! `user`; host names stay, since they show which cluster failed. A new-issue
 //! link can't carry a file, so the logs go only in the file, which the user
 //! drags onto the page.
 
 use std::path::{Path, PathBuf};
 
-use crate::wire::types::{ReportFailure, ReportStart};
+use crate::wire::types::{ReportFailure, ReportPage, ReportPageKind};
 
 /// The public repository's issue form (`docs/issue-page/report.yml`).
 pub const ISSUE_PAGE: &str = "https://github.com/meschoening/icmm/issues/new";
@@ -175,10 +176,20 @@ fn tail(name: &str, text: &str, keep: usize) -> Log {
 /// What the report is about, and what it holds besides the logs.
 pub struct Report<'a> {
     pub failure: Option<&'a ReportFailure>,
-    pub start: Option<&'a ReportStart>,
+    pub page: Option<&'a ReportPage>,
     pub versions: &'a str,
     pub platform: &'a str,
     pub logs: &'a [Log],
+}
+
+/// The page's section, by its kind.
+fn page_title(kind: ReportPageKind) -> &'static str {
+    match kind {
+        ReportPageKind::Start => "The start",
+        ReportPageKind::Topology => "The topology",
+        ReportPageKind::Run => "The run",
+        ReportPageKind::Page => "The page",
+    }
 }
 
 /// The report's text, before user names are written `user`.
@@ -201,10 +212,14 @@ pub fn compose(r: &Report) -> String {
     }
     section("Versions", r.versions);
     section("Platform", r.platform);
-    if let Some(s) = r.start {
-        section("The start", &s.name);
-        section("The end of its job log", &s.job_log);
-        section("Its run, as submitted", &s.run);
+    if let Some(p) = r.page {
+        section(page_title(p.kind), &p.name);
+        if let Some(log) = &p.job_log {
+            section("The end of its job log", log);
+        }
+        if let Some(run) = &p.run {
+            section("The run, as submitted", run);
+        }
     }
     for log in r.logs {
         let held = if log.lines == log.of {
@@ -264,8 +279,8 @@ pub fn what_happened(r: &Report) -> String {
             parts.push(format!("```\n{raw}\n```"));
         }
     }
-    if let Some(s) = r.start {
-        parts.push(format!("On {}.", s.name));
+    if let Some(p) = r.page {
+        parts.push(format!("On {}.", p.name));
     }
     parts.push(format!("Platform: {}.", r.platform));
     parts.join("\n\n")
@@ -532,7 +547,7 @@ mod tests {
         let logs = [tail("app.2026-11-12.log", "a\nb\nc", 2)];
         let text = compose(&Report {
             failure: Some(&f),
-            start: None,
+            page: None,
             versions: "ICMM 0.1.0 · macOS 15.1 on arm64",
             platform: "SSH to a SLURM cluster",
             logs: &logs,
@@ -556,24 +571,25 @@ mod tests {
             next: None,
             raw: None,
         };
-        let s = ReportStart {
-            name: "#214/T12 · start 37".into(),
-            job_log: "Traceback\nRuntimeError: the core returned 4\n".into(),
-            run: "{\"search_seed\": 7}".into(),
+        let s = ReportPage {
+            kind: ReportPageKind::Start,
+            name: "start 37 of #214/T12.3".into(),
+            job_log: Some("Traceback\nRuntimeError: the core returned 4\n".into()),
+            run: Some("{\"search_seed\": 7}".into()),
         };
         let text = compose(&Report {
             failure: Some(&f),
-            start: Some(&s),
+            page: Some(&s),
             versions: "v",
             platform: "This computer",
             logs: &[],
         });
         assert!(text.contains("\n== The failure\nError · exit code 1\n\n== Versions"));
-        assert!(text.contains("\n== The start\n#214/T12 · start 37\n"));
+        assert!(text.contains("\n== The start\nstart 37 of #214/T12.3\n"));
         assert!(text.contains(
             "\n== The end of its job log\nTraceback\nRuntimeError: the core returned 4\n"
         ));
-        assert!(text.contains("\n== Its run, as submitted\n{\"search_seed\": 7}\n"));
+        assert!(text.contains("\n== The run, as submitted\n{\"search_seed\": 7}\n"));
         assert!(text.contains("\n== Logs\nNone were found.\n"));
     }
 
@@ -581,7 +597,7 @@ mod tests {
     fn diagnostic_logs_report_has_no_failure_and_no_title() {
         let text = compose(&Report {
             failure: None,
-            start: None,
+            page: None,
             versions: "v",
             platform: "p",
             logs: &[],
@@ -591,11 +607,51 @@ mod tests {
     }
 
     #[test]
+    fn a_report_from_a_page_holds_the_page_and_what_it_has() {
+        let run = ReportPage {
+            kind: ReportPageKind::Run,
+            name: "#214 herg-wt-11state".into(),
+            job_log: None,
+            run: Some("{\"search_seed\": 7}".into()),
+        };
+        let r = Report {
+            failure: None,
+            page: Some(&run),
+            versions: "v",
+            platform: "This computer",
+            logs: &[],
+        };
+        let text = compose(&r);
+        assert!(!text.contains("== The failure"));
+        assert!(text.contains("\n== The run\n#214 herg-wt-11state\n"));
+        assert!(text.contains("\n== The run, as submitted\n{\"search_seed\": 7}\n"));
+        assert!(!text.contains("job log"));
+        assert_eq!(
+            what_happened(&r),
+            "On #214 herg-wt-11state.\n\nPlatform: This computer."
+        );
+        assert_eq!(title(None), "");
+
+        let other = ReportPage {
+            kind: ReportPageKind::Page,
+            name: "Datasets".into(),
+            job_log: None,
+            run: None,
+        };
+        let text = compose(&Report {
+            page: Some(&other),
+            ..r
+        });
+        assert!(text.contains("\n== The page\nDatasets\n"));
+        assert!(!text.contains("as submitted"));
+    }
+
+    #[test]
     fn the_link_fills_the_forms_fields() {
         let f = failure();
         let r = Report {
             failure: Some(&f),
-            start: None,
+            page: None,
             versions: "ICMM 0.1.0 · macOS 15.1 on arm64",
             platform: "SSH to a SLURM cluster",
             logs: &[],

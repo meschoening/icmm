@@ -675,6 +675,16 @@ MIGRATIONS: tuple[Migration, ...] = (
             WHERE id = OLD.run_id;
         END""",
     ),
+    # 25: a try whose CMA-ES overflowed (#468) ended **Finished** with its best so far. It keeps
+    # `end_reason` 'budget', which here means it finished, so an older engine on the same
+    # database reads it as the finished start it is (ADR-0020); `overflowed` is 1 for one that
+    # ended so, which the reads say as the end reason "overflow".
+    additive("ALTER TABLE start_tries ADD COLUMN overflowed INTEGER"),
+    # 26: when the scheduler first said a try's task ended, while its result may still be on its
+    # way (`result_grace_s`): from then it no longer counts running, so a start the scheduler runs
+    # in its slot never takes the count past the cap (#469). A try an older engine coordinates
+    # keeps `NULL`, counted running until it's collected, as that engine counts it.
+    additive("ALTER TABLE start_tries ADD COLUMN task_ended_at TEXT"),
 )
 """Each migration, in order. Append only: never edit a shipped one.
 

@@ -6,7 +6,7 @@ export function PointsFacts({
 }) {
   return (
     <>
-      <span className="n">{counts.points}</span> points
+      <span className="n">{counts.points}</span> {counts.points === 1 ? "point" : "points"}
       {counts.interpolated > 0 && (
         <>
           , <span className="n">{counts.interpolated}</span> interpolated

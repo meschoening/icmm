@@ -6,6 +6,7 @@ import { useRunsFollowed } from "../runs/follow";
 import { useAgentDataFollowsChanges, useAgentDataFollowsConnection } from "../setup/queries";
 import { FindTopology } from "../topology/FindTopology";
 import { isMac } from "../platform";
+import { reportHere } from "../report/fromHere";
 import { selections } from "../selection/selection";
 import { usePageChangeFocus } from "../ui/pageChangeFocus";
 import { CommandPalette, type PaletteActions } from "./CommandPalette";
@@ -77,6 +78,8 @@ export function Shell() {
     switchPlatform: (id) => void navigate({ to: "/settings", search: { connect: id } }),
     settings: () => void navigate({ to: "/settings" }),
     findTopology: () => setOpen("find"),
+    // Under the page head, on the page in view (#470).
+    report: () => reportHere.ask(),
     open: async (target) => {
       const to = routeOf(target);
       await navigate(to);

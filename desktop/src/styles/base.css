@@ -156,6 +156,16 @@ summary::-webkit-details-marker {
   line-height: 1.45;
   color: var(--ink-3);
 }
+/* `KeptHint`: its wordings share one cell, so it's as tall as the longest (#469 R04). */
+.kept {
+  display: grid;
+}
+.kept > * {
+  grid-area: 1 / 1;
+}
+.kept > .kept-room {
+  visibility: hidden;
+}
 .flabel {
   font-size: 13px;
   font-weight: 500;

@@ -57,6 +57,7 @@ import { clock } from "../ui/clock";
 import { PageHeading } from "../ui/PageHeading";
 import { PAGE_HEADING_ATTR } from "../ui/pageChangeFocus";
 import type { StateGraph, WireError } from "../wire/types.gen";
+import { ReportFromHere } from "../report/ReportFromHere";
 
 /** What the page shows, read whole: kept as of the connection's end while it's gone. */
 interface Shown {
@@ -204,6 +205,7 @@ export function ComparePage() {
         {exporting.button}
       </div>
       {exporting.outcome}
+      <ReportFromHere name="Compare" />
       <Chips
         chips={chips}
         full={picks.length >= COMPARE_HOLDS}

@@ -16,6 +16,8 @@ import {
   useSchedulerLookup,
 } from "../setup/queries";
 import type {
+  Bounds,
+  DatasetContent,
   JobDefaults,
   PlatformSettingsResult,
   RunTiming,
@@ -122,31 +124,30 @@ export interface Plan {
 }
 
 /**
- * This computer's own timing of the config, when no finished start has timed
- * this many states at this many CPUs: the config's dataset, states and box,
+ * This computer's own timing of a config, when no finished start has timed
+ * this many states at this many CPUs (`needed`): its dataset, states and box,
  * kept as long as the page lives. Not connected, a dataset that was never read
- * can't be.
+ * can't be. Submit run's, and the Config builder's Time (#471).
  */
-function useHostTiming(a: {
-  seen: Seen | undefined;
-  ready: SavedConfig | undefined;
-  job: JobDefaults | undefined;
+export function useHostTiming(a: {
+  /** No finished start can say: `needsHostTiming`. */
+  needed: boolean;
+  /** The dataset's content, once read. */
+  content: DatasetContent | undefined;
+  numStates: number | null;
+  bounds: Bounds | undefined;
   live: boolean;
-  contentFailed: boolean;
+  /** Its content couldn't be read, or it is deleted or unreadable. */
+  unreadable: boolean;
 }): HostTiming {
-  const { seen, ready, job, live } = a;
-  const numStates = ready?.config.topology.num_states ?? null;
-  const timings = seen?.timings;
-  const needsHost = needsHostTiming(timings, numStates, job);
-  const content = seen?.content;
-  const bounds = ready?.config.bounds;
+  const { needed, content, numStates, bounds } = a;
   // One object for as long as its parts are the same, so the timing is asked once.
   const input = useMemo(
     () =>
-      needsHost && content !== undefined && numStates !== null && bounds !== undefined
+      needed && content !== undefined && numStates !== null && bounds !== undefined
         ? { dataset: content, numStates, bounds }
         : undefined,
-    [needsHost, content, numStates, bounds],
+    [needed, content, numStates, bounds],
   );
   const query = useEvaluationTime(input);
   if (input !== undefined) {
@@ -155,10 +156,8 @@ function useHostTiming(a: {
     }
     return query.isError ? { kind: "failed" } : { kind: "pending" };
   }
-  if (!live) return { kind: "offline" };
-  if (a.contentFailed || ready?.dataset.deleted || ready?.dataset.unreadable) {
-    return { kind: "failed" };
-  }
+  if (!a.live) return { kind: "offline" };
+  if (a.unreadable) return { kind: "failed" };
   return { kind: "pending" };
 }
 
@@ -327,7 +326,15 @@ export function usePlan(a: {
   const cpus = job?.cpus_per_start ?? 1;
   const numStates = ready?.config.topology.num_states ?? null;
   const timings = seen?.timings;
-  const host = useHostTiming({ seen, ready, job, live, contentFailed: a.reads.contentFailed });
+  const host = useHostTiming({
+    needed: needsHostTiming(timings, numStates, job),
+    content: seen?.content,
+    numStates,
+    bounds: ready?.config.bounds,
+    live,
+    unreadable:
+      a.reads.contentFailed || !!ready?.dataset.deleted || ready?.dataset.unreadable != null,
+  });
 
   const folder = settings?.output_folder ?? "";
   const folderQ = useFolderCheck(folder);

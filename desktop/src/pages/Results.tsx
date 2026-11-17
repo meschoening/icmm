@@ -78,6 +78,7 @@ import type {
   RunsDataset,
   WireError,
 } from "../wire/types.gen";
+import { ReportFromHere } from "../report/ReportFromHere";
 
 /**
  * The newest run on the platform: Results' first dataset, where nothing else chooses one. Runs
@@ -373,6 +374,7 @@ export function ResultsPage() {
           />
         )}
       </section>
+      <ReportFromHere name="Results" />
       {exporting.outcome}
       {shows === "offline" ? (
         <ShowOnceConnected platform={platform} kind="Results">

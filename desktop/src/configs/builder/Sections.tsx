@@ -10,6 +10,7 @@ import { MarkWords } from "../../datasets/builder/Field";
 import { modifiedWords } from "../../datasets/detail/words";
 import { count } from "../../datasets/format";
 import { Chevron } from "../../settings/SshFormCard";
+import { KeptHint } from "../../ui/KeptHint";
 import { PAGE_HEADING_ATTR } from "../../ui/pageChangeFocus";
 import type { FieldMark } from "../../setup/form";
 import type { DatasetSummary, SpecificId, TopologyCounts } from "../../wire/types.gen";
@@ -29,6 +30,12 @@ import {
   type Numeric,
   type Which,
 } from "./draft";
+
+/** Sample's words after its field: drawn from the search seed when one is set (it keeps the room of both). */
+const SAMPLE_HINTS = {
+  seeded: "topologies, drawn from the search seed: the same seed draws the same ones",
+  random: "topologies, drawn at random each time you submit",
+};
 
 /** What every section is given: the fields, their checks and marks, and how to change them. */
 export interface FieldsProps {
@@ -525,7 +532,7 @@ export function Topology(p: TopologyProps) {
         </div>
         <MarkWords id={`${id}-which`} mark={p.marks.which} />
         {draft.which === "sample" && (
-          <div className="cb-sub">
+          <div className="cb-sub cb-held">
             <div className="cb-sample">
               <label className="flabel cb-sublabel" htmlFor={`${id}-sample`}>
                 Sample
@@ -549,11 +556,11 @@ export function Topology(p: TopologyProps) {
                 onChange={(e) => p.set({ sample: e.target.value })}
                 onBlur={leaving(p, "sample")}
               />
-              <span id={`${id}-sample-h`} className="hint">
-                {seeded
-                  ? "topologies, drawn from the search seed: the same seed draws the same ones"
-                  : "topologies, drawn at random each time you submit"}
-              </span>
+              <KeptHint
+                id={`${id}-sample-h`}
+                says={seeded ? SAMPLE_HINTS.seeded : SAMPLE_HINTS.random}
+                may={[SAMPLE_HINTS.seeded, SAMPLE_HINTS.random]}
+              />
             </div>
             <Issues id={`${id}-sample-i`} issues={sample} />
             <MarkWords id={`${id}-sample`} mark={p.marks.sample} />
@@ -638,7 +645,7 @@ export function Topology(p: TopologyProps) {
           </div>
         )}
         {draft.which === "all" && (which !== undefined || p.counts !== null) && (
-          <div className="cb-sub">
+          <div className="cb-sub cb-held">
             {hasError(which) ? (
               <Issues id={`${id}-all-i`} issues={which} />
             ) : (

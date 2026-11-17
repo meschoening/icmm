@@ -10,7 +10,7 @@ authors:
   - family-names: Schoening
     given-names: Max
     affiliation: Washington University in St. Louis
-version: 1.0.0-rc.1
+version: 1.0.0-rc.2
 license: BSD-3-Clause
 keywords:
   - ion channels

@@ -640,10 +640,10 @@ export function bestRowsOf(
     const pct =
       top === null || top === 0 || s.train_rmse === null ? null : (s.train_rmse / top - 1) * 100;
     const size = pct === null ? 0 : Math.abs(pct);
-    const delta =
-      isBest || pct === null
-        ? "—"
-        : `${pct < 0 ? "−" : "+"}${size.toFixed(size < 0.1 ? 2 : size < 10 ? 1 : 0)} %`;
+    const shown = size.toFixed(size < 0.1 ? 2 : size < 10 ? 1 : 0);
+    // A share that rounds to none has no sign: "0.00 %", never "−0.00 %".
+    const sign = pct === null || Number(shown) === 0 ? "" : pct < 0 ? "−" : "+";
+    const delta = isBest || pct === null ? "—" : `${sign}${shown} %`;
     return {
       rank: i + 1,
       start: s.start,

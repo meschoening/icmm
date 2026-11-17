@@ -45,13 +45,13 @@ import {
   fitOf,
   PROGRESS,
   progressOf,
-  signedMv,
   type Beside,
 } from "../runs/start/charts";
 import { FitInspector, Labels } from "../runs/start/FitInspector";
 import { StartExport } from "../runs/start/StartExport";
 import { StartMenu } from "../runs/start/StartMenu";
 import { failureOf } from "../failure";
+import { submitted, useReportFromHere } from "../report/fromHere";
 import { useReport } from "../report/useReport";
 import { commands } from "../wire/api.gen";
 import { useSave } from "../export/useSave";
@@ -127,6 +127,7 @@ import { useLanding, useLandsOn } from "../ui/landing";
 import { PageHeading } from "../ui/PageHeading";
 import { ProtocolNames } from "../ui/ProtocolNames";
 import { useOpened } from "../shell/palette/recents";
+import { ReportFromHere } from "../report/ReportFromHere";
 import type {
   Drift,
   DriftDismissal,
@@ -433,6 +434,7 @@ function Frame({
         <Title title={title} start={start} />
         <div className="sp-wait">{children}</div>
       </section>
+      <ReportFromHere name={`${title} · start ${start}`} mono />
     </div>
   );
 }
@@ -445,6 +447,7 @@ function NotHere({ name, platform }: { name: string; platform: Platform }) {
       <p className="facts">
         {name} isn’t on {inSentence(platform)}: its run is gone, or doesn’t hold it.
       </p>
+      <ReportFromHere name="Start not found" />
       <p>
         <Link to="/runs" className="link">
           Go to Runs
@@ -549,46 +552,63 @@ function Shown({
   const menuButton = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
   const logs = { id: String(run.id), topology: segment, start: String(n) };
+  const name = `start ${n} of ${title}`;
+  // What a report from here holds: the start, the end of its job log, read now (the page's read
+  // may not have come yet), and its run.
+  const readStart = async () => ({
+    kind: "start" as const,
+    name,
+    job_log: await commands
+      .read_job_log({
+        run: run.id,
+        graph: startRef.graph,
+        open_state: startRef.openState,
+        start: n,
+        try_number: null,
+        after: null,
+        before: null,
+      })
+      .then(
+        (page) => (page.found ? page.text : "Its job log wasn’t found."),
+        (e: unknown) => reads.jobLog ?? `ICMM couldn’t read its job log: ${failureOf(e).message}`,
+      ),
+    run: submitted(run),
+  });
   // An error's report carries the end of its job log and its run (#126). Its
   // words gain the error's name once the job log is read: the same report.
   const report = useReport({
     key: `${run.id}/${segment}/${n}/${start.try_number}`,
     failure: why?.report === true ? { what: why.what, next: why.next, raw: null } : undefined,
-    start: {
-      name: `${title} · start ${n}`,
-      read: async () => ({
-        name: `${title} · start ${n}`,
-        // Its last page, read now: the page's read may not have come yet.
-        job_log: await commands
-          .read_job_log({
-            run: run.id,
-            graph: startRef.graph,
-            open_state: startRef.openState,
-            start: n,
-            try_number: null,
-            after: null,
-            before: null,
-          })
-          .then(
-            (page) => (page.found ? page.text : "Its job log wasn’t found."),
-            (e: unknown) =>
-              reads.jobLog ?? `ICMM couldn’t read its job log: ${failureOf(e).message}`,
-          ),
-        run: JSON.stringify(
-          {
-            run: run.id,
-            num_states: run.num_states,
-            settings: run.settings,
-            search_seed: run.search_seed,
-            engine: run.engine,
-          },
-          null,
-          2,
-        ),
-      }),
+    page: {
+      kind: "start",
+      row: (
+        <>
+          <span className="mono">{title}</span> · start <span className="mono">{n}</span>, with its
+          run’s config
+        </>
+      ),
+      read: readStart,
     },
     look: "boxed",
   });
+  // Report a problem… from its ··· or ⌘K (#470), under the page head; on a failed start, its
+  // failure's own panel.
+  const fromHere = useReport({
+    key: `${run.id}/${segment}/${n}`,
+    look: "page",
+    page: {
+      kind: "start",
+      row: (
+        <>
+          start <span className="mono">{n}</span> of <span className="mono">{title}</span>, with its
+          run’s config and the end of its job log
+        </>
+      ),
+      read: readStart,
+    },
+  });
+  const reportStart = why?.report === true ? report.start : fromHere.start;
+  useReportFromHere(["about ", { mono: title }, " · start ", { mono: String(n) }], reportStart);
   const logBlocked =
     asOf !== undefined
       ? `Connect to ${inSentence(platform)} to open its log.`
@@ -696,11 +716,13 @@ function Shown({
                     ? undefined
                     : () => void navigator.clipboard?.writeText(jobId).catch(() => {})
                 }
+                onReport={reportStart}
               />
             </div>
           </div>
           <Facts run={run} edges={reads.graph?.edges.length} />
         </div>
+        {fromHere.panel}
         <dl className="sp-tiles">
           {tilesOf(phase, c, finished, segment, standing).map((tile) => (
             <div key={tile.label} className="sp-tile">
@@ -1804,10 +1826,9 @@ function ParametersSection({
               </div>
               <div role="cell" className="sp-ab">
                 {[rows.a, rows.b].map((p) => (
-                  <div key={p.name} className={p === rows.a ? "sp-abrow sp-ahrow" : "sp-abrow"}>
+                  <div key={p.name} className="sp-abrow">
                     <span className="pn">{p.name}</span>
                     {strip(p, shown.ranges[p.index], true)}
-                    {p === rows.a && <span className="sp-half">half-way at {signedMv(-a)} mV</span>}
                   </div>
                 ))}
               </div>

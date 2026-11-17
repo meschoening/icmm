@@ -44,6 +44,7 @@ import { whole } from "../configs/words";
 import { count } from "../datasets/format";
 import { useDatasets } from "../datasets/queries";
 import { ConnectForm } from "./ConnectForm";
+import { ReportFromHere } from "../report/ReportFromHere";
 
 const STEP_1 = "first-launch-1";
 const STEP_2 = "first-launch-2";
@@ -79,6 +80,7 @@ export function FirstLaunch() {
       <div className="page-head">
         <PageHeading>Set up ICMM</PageHeading>
       </div>
+      <ReportFromHere name="Set up ICMM" />
       <ol className="fl-steps" aria-label="Setup steps">
         <li className="fl-one" aria-labelledby={STEP_1} aria-current={done ? undefined : "step"}>
           <div className="fl-one-head">

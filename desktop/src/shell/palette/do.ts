@@ -9,12 +9,15 @@
  *   and typed, any dataset's are found by their own words when the query names
  *   it ("export herg-wt"), best name match first.
  * - Always: New dataset, Import dataset…, Switch platform to … for each other
- *   saved platform, and Settings (`⌘,`); Find custom topology… once typed.
+ *   saved platform, and Settings (`⌘,`); Find custom topology… once typed, and
+ *   Report a problem… on the page in view (#470), its gray words naming it.
  * - Compare the best of the top 3 matched runs, in Runs' order, when 2 or more
  *   have a best start; Compare the selection (N) while it isn't empty, its
  *   gray words naming its first two starts (KF09).
  * - Typed, a row matches when its label holds every word, never its gray
- *   words; a dataset's rows come with it when it's matched.
+ *   words; a dataset's rows come with it when it's matched. One exception:
+ *   Report a problem… is found by help, bug, issue, crash, error and feedback
+ *   too, the words people try for it (#470).
  * - Rows that need the platform are gray while it isn't connected; New
  *   dataset doesn't (KF13), and Connect to the platform leads (KF14).
  */
@@ -64,6 +67,8 @@ export interface DoActions {
   switchPlatform: (id: string) => void;
   settings: () => void;
   findTopology: () => void;
+  /** Opens Report a problem…'s panel on the page in view (#470). */
+  report: () => void;
 }
 
 /** A label's or gray words' parts: plain words, and names or numbers in mono. */
@@ -81,7 +86,8 @@ export type DoIcon =
   | "compare"
   | "switch"
   | "settings"
-  | "topology";
+  | "topology"
+  | "report";
 
 export interface Command {
   key: string;
@@ -93,6 +99,8 @@ export interface Command {
   /** Its shortcut, shown at the right while another row is chosen. */
   kbd?: string;
   icon: DoIcon;
+  /** Words it's found by besides its label's (Report a problem…'s alone). */
+  also?: string[];
   /** It needs the platform: gray while it isn't connected. */
   platform: boolean;
   /**
@@ -124,10 +132,12 @@ export interface DoContext {
   active: { id: string; name: string } | undefined;
   /** The Active platform while it isn't connected and Connect can start it (KF14). */
   unconnected?: { id: string; name: string };
+  /** The page in view's gray words for Report a problem…; none while no page offers it. */
+  report?: Words;
 }
 
 const holds = (c: Command, words: string[]) => {
-  const text = wordsText(c.label).toLowerCase();
+  const text = [wordsText(c.label), ...(c.also ?? [])].join(" ").toLowerCase();
   return words.every((w) => text.includes(w));
 };
 
@@ -333,6 +343,17 @@ export function doCommands(x: DoContext): Command[] {
       platform: false,
       run: (a) => a.findTopology(),
     });
+    if (x.report !== undefined) {
+      always.push({
+        key: "report",
+        label: ["Report a problem…"],
+        side: x.report,
+        icon: "report",
+        also: ["help", "bug", "issue", "crash", "error", "feedback"],
+        platform: false,
+        run: (a) => a.report(),
+      });
+    }
   }
   out.push(...(typed ? always.filter((c) => holds(c, words)) : always));
   return out;

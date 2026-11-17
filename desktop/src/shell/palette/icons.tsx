@@ -80,3 +80,13 @@ export function TopologyIcon() {
     </>,
   );
 }
+
+/** A flag: Report a problem… (LaptopCommandPalette's `rep`, #470). */
+export function ReportIcon() {
+  return svg(
+    <>
+      {line("M3.5 14.5V2")}
+      {line("M3.5 2.5h8.5l-2 3 2 3H3.5")}
+    </>,
+  );
+}

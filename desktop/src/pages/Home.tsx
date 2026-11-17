@@ -40,6 +40,7 @@ import { clock, dateLine } from "../ui/clock";
 import { ReadingFacts } from "../ui/HeadFacts";
 import { PageHeading } from "../ui/PageHeading";
 import type { SavedPlatform } from "../wire/types.gen";
+import { ReportFromHere } from "../report/ReportFromHere";
 
 /** "Wed, Aug 12 · 10:44 AM", kept to the minute. */
 function Today() {
@@ -266,6 +267,7 @@ function AfterFirstRun() {
           </div>
         )}
       </div>
+      <ReportFromHere name="Home" />
       <HomeKeptContext.Provider value={keptView}>
         {/* One element either way, so the body doesn't mount again when the connection goes:
             not connected with its reads kept, the card is Live's first item and Best of ended

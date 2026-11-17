@@ -85,7 +85,11 @@ export const stopped = (phase: Phase) =>
 /** Its starts without a result, which a Resume fits. */
 export const unfinishedOf = (r: Run) => Math.max(0, r.progress.starts - r.progress.starts_finished);
 
-/** Nothing of it has fit or failed: no topology sent out has a start that ended. */
+/**
+ * Whether nothing of the run has fit yet: no start ended, and none has run,
+ * though its first topologies may have gone out to wait at the scheduler
+ * (#469 R06: a queued run isn't "1 fitting").
+ */
 function nothingYet(r: Run): boolean {
   const p = r.progress;
   return (
@@ -93,7 +97,7 @@ function nothingYet(r: Run): boolean {
     p.starts_failed === 0 &&
     p.topologies_complete === 0 &&
     p.topologies_failed === 0 &&
-    p.topologies_fitting === 0
+    (p.topologies_fitting === 0 || (r.first_running_at === null && p.starts_running === 0))
   );
 }
 

@@ -61,6 +61,7 @@ import type {
 } from "../wire/types.gen";
 import { useShownPath } from "../ui/paths";
 import { Whole } from "../ui/Whole";
+import { ReportFromHere } from "../report/ReportFromHere";
 
 type Platform = Pick<SavedPlatform, "type" | "name">;
 
@@ -209,6 +210,7 @@ export function RunsPage() {
             New run
           </Link>
         </div>
+        <ReportFromHere name="Runs" />
         {shown !== undefined && !empty && (
           <div className="runs-filters">
             <label className="runs-filter">

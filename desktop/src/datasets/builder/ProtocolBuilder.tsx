@@ -76,6 +76,7 @@ import {
   type PresetName,
 } from "./model";
 import { StepRow } from "./StepRow";
+import { ReportFromHere } from "../../report/ReportFromHere";
 
 /** The builder on a saved dataset (#146): what the wizard's builder doesn't have. */
 export interface SavedContext {
@@ -422,6 +423,9 @@ export function ProtocolBuilder(p: ProtocolBuilderProps) {
           </div>
         </div>
       </section>
+      <ReportFromHere
+        name={`${sv?.editing != null ? "Edit protocol" : "New protocol"} in ${p.dataset}`}
+      />
       {sv?.note}
 
       <section aria-labelledby={fid("tpl")} className="b-start">
@@ -573,7 +577,14 @@ export function ProtocolBuilder(p: ProtocolBuilderProps) {
                     onChange={(holding) => edit({ holding })}
                   />
                   <span className="unit">mV</span>
-                  {defaults.includes("holding") && <span className="def">default</span>}
+                  {defaults.includes("holding") ? (
+                    <span className="def">default</span>
+                  ) : (
+                    // Its room stays once it goes, so the hint beside it keeps its lines (#469 R04).
+                    marks.holding === undefined && (
+                      <span className="def def-room" aria-hidden="true" />
+                    )
+                  )}
                   <MarkWords id={fid("holding")} mark={marks.holding} />
                   <span className="hint">
                     v0 · the cell rests here before step 1 and between sweeps
@@ -604,7 +615,8 @@ export function ProtocolBuilder(p: ProtocolBuilderProps) {
                           Its errors are in {errorUnit}
                           {points.length > 0 && (
                             <>
-                              , over <span className="mono">{points.length}</span> points
+                              , over <span className="mono">{points.length}</span>{" "}
+                              {points.length === 1 ? "point" : "points"}
                             </>
                           )}
                           .

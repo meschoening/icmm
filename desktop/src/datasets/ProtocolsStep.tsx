@@ -16,6 +16,7 @@
  */
 import { useId } from "react";
 import { flushSync } from "react-dom";
+import { KeptHint } from "../ui/KeptHint";
 import type { Working } from "../ui/working";
 import type { DatasetContent, Issue, Step } from "../wire/types.gen";
 import { measureDefaults } from "./builder/model";
@@ -360,8 +361,17 @@ function Protocol({
   const fieldId = (key: string) => `${idp}-${index}-${key}`;
   const issueId = (key: string) => `${fieldId(key)}-issue`;
 
-  /** A number field with its unit and "default" while the template gave it; its issue shows elsewhere. */
-  const number = (field: Field, label: string, unit: string | null, width = "vin") => {
+  /**
+   * A number field with its unit and "default" while the template gave it; its issue shows
+   * elsewhere. In the step table its tag's room stays once it goes, so no column moves (#469 R04).
+   */
+  const number = (
+    field: Field,
+    label: string,
+    unit: string | null,
+    width = "vin",
+    keepRoom = false,
+  ) => {
     const issue = issues.get(field.key);
     return (
       <span className="ln">
@@ -377,7 +387,11 @@ function Protocol({
           onChange={(e) => edit(field.key, e.target.value)}
         />
         {unit !== null && <span className="unit">{unit}</span>}
-        {field.default && <span className="def">default</span>}
+        {field.default ? (
+          <span className="def">default</span>
+        ) : (
+          keepRoom && <span className="def def-room" aria-hidden="true" />
+        )}
       </span>
     );
   };
@@ -445,7 +459,8 @@ function Protocol({
         <span className="ps">
           {templateLabel(f.template, f.steps.length, formDirection(f))} · from{" "}
           <span className="mono">{f.sheet}</span> ·{" "}
-          <span className="mono">{f.measured.length}</span> points
+          <span className="mono">{f.measured.length}</span>{" "}
+          {f.measured.length === 1 ? "point" : "points"}
           {added > 0 && (
             <>
               {" "}
@@ -540,7 +555,7 @@ function Protocol({
             Hold
           </span>
           <span className="c" role="cell">
-            {number(f.holding, "Holding potential", "mV")}
+            {number(f.holding, "Holding potential", "mV", "vin", true)}
           </span>
           <span className="c k" role="cell">
             between sweeps
@@ -553,12 +568,14 @@ function Protocol({
               {j + 1}
             </span>
             <span className="c" role="cell">
-              {s.voltage === null ? swept("mV") : number(s.voltage, `Step ${j + 1} voltage`, "mV")}
+              {s.voltage === null
+                ? swept("mV")
+                : number(s.voltage, `Step ${j + 1} voltage`, "mV", "vin", true)}
             </span>
             <span className="c" role="cell">
               {s.duration === null
                 ? swept("ms")
-                : number(s.duration, `Step ${j + 1} duration`, "ms")}
+                : number(s.duration, `Step ${j + 1} duration`, "ms", "vin", true)}
             </span>
             <span className="c" role="cell">
               {s.measure !== null && (
@@ -611,9 +628,17 @@ function Protocol({
                 />
                 <span className="trk" aria-hidden="true" />
               </label>
-              <span className="hint">
-                {normalizeHint(measured, f.normalized, f.template, formDirection(f) === "rise")}
-              </span>
+              <KeptHint
+                says={normalizeHint(
+                  measured,
+                  f.normalized,
+                  f.template,
+                  formDirection(f) === "rise",
+                )}
+                may={[true, false].map((on) =>
+                  normalizeHint(measured, on, f.template, formDirection(f) === "rise"),
+                )}
+              />
             </>
           )}
         </span>
@@ -657,7 +682,8 @@ function Protocol({
           {input(f.weight, "Weight", null, "win")}
           <span className="hint">
             0.5 halves this protocol’s part of the cost. Its errors are in {errorUnit(f)}, over{" "}
-            <span className="mono">{f.points.length}</span> points
+            <span className="mono">{f.points.length}</span>{" "}
+            {f.points.length === 1 ? "point" : "points"}
             {others.length > 0 && (
               <>
                 ;{" "}

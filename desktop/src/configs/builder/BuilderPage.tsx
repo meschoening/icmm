@@ -41,6 +41,7 @@ import { useBlocker } from "../../ui/blocker";
 import { clock } from "../../ui/clock";
 import { ReadingFacts } from "../../ui/HeadFacts";
 import { PageHeading } from "../../ui/PageHeading";
+import { ReportFromHere } from "../../report/ReportFromHere";
 import type { Working } from "../../ui/working";
 import { BesideButton, WorkingButton } from "../../ui/WorkingButton";
 import { commands } from "../../wire/api.gen";
@@ -59,7 +60,8 @@ import { GetNewest } from "../../ui/GetNewest";
 import { useConfig, useConfigCheck, useConfigs } from "../queries";
 import { againName, emptyIdsWords, STATES_WORDS } from "../words";
 import { useConfigWrite } from "../write";
-import { Data, Work } from "./Aside";
+import { Data, MAX_RUN_STARTS, Time, Work } from "./Aside";
+import { useBuilderTime } from "./time";
 import {
   changedFields,
   draftOf,
@@ -392,6 +394,7 @@ function Frame({
         </div>
         {waits !== undefined && <WaitingActs why={waits.why} back={back} />}
       </section>
+      <ReportFromHere name={crumb ?? title} mono={mono && crumb !== undefined} />
       {children}
     </div>
   );
@@ -872,6 +875,41 @@ function Builder({
     drawingsLimited ? null : drawingIds,
   );
 
+  // Time (#471): what it waits for, else the run's time on the platform, as Submit run says it.
+  const evaluations = counted ? (answered?.check.work.evaluations_per_start ?? null) : null;
+  const needs_ = [
+    ...(draft.dataset === "" || gone !== undefined ? ["a dataset"] : []),
+    ...(draft.states.trim() === "" || byField.get("states")?.some((i) => i.severity === "error")
+      ? ["a number of states"]
+      : []),
+  ];
+  const timed = counted ? answered?.check.config : undefined;
+  const time = useBuilderTime({
+    need: needs_.length === 0 ? undefined : needs_.join(" and "),
+    // The check for these fields' dataset and states: its box is the one that's timed.
+    checked:
+      timed !== undefined &&
+      timed.dataset_id === draft.dataset &&
+      timed.topology.num_states !== null &&
+      timed.topology.num_states === wire.config.topology.num_states
+        ? {
+            datasetId: timed.dataset_id,
+            numStates: timed.topology.num_states,
+            bounds: timed.bounds,
+          }
+        : undefined,
+    work:
+      work?.starts != null && work.topologies != null && check !== undefined
+        ? {
+            starts: work.starts,
+            topologies: work.topologies,
+            startsPerTopology: check.config.search.starts_per_topology,
+          }
+        : undefined,
+    evaluations,
+    uncounted: noIds ? "ids" : (work?.starts ?? 0) > MAX_RUN_STARTS ? "over" : undefined,
+  });
+
   return (
     <div className="page cb-page" data-config={base?.id} data-dataset={draft.dataset}>
       <section className="cb-head">
@@ -960,6 +998,7 @@ function Builder({
           </span>
         </div>
       </section>
+      <ReportFromHere name={editing === null ? "New config" : name} mono={editing !== null} />
       {source !== undefined && <FromNote from={source} dataset={first.dataset} />}
       {deleted ? (
         // No button of its own: Cancel goes to Configs.
@@ -1033,7 +1072,6 @@ function Builder({
         <aside aria-label="Summary" className="cb-aside">
           <Work
             work={work}
-            evaluations={counted ? (answered?.check.work.evaluations_per_start ?? null) : null}
             perTopology={check?.config.search.starts_per_topology ?? null}
             uncounted={
               draft.states.trim() === ""
@@ -1045,6 +1083,7 @@ function Builder({
                     : "Counted once the checks are fixed."
             }
           />
+          <Time time={time} evaluations={evaluations} />
           <Data id={draft.dataset} name={datasetName(draft.dataset)} live={gone === undefined} />
         </aside>
       </div>

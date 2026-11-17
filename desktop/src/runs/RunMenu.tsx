@@ -1,7 +1,7 @@
 /**
  * A run's ··· menu (LaptopRunDetail's `menu`): Copy run path and Export its
- * config… (#344), then Cancel run… while it's queued, held or running, or
- * Delete run… once it has ended. Export its config… is gray, with why, for a
+ * config… (#344), then Report a problem… (#470), then Cancel run… while it's
+ * queued, held or running, or Delete run… once it has ended. Export its config… is gray, with why, for a
  * run a newer ICMM submitted. Not connected, or while the run is canceling or resuming, the write
  * is gray and the menu says why. It opens under its button with focus on
  * the first item; the arrow keys, Home and End move between items, Escape
@@ -18,6 +18,7 @@ export function RunMenu({
   onExport,
   exportWhy,
   onWrite,
+  onReport,
   buttonRef: button,
 }: {
   id: number;
@@ -31,6 +32,8 @@ export function RunMenu({
   /** Why Export its config… is gray, if it is. */
   exportWhy: string | undefined;
   onWrite: () => void;
+  /** Report a problem…: its panel opens once the menu has closed, focus back on ···. */
+  onReport: () => void;
   /** The ··· button, which focus goes back to once a confirm closes. */
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }) {
@@ -122,6 +125,18 @@ export function RunMenu({
               {exportWhy}
             </span>
           )}
+          <span className="cf-menu-rule" role="separator" />
+          <button
+            type="button"
+            role="menuitem"
+            tabIndex={-1}
+            onClick={() => {
+              close(true);
+              onReport();
+            }}
+          >
+            Report a problem…
+          </button>
           <span className="cf-menu-rule" role="separator" />
           <button
             type="button"

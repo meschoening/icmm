@@ -8,10 +8,10 @@ import { whole } from "../../configs/words";
 import { durationWords } from "../../submit/estimate";
 import { clock } from "../../ui/clock";
 import type { CoordinatingJob, RunFailure, StartTry } from "../../wire/types.gen";
-import { logHead, logLine } from "../start/words";
+import { logTable, logText, OVERFLOWED } from "../start/words";
 import { ordinal } from "../topology/words";
 
-export { logHead, logLine };
+export { logTable, logText };
 
 const at = (iso: string | null) => (iso === null ? NaN : Date.parse(iso));
 
@@ -97,6 +97,8 @@ export function tryEnd(
       return `start ${start} was canceled${when}${gen}`;
     case "budget":
       return `start ${start} finished${when}${gen}`;
+    case "overflow":
+      return `start ${start} finished${when}${gen}: ${OVERFLOWED}`;
   }
   // Stopped before it wrote its result: how isn't known.
   return `start ${start} ended${when}${gen}`;

@@ -7,7 +7,8 @@
  * forgets it. The evaluation's timing is this computer's own, no agent's, so
  * it isn't under the agent's key and a disconnect leaves it.
  */
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { datasetKey } from "../datasets/detail/read";
 import { agentKey, canAsk, platformOf } from "../setup/queries";
 import { useConnection } from "../shell/connection";
@@ -29,18 +30,47 @@ export function useRunTimings(enabled = true) {
 
 /**
  * The user's jobs on the cluster, while `enabled` (SLURM's): one `squeue` read by
- * the agent when the page opens. No change in the runs database says another job
- * started, so a later open reads it again once the answer is half a minute old;
- * nothing reads it on a timer.
+ * the agent when the page opens, and again whenever the runs in flight start or
+ * end jobs, as the change feed reads them again: their starts running, queued or
+ * held, or their state (a coordinating job), so the count beside their starts
+ * keeps up with them (#469 R06). Nothing in the runs database says another job of
+ * the user's started, so those count from the latest read; nothing reads on a timer.
  */
 export function useUserJobs(enabled: boolean) {
   const c = useConnection();
+  const client = useQueryClient();
+  const platform = platformOf(c);
+  const flight = useInFlightRuns(enabled).data;
+  const jobs = flight === undefined ? undefined : jobsOfRuns(flight);
+  const seen = useRef(jobs);
+  useEffect(() => {
+    if (jobs === undefined) return;
+    const before = seen.current;
+    seen.current = jobs;
+    if (before !== undefined && before !== jobs) {
+      const queryKey = agentKey(platform, "user_jobs");
+      // A read under way began before this change: its reply is older, so drop it and read
+      // again. Invalidating alone keeps a first read, which has no data to cancel back to.
+      void client
+        .cancelQueries({ queryKey, exact: true })
+        .then(() => client.invalidateQueries({ queryKey, exact: true }));
+    }
+  }, [jobs, client, platform]);
   return useQuery({
-    queryKey: agentKey(platformOf(c), "user_jobs"),
+    queryKey: agentKey(platform, "user_jobs"),
     queryFn: commands.user_jobs,
     enabled: enabled && canAsk(c),
     staleTime: 30_000,
   });
+}
+
+/** What of the runs in flight holds jobs on the cluster, as one string to compare. */
+function jobsOfRuns(runs: RunSummary[]): string {
+  return runs
+    .map(({ id, state, progress: p }) =>
+      [id, state, p.starts_running, p.starts_queued, p.starts_held].join(" "),
+    )
+    .join(",");
 }
 
 /**

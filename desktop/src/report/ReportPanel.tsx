@@ -1,4 +1,7 @@
-/** Report a problem…'s panel (#126): what the report holds and leaves out, and that the page is public. */
+/**
+ * Report a problem…'s panel (#126): what the report holds and leaves out, and that the page is
+ * public. From the page's ··· or ⌘K (#470), with no failure, it's headed for the page.
+ */
 import { useQuery } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { failureOf } from "../failure";
@@ -6,7 +9,7 @@ import { useWorking } from "../ui/working";
 import { BesideButton, WorkingButton } from "../ui/WorkingButton";
 import { commands } from "../wire/api.gen";
 import type { SavedReport } from "../wire/types.gen";
-import type { ReportAbout } from "./useReport";
+import { PAGE_TERM, type ReportAbout } from "./useReport";
 
 /** `2026-11-12-0914`, on this computer's clock: the report's file name ends with it. */
 function stamp(now: Date): string {
@@ -42,32 +45,50 @@ export function ReportPanel({
         commands.save_report({
           stamp: stamp(new Date()),
           failure: about.failure ?? null,
-          start: about.start === undefined ? null : await about.start.read(),
+          page: about.page === undefined ? null : await about.page.read(),
         }),
       )
       .then(onSaved, (e: unknown) => setFailed(failureOf(e).message));
   };
   const failure = about.failure;
+  const page = about.page;
+  // From the page, with no failure: a box of its own under the page head, so a level-2 heading.
+  const fromPage = about.look === "page";
+  const Heading = fromPage ? "h2" : "h4";
   return (
     <div
-      className={about.look === undefined ? "rep" : `rep ${about.look}`}
+      // `rep-page`, since `.page` is the page's own frame.
+      className={
+        about.look === undefined
+          ? "rep"
+          : about.look === "page"
+            ? "rep rep-page"
+            : `rep ${about.look}`
+      }
       role="region"
       aria-labelledby={`${id}-h`}
     >
       <div className="rep-say">
-        <h4 id={`${id}-h`} ref={heading} tabIndex={-1}>
-          Report this on ICMM’s issue page
-        </h4>
-        <p>
-          ICMM saves a report in Downloads and opens its issue page on GitHub, filled in. The page
-          is public, and nothing is posted until you submit it there.
-        </p>
+        <Heading id={`${id}-h`} ref={heading} tabIndex={-1}>
+          {fromPage ? "Report a problem on ICMM’s issue page" : "Report this on ICMM’s issue page"}
+        </Heading>
+        {fromPage ? (
+          <p>
+            ICMM saves a report in Downloads and opens its issue page on GitHub, filled in. Say
+            there what went wrong; the page is public, and nothing is posted until you submit it.
+          </p>
+        ) : (
+          <p>
+            ICMM saves a report in Downloads and opens its issue page on GitHub, filled in. The page
+            is public, and nothing is posted until you submit it there.
+          </p>
+        )}
         <dl className="kv">
           {failure !== undefined && (
             <>
               <dt>The failure</dt>
               <dd>
-                {about.start !== undefined
+                {page?.kind === "start"
                   ? "This error and the end of its job log"
                   : failure.raw !== null
                     ? "This sentence and its raw line"
@@ -75,10 +96,10 @@ export function ReportPanel({
               </dd>
             </>
           )}
-          {about.start !== undefined && (
+          {page !== undefined && (
             <>
-              <dt>The start</dt>
-              <dd>{about.start.name}, with its run’s config</dd>
+              <dt>{PAGE_TERM[page.kind]}</dt>
+              <dd>{page.row}</dd>
             </>
           )}
           <dt>Versions</dt>

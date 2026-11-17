@@ -82,6 +82,7 @@ import {
   sweepWords,
   templateWords,
 } from "./words";
+import { ReportFromHere } from "../../report/ReportFromHere";
 
 type Platform = Pick<SavedPlatform, "type" | "name">;
 
@@ -260,6 +261,7 @@ function Frame({
         </div>
         {facts !== undefined && <p className="facts ds-facts">{facts}</p>}
       </section>
+      <ReportFromHere name={name ?? "Dataset"} mono={name !== undefined} />
       {children}
     </div>
   );
@@ -311,6 +313,7 @@ function NotHere({ platform }: { platform: Platform }) {
     <div className="page">
       <PageHeading>Dataset not found</PageHeading>
       <p className="facts">This dataset isn’t on {inSentence(platform)} any more.</p>
+      <ReportFromHere name="Dataset not found" />
       <p>
         <Link to="/datasets" className="link">
           Go to Datasets

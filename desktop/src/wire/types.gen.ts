@@ -56,7 +56,7 @@ export type DatasetFileProblem = "not_dataset" | "damaged" | "invalid" | "newer"
  */
 export type Template =
   "gv_activation" | "steady_state_inactivation" | "recovery" | "decay_time" | "time_to_peak" | "custom";
-export type EndReason = "budget" | "canceled" | "time_limit";
+export type EndReason = "budget" | "overflow" | "canceled" | "time_limit";
 /**
  * A kind of file Export saves, which the save dialog offers by its extension.
  */
@@ -2307,6 +2307,28 @@ export interface ReportFailure {
   raw: string | null;
 }
 /**
+ * The page a report is from (#470): a start, a topology, a run, or another page by its
+ * name.
+ */
+export interface ReportPage {
+  kind: "start" | "topology" | "run" | "page";
+  /**
+   * `start 23 of #214/T12.3`, `#214/T12.3`, `#214 herg-wt-11state`, or another page's name:
+   * `Datasets`.
+   */
+  name: string;
+  /**
+   * A start's: the end of its latest try's job log, as the log view reads it; `null` for any
+   * other page.
+   */
+  job_log: string | null;
+  /**
+   * A start's, a topology's or a run's: its run as it was submitted, as JSON: its config's
+   * settings, search seed and engine; `null` for another page.
+   */
+  run: string | null;
+}
+/**
  * What a report holds, as Report a problem…'s panel lists it before it's saved (#126).
  */
 export interface ReportPreview {
@@ -2324,23 +2346,6 @@ export interface ReportPreview {
    * The lines of the newest app and agent logs, which the report holds.
    */
   log_lines: number;
-}
-/**
- * A failed start's part of its report: where it is, its job log and its run.
- */
-export interface ReportStart {
-  /**
-   * `#214/T12 · start 37`.
-   */
-  name: string;
-  /**
-   * The end of its latest try's job log, as the log view reads it.
-   */
-  job_log: string;
-  /**
-   * The run as it was submitted, as JSON: its config's settings, search seed and engine.
-   */
-  run: string;
 }
 export interface ResetParams {
   /**
@@ -3025,13 +3030,15 @@ export interface SaveReportParams {
    */
   stamp: string;
   /**
-   * `null` for a report from Settings' Diagnostic logs, which is about no one failure.
+   * `null` for a report about no one failure: from Settings' Diagnostic logs, or from a
+   * page's ··· or ⌘K.
    */
   failure: ReportFailure | null;
   /**
-   * A failed start's report adds it; `null` otherwise.
+   * The page it's from: a failed start's, or the one Report a problem… opened on from its ···
+   * or ⌘K; `null` for a failure elsewhere and for Settings' Diagnostic logs.
    */
-  start: ReportStart | null;
+  page: ReportPage | null;
 }
 export interface SavedAsNewDataset {
   /**

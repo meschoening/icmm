@@ -33,6 +33,7 @@ import { useConnection } from "../shell/connection";
 import { ListEmpty, ReadingFacts } from "../ui/HeadFacts";
 import { PageHeading } from "../ui/PageHeading";
 import type { DatasetSummary, RunsDataset, SavedPlatform, WireError } from "../wire/types.gen";
+import { ReportFromHere } from "../report/ReportFromHere";
 
 export function DatasetsPage() {
   const c = useConnection();
@@ -102,6 +103,7 @@ export function DatasetsPage() {
           </Link>
         </div>
       </section>
+      <ReportFromHere name="Datasets" />
       {importer.box}
       {imported !== undefined && !importer.open && (
         <p className="ds-imported" role="status">

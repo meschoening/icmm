@@ -22,6 +22,7 @@ import { rmse } from "../runs/words";
 import { isMac } from "../platform";
 import { useSelection } from "../selection/selection";
 import { usePlatforms } from "../settings/commands";
+import { reportHere } from "../report/fromHere";
 import { failureBox, inSentence } from "../setup/form";
 import { clock } from "../ui/clock";
 import { heardAtOf, useConnection } from "./connection";
@@ -42,6 +43,7 @@ import {
   ImportIcon,
   PlusIcon,
   ProtocolIcon,
+  ReportIcon,
   SettingsIcon,
   SwitchIcon,
   TopologyIcon,
@@ -358,6 +360,7 @@ export function CommandPalette({
             connection.status === "not_connected" || connection.status === "connecting"
               ? { id: connection.platformId, name: platform?.name ?? connection.platform }
               : undefined,
+          report: reportHere.side(),
         });
   if (dos.length > 0) {
     matches += typed ? dos.length : 0;
@@ -953,6 +956,7 @@ const DO_ICON: Record<DoIcon, ReactNode> = {
   switch: <SwitchIcon />,
   settings: <SettingsIcon />,
   topology: <TopologyIcon />,
+  report: <ReportIcon />,
 };
 
 /** A chevron: "N more" opens the rest of its group. */

@@ -93,6 +93,8 @@ export interface SheetRead {
   matched: boolean;
   /** Its name is a rise time's ("rise", "trise", "10-90"): its window starts at 10 → 90 %. */
   rise: boolean;
+  /** Its name is a half-decay's ("tauD50", "half"): its window starts at 100 → 50 % (#469). */
+  half: boolean;
   /** Each role's column (an index into `columns`), by name. */
   roles: Partial<Record<Role, number>>;
   /** The voltages its holding and test pulse columns give. */
@@ -156,6 +158,7 @@ export function readSheet(sheet: WorkbookSheet): SheetRead {
     template,
     matched,
     rise: named.rise,
+    half: named.half,
     roles,
     values,
     largestX,
@@ -172,6 +175,7 @@ function skipped(name: string): SheetRead {
     template: null,
     matched: false,
     rise: false,
+    half: false,
     roles: {},
     values: {},
     largestX: null,
@@ -201,18 +205,29 @@ function letter(c: number): string {
  * words more. A name for a rise is a decay time's whose fractions run up; one
  * for an activation τ ("tau" and an "act" that isn't "inact" or "deact") only
  * suggests it, since a τ fitted to a rising current isn't a decay time (#166).
+ * A name with "half" or "d50" in it ("t_half", "tauD50"), or a decay's with a
+ * 50 ("Decay_50"), is a half-decay's, 100 → 50 %, whichever template it's
+ * given (#469).
  */
 function byName(name: string): {
   template: TemplateName | null;
   rise: boolean;
+  half: boolean;
   activationTau: boolean;
 } {
   const n = name.toLowerCase().replace(/[^a-z0-9]/g, "");
-  const as = (template: TemplateName | null) => ({ template, rise: false, activationTau: false });
+  const named = /tau|decay/.test(n);
+  const half = /half|d50/.test(n) || (named && /(^|\D)50(\D|$)/.test(n));
+  const as = (template: TemplateName | null) => ({
+    template,
+    rise: false,
+    half,
+    activationTau: false,
+  });
   const activation = /act/.test(n.replace(/inact|deact/g, ""));
   if (/tau/.test(n) && activation) return { ...as("decay_time"), activationTau: true };
-  if (/rise|1090/.test(n)) return { ...as("decay_time"), rise: true };
-  if (/tau|decay/.test(n)) return as("decay_time");
+  if (/rise|1090/.test(n)) return { ...as("decay_time"), rise: true, half: false };
+  if (named || /thalf|d50/.test(n)) return as("decay_time");
   if (/ttp|timetopeak|^peak/.test(n)) return as("time_to_peak");
   if (/^rec|recovery/.test(n)) return as("recovery");
   if (/^ssi|inact/.test(n)) return as("steady_state_inactivation");
@@ -346,6 +361,7 @@ export function savedSheet(protocol: Pick<Protocol, "name" | "source" | "points"
     template: null,
     matched: false,
     rise: false,
+    half: false,
     roles: { x: 0, y: 1, ...(columns.length > 2 ? { sd: 2 } : {}) },
     values: {},
     largestX: measured.length === 0 ? null : Math.max(...measured.map((p) => p.x)),

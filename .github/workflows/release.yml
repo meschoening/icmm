@@ -244,6 +244,10 @@ jobs:
           fi
           xcrun stapler staple "$dmg"
           xcrun stapler validate "$dmg"
+      - name: Name each package in the .deb's Depends once (Linux)
+        # Tauri appends libwebkit2gtk-4.1-0 unversioned after the config's (>= 2.50) one.
+        if: matrix.os == 'linux'
+        run: uv run --locked python .github/release_check.py deb-depends "$BUNDLE_DIR"
       - name: Name the installer for its platform
         id: stage
         run: uv run --locked python .github/release_check.py stage "$BUNDLE_DIR" "$VERSION" "$ARCH" "$OS" "$RUNNER_TEMP/dist"
@@ -344,6 +348,7 @@ jobs:
           depends="$(dpkg-deb --field "$deb" Depends)"
           echo "Depends: $depends"
           grep -qF 'libwebkit2gtk-4.1-0 (>= 2.50)' <<<"$depends" || { echo "::error::the .deb doesn't depend on libwebkit2gtk-4.1-0 (>= 2.50)"; exit 1; }
+          [[ "$(grep -o 'libwebkit2gtk-4.1-0' <<<"$depends" | wc -l)" -eq 1 ]] || { echo "::error::the .deb depends on libwebkit2gtk-4.1-0 more than once"; exit 1; }
           sudo apt-get update
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xvfb xauth "./$deb"
           package="$(dpkg-deb --field "$deb" Package)"

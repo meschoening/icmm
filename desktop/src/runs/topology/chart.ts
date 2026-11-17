@@ -17,6 +17,14 @@ const BASE = 130;
 const ROOM = 104;
 const STEP = 7.4;
 const R = 3.2;
+/**
+ * The guides' labels, measured as drawn: a character of 11 px IBM Plex Mono is 6.6 px, and the
+ * chart is at its narrowest NARROWEST px a view-box unit (a 1200 px window, 0.9 with a scrollbar
+ * beside it); they keep LABEL_GAP px apart there, so wider they never touch.
+ */
+const LABEL_CH = 6.6;
+const LABEL_GAP = 8;
+const NARROWEST = 0.88;
 
 export interface Label {
   t: string;
@@ -134,16 +142,23 @@ export function dotsOf(
     labels.push({ t: v.toFixed(decimals), left: pct(x), top: 149, align: "mid" });
     clear = x + 56;
   }
+  // Each guide is drawn; its label only where it keeps clear of the ones kept before it, which
+  // go in this order: "+100 % above best" says what the others count from (#469 R08).
   const guided = [
+    [2, "+100 % above best"],
     [1.1, "+10 %"],
     [1.5, "+50 %"],
-    [2, "+100 % above best"],
   ] as const;
   let guides = "";
+  const kept: [number, number][] = [];
   for (const [f, words] of guided) {
     const x = X(b0 * f);
     if (x > X1) continue;
     guides += `M${x.toFixed(1)} 66V134`;
+    const half = (words.length * LABEL_CH) / 2 / NARROWEST;
+    const gap = LABEL_GAP / NARROWEST;
+    if (kept.some(([a, b]) => x - half < b + gap && a - gap < x + half)) continue;
+    kept.push([x - half, x + half]);
     labels.push({ t: words, left: pct(x), top: 52, align: "mid" });
   }
   const mid = bx + bw / 2;

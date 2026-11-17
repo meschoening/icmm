@@ -5,6 +5,7 @@
  * window, and Normalize on the measured step; moved, or removed.
  */
 import type { FieldMark } from "../../setup/form";
+import { KeptHint } from "../../ui/KeptHint";
 import type { Template } from "../../wire/types.gen";
 import { WindowControl } from "../DecayWindow";
 import { parsed } from "../draft";
@@ -139,6 +140,10 @@ export function StepRow({
     );
   };
   const decay = s.measure === "decay_time";
+  const measure = s.measure;
+  // Normalize's hint, on or off: it keeps the room of the longer (#469 R04).
+  const normalizeWords = (on: boolean) =>
+    measure === "none" ? "" : normalizeHint(measure, on, template, decay && a < b);
   const windowIssue = issues.get(`from${j}`) ?? issues.get(`to${j}`);
   const percent = (end: "from" | "to") => (
     <input
@@ -220,9 +225,7 @@ export function StepRow({
                   <span className="trk" aria-hidden="true" />
                 </label>
               )}
-              <span className="hint">
-                {normalizeHint(s.measure, normalized, template, decay && a < b)}
-              </span>
+              <KeptHint says={normalizeWords(normalized)} may={[true, false].map(normalizeWords)} />
             </div>
           </>
         )}

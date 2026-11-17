@@ -91,7 +91,10 @@ import { useLayouts } from "../topology/useLayouts";
 import { NewerRevision } from "../runs/NewerRevision";
 import { LiveN } from "../ui/LiveN";
 import { PageHeading } from "../ui/PageHeading";
+import { submitted, useReportFromHere } from "../report/fromHere";
+import { useReport } from "../report/useReport";
 import { useOpened } from "../shell/palette/recents";
+import { ReportFromHere } from "../report/ReportFromHere";
 import type {
   JobDefaults,
   Run,
@@ -327,6 +330,7 @@ function Frame({
         <Title name={name} />
         <div className="topo-wait">{children}</div>
       </section>
+      <ReportFromHere name={name} mono />
     </div>
   );
 }
@@ -339,6 +343,7 @@ function NotHere({ name, platform }: { name: string; platform: Platform }) {
       <p className="facts">
         {name} isn’t on {inSentence(platform)}: its run is gone, or doesn’t fit it.
       </p>
+      <ReportFromHere name="Topology not found" />
       <p>
         <Link to="/runs" className="link">
           Go to Runs
@@ -415,6 +420,21 @@ function Shown({
   const best = t.best;
   const hasBest = best !== null && stage !== "failed";
   const selection = useSelection();
+  // Report a problem… from ⌘K (#470): it has no ···. The topology and its run's config.
+  const report = useReport({
+    key: `topology ${name}`,
+    look: "page",
+    page: {
+      kind: "topology",
+      row: (
+        <>
+          <span className="mono">{name}</span>, with its run’s config
+        </>
+      ),
+      read: async () => ({ kind: "topology", name, job_log: null, run: submitted(run) }),
+    },
+  });
+  useReportFromHere(["about ", { mono: name }], report.start);
 
   return (
     <div className={asOf === undefined ? "page topo-page" : "page topo-page stale"}>
@@ -515,6 +535,7 @@ function Shown({
             </dl>
           </div>
         </div>
+        {report.panel}
       </section>
       <Starts
         run={run}

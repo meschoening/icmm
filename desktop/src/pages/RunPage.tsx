@@ -3,8 +3,9 @@
  * lands once a run is accepted, and where Runs' rows lead. It's headed
  * `#214 herg-wt-11state` with the run's state above and its facts line under;
  * its actions sit at the right: Resume (on a failed or canceled run) beside
- * Submit again…, and ··· with Copy run path, Cancel run… while it's in flight
- * and Delete run… once it has ended. Under the heading: the run's facts, its
+ * Submit again…, and ··· with Copy run path, Export its config…, Report a
+ * problem… (#470), whose panel opens under the head, Cancel run… while it's
+ * in flight and Delete run… once it has ended. Under the heading: the run's facts, its
  * stages, with the share of its finished starts still improving under them
  * while Mark still-improving starts is on (#234), the box that says what's on
  * the cluster now, why it waits or why it stopped, the grid of its topologies
@@ -95,6 +96,8 @@ import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { PageHeading } from "../ui/PageHeading";
 import { PAGE_HEADING_ATTR } from "../ui/pageChangeFocus";
 import { WorkingButton } from "../ui/WorkingButton";
+import { submitted, useReportFromHere } from "../report/fromHere";
+import { useReport } from "../report/useReport";
 import type { Working } from "../ui/working";
 import type {
   FailedStarts,
@@ -110,6 +113,7 @@ import type {
 } from "../wire/types.gen";
 import { useShownPath } from "../ui/paths";
 import { commands } from "../wire/api.gen";
+import { ReportFromHere } from "../report/ReportFromHere";
 
 /** No runs, the same array each render. */
 const NO_RUNS: RunSummary[] = [];
@@ -350,6 +354,7 @@ function Frame({ id, children }: { id: string; children?: React.ReactNode }) {
           <span className="title-id rd-quiet-id">#{id}</span>
         </PageHeading>
       </section>
+      <ReportFromHere name={`#${id}`} mono />
       {children}
     </div>
   );
@@ -375,6 +380,7 @@ function NotHere({ platform }: { platform: Platform }) {
     <div className="page">
       <PageHeading>Run not found</PageHeading>
       <p className="facts">This run isn’t on {inSentence(platform)} any more.</p>
+      <ReportFromHere name="Run not found" />
       <p>
         <Link to="/runs" className="link">
           Go to Runs
@@ -560,6 +566,27 @@ function Detail({
     void navigate({ to: "/runs" });
   });
   const offline = useBlocker(live ? undefined : `Connect to ${inSentence(platform)} to resume`);
+  // Report a problem… from its ··· or ⌘K (#470): the run and its config.
+  const report = useReport({
+    key: `run ${r.id}`,
+    look: "page",
+    page: {
+      kind: "run",
+      row: (
+        <>
+          <span className="mono">#{r.id}</span> <span className="mono">{r.config.name}</span>, with
+          its config
+        </>
+      ),
+      read: async () => ({
+        kind: "run",
+        name: `#${r.id} ${r.config.name}`,
+        job_log: null,
+        run: submitted(r),
+      }),
+    },
+  });
+  useReportFromHere(["about ", { mono: `#${r.id}` }], report.start);
   const writeWhy = !live
     ? `Connect to ${inSentence(platform)} to ${ended ? "delete" : "cancel"} it`
     : phase === "canceling"
@@ -657,6 +684,7 @@ function Detail({
                   (ended ? del : cancel).clear();
                   setAsking(ended ? "delete" : "cancel");
                 }}
+                onReport={report.start}
               />
             </div>
             {resume.message !== undefined && (
@@ -666,6 +694,7 @@ function Detail({
             )}
           </div>
         </div>
+        {report.panel}
         <RunFacts run={r} revision={reads.revision} platform={platform} job={reads.job} />
         <UnreadableLine run={r} revision={reads.revision} />
         <Stages stages={stages} />

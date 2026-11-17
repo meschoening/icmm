@@ -43,8 +43,8 @@ import {
   chosenGeneration,
   generationEnd,
   generationWords,
-  logHead,
-  logLine,
+  logTable,
+  logText,
   textLines,
   tryEnd,
   tryWords,
@@ -78,6 +78,7 @@ import type {
   WireError,
 } from "../wire/types.gen";
 import { useShownPath } from "../ui/paths";
+import { ReportFromHere } from "../report/ReportFromHere";
 
 type Platform = Pick<SavedPlatform, "type" | "name">;
 
@@ -197,7 +198,11 @@ export function StartLogsPage() {
 
   if (platform === undefined || (!live && shown === undefined)) {
     return (
-      <Frame crumbs={crumbs(undefined)} heading={heading}>
+      <Frame
+        crumbs={crumbs(undefined)}
+        heading={heading}
+        name={`${title} · start ${params.start} · logs`}
+      >
         <ShowOnceConnected platform={platform} kind="Runs" one>
           this start’s logs
         </ShowOnceConnected>
@@ -209,7 +214,11 @@ export function StartLogsPage() {
   }
   if (shown === undefined) {
     return (
-      <Frame crumbs={crumbs(run)} heading={heading}>
+      <Frame
+        crumbs={crumbs(run)}
+        heading={heading}
+        name={`${title} · start ${params.start} · logs`}
+      >
         {failure !== undefined ? (
           <FailureBox
             error={failure}
@@ -246,7 +255,15 @@ export function StartLogsPage() {
   const shownRunning = shownNumber === tries && (s.state === "running" || s.state === "queued");
   const shownTry = s.tries.find((t) => t.try_number === shownNumber);
   const ended = shownTry?.ended_at != null ? shownTry : undefined;
-  const lastPoint = tab === "start" ? shown.log?.points.at(-1) : undefined;
+  // The generation its end line names: the shown Start log's last, or on the job log the
+  // latest try's, as its result recorded it, else as its page last read its log, which the
+  // job log doesn't follow (#478).
+  const lastGeneration =
+    tab === "start"
+      ? shown.log?.points.at(-1)?.generation
+      : shownNumber === tries
+        ? (s.generations ?? shown.points.at(-1)?.generation)
+        : undefined;
   const whose = `start ${n}’s ${tab === "job" ? "job log" : "Start log"}`;
   const go = (to: LogsSearch) => void navigate({ search: to, replace: true });
 
@@ -266,6 +283,7 @@ export function StartLogsPage() {
         </p>
         {heading}
       </section>
+      <ReportFromHere name={`${title} · start ${params.start} · logs`} mono />
       <LogBox
         key={`${tab}-${shownNumber}`}
         kind={tab === "job" ? "text" : "start"}
@@ -281,9 +299,7 @@ export function StartLogsPage() {
         slurm={slurm}
         source={tab === "job" ? jobSource : startSource}
         known={shownNumber !== tries ? undefined : tab === "job" ? s.job_log : s.log}
-        end={
-          ended === undefined ? undefined : tryEnd(n, ended, s.tries, lastPoint?.generation, now)
-        }
+        end={ended === undefined ? undefined : tryEnd(n, ended, s.tries, lastGeneration, now)}
         empty={(read) =>
           startEmpty({
             start: s,
@@ -530,7 +546,11 @@ export function CoordinatorLogPage() {
 
   if (platform === undefined || (!live && shown === undefined)) {
     return (
-      <Frame crumbs={crumbs(undefined)} heading={heading}>
+      <Frame
+        crumbs={crumbs(undefined)}
+        heading={heading}
+        name={`#${params.id} · coordinating job log`}
+      >
         <ShowOnceConnected platform={platform} kind="Runs" one>
           this run’s coordinating job log
         </ShowOnceConnected>
@@ -542,7 +562,7 @@ export function CoordinatorLogPage() {
   }
   if (shown === undefined) {
     return (
-      <Frame crumbs={crumbs(run)} heading={heading}>
+      <Frame crumbs={crumbs(run)} heading={heading} name={`#${params.id} · coordinating job log`}>
         {failure !== undefined ? (
           <FailureBox
             error={failure}
@@ -588,6 +608,7 @@ export function CoordinatorLogPage() {
         </p>
         {heading}
       </section>
+      <ReportFromHere name={`#${params.id} · coordinating job log`} mono />
       {shown.jobs.length === 0 ? (
         <div className="lg-main">
           <div className="lg-empty">
@@ -686,10 +707,13 @@ function RunCrumbs({ id, run }: { id: string; run: Pick<Run, "id" | "config"> | 
 function Frame({
   crumbs,
   heading,
+  name,
   children,
 }: {
   crumbs: ReactNode;
   heading: ReactNode;
+  /** The log's name, as Report a problem… names the page. */
+  name: string;
   children: ReactNode;
 }) {
   return (
@@ -699,6 +723,7 @@ function Frame({
         {heading}
         <div className="sp-wait">{children}</div>
       </section>
+      <ReportFromHere name={name} mono />
     </div>
   );
 }
@@ -711,6 +736,7 @@ function NotHere({ name, platform }: { name: string; platform: Platform }) {
       <p className="facts">
         {name} isn’t on {inSentence(platform)}: its run is gone, or doesn’t hold it.
       </p>
+      <ReportFromHere name="Log not found" />
       <p>
         <Link to="/runs" className="link">
           Go to Runs
@@ -798,16 +824,21 @@ function LogBox({
   const logId = useId();
   const offId = useId();
 
-  const lines = useMemo(() => {
-    if (read === undefined) return [];
+  // A Start log's columns fit the widest value read so far, its head with them.
+  const { head, lines } = useMemo(() => {
+    if (read === undefined) return { head: "", lines: [] };
     if (kind === "start") {
-      const last = read.points.length - 1;
-      return read.points.map((p, i) => ({
-        t: logLine(p, validation),
-        cls: running && i === last ? "ink" : undefined,
-      }));
+      const table = logTable(read.points, validation);
+      const last = table.lines.length - 1;
+      return {
+        head: table.head,
+        lines: table.lines.map((t, i) => ({ t, cls: running && i === last ? "ink" : undefined })),
+      };
     }
-    return textLines(read.text).map((l) => ({ t: l.t, cls: l.err ? "err" : undefined }));
+    return {
+      head: "",
+      lines: textLines(read.text).map((l) => ({ t: l.t, cls: l.err ? "err" : undefined })),
+    };
   }, [read, kind, validation, running]);
   /** The lines from the last page on, which is where new ones are counted from. */
   const tail = lines.length - (read === undefined ? 0 : earlierLines(read, kind));
@@ -983,7 +1014,7 @@ function LogBox({
         </div>
       ) : (
         <div className="lg-log" role="log" tabIndex={0} aria-label={whose} id={logId}>
-          {kind === "start" && <span className="lh">{logHead(validation)}</span>}
+          {kind === "start" && <span className="lh">{head}</span>}
           <div className="lg-scroll" ref={scroller} onScroll={onScroll}>
             <div className={kind === "start" ? "lg-lines" : "lg-lines top"}>
               {reading && (
@@ -1127,8 +1158,7 @@ function CopyButtons({
       .run(async () => {
         const text = inMemory
           ? kind === "start"
-            ? [logHead(validation), ...read.points.map((p) => logLine(p, validation))].join("\n") +
-              "\n"
+            ? logText(read.points, validation)
             : read.text
           : await readWhole(source!, validation);
         await navigator.clipboard?.writeText(text);

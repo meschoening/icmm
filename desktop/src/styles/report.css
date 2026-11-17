@@ -1,7 +1,9 @@
 /*
  * Report a problem… (#126): the panel under its failure, drawn like the host
  * key's question, and the sentence once a report is saved (LaptopConnection's
- * and LaptopSettings' report-review and reported).
+ * and LaptopSettings' report-review and reported). From the page's ··· or ⌘K
+ * (#470): a box of its own under the page head (LaptopStart's best-report and
+ * best-reported, LaptopRunDetail's report).
  */
 .rep {
   display: flex;
@@ -21,12 +23,14 @@
   gap: 2px;
   min-width: 0;
 }
+.rep h2,
 .rep h4 {
   margin: 0;
   font-size: 14px;
   font-weight: 500;
   color: var(--ink);
 }
+.rep h2:focus,
 .rep h4:focus {
   outline: none;
 }
@@ -112,4 +116,45 @@
 .rep-under {
   display: flex;
   flex-direction: column;
+}
+
+/* From the page's ··· or ⌘K (#470): a box of its own under the page head,
+   before its numbers; saved, the sentence with Show in Finder and ×. */
+.rep.rep-page,
+.rep.rep-page:last-child {
+  border-top: 0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-top: 14px;
+}
+/* A page's own child: the page's gap already spaces it. */
+.page > .rep.rep-page,
+.settings-main > .rep.rep-page {
+  margin-top: 0;
+}
+.rep.rep-page.done {
+  align-items: center;
+  padding: 10px 12px 10px 16px;
+}
+.rep.rep-page.done .rsent {
+  flex-grow: 1;
+  margin: 0;
+}
+.rep-x {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.rep-x:hover {
+  background: color-mix(in srgb, var(--ink) 8%, var(--cobalt-soft));
+  color: var(--ink);
+}
+.rep-x:active {
+  background: color-mix(in srgb, var(--ink) 14%, var(--cobalt-soft));
 }

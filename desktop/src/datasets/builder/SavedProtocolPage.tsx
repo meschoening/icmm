@@ -56,10 +56,12 @@ import {
   elsewhereNotice,
   fieldMarks,
   reloadDraft,
+  sharedHolding,
   withVoltages,
   type BuilderDraft,
 } from "./model";
 import { ProtocolBuilder } from "./ProtocolBuilder";
+import { ReportFromHere } from "../../report/ReportFromHere";
 
 export function NewProtocolPage() {
   const { id } = useParams({ from: "/datasets/$id/new-protocol" });
@@ -181,6 +183,7 @@ function Waiting({
         </nav>
         <PageHeading>{title}</PageHeading>
       </section>
+      <ReportFromHere name={`${title} in ${name ?? "a dataset"}`} />
       {children}
     </div>
   );
@@ -238,9 +241,11 @@ function Builder({
         ? base.content.protocols.length
         : Math.min(openedAt, base.content.protocols.length);
   const atBase = found >= 0 ? base.content.protocols[found] : protocol;
-  /** What it started from, as a draft: the protocol as saved, or Blank. */
+  /** What it started from, as a draft: the protocol as saved, or Blank at the dataset's hold. */
   const start = (p: Protocol | null): BuilderDraft =>
-    p === null ? blankDraft("protocol") : draftOf(p, rolesOf(savedSheet(p)));
+    p === null
+      ? blankDraft("protocol", {}, sharedHolding(base.content.protocols))
+      : draftOf(p, rolesOf(savedSheet(p)));
   const [from, setFrom] = useState(() => start(atBase));
   /** What it opened on, which Reload's marks say each of their fields was. */
   const [first] = useState(from);

@@ -1244,6 +1244,8 @@ pub struct EditPlatformParams {
 pub enum EndReason {
     #[serde(rename = "budget")]
     Budget,
+    #[serde(rename = "overflow")]
+    Overflow,
     #[serde(rename = "canceled")]
     Canceled,
     #[serde(rename = "time_limit")]
@@ -1253,6 +1255,7 @@ impl ::std::fmt::Display for EndReason {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match *self {
             Self::Budget => f.write_str("budget"),
+            Self::Overflow => f.write_str("overflow"),
             Self::Canceled => f.write_str("canceled"),
             Self::TimeLimit => f.write_str("time_limit"),
         }
@@ -1263,6 +1266,7 @@ impl ::std::str::FromStr for EndReason {
     fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "budget" => Ok(Self::Budget),
+            "overflow" => Ok(Self::Overflow),
             "canceled" => Ok(Self::Canceled),
             "time_limit" => Ok(Self::TimeLimit),
             _ => Err("invalid value".into()),
@@ -2792,6 +2796,83 @@ pub struct ReportFailure {
     ///What happened.
     pub what: ::std::string::String,
 }
+/**The page a report is from (#470): a start, a topology, a run, or another page by its
+name.*/
+#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct ReportPage {
+    /**A start's: the end of its latest try's job log, as the log view reads it; `null` for any
+    other page.*/
+    #[serde(deserialize_with = "::std::option::Option::deserialize")]
+    pub job_log: ::std::option::Option<::std::string::String>,
+    pub kind: ReportPageKind,
+    /**`start 23 of #214/T12.3`, `#214/T12.3`, `#214 herg-wt-11state`, or another page's name:
+    `Datasets`.*/
+    pub name: ::std::string::String,
+    /**A start's, a topology's or a run's: its run as it was submitted, as JSON: its config's
+    settings, search seed and engine; `null` for another page.*/
+    #[serde(deserialize_with = "::std::option::Option::deserialize")]
+    pub run: ::std::option::Option<::std::string::String>,
+}
+///`ReportPageKind`
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+)]
+pub enum ReportPageKind {
+    #[serde(rename = "start")]
+    Start,
+    #[serde(rename = "topology")]
+    Topology,
+    #[serde(rename = "run")]
+    Run,
+    #[serde(rename = "page")]
+    Page,
+}
+impl ::std::fmt::Display for ReportPageKind {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        match *self {
+            Self::Start => f.write_str("start"),
+            Self::Topology => f.write_str("topology"),
+            Self::Run => f.write_str("run"),
+            Self::Page => f.write_str("page"),
+        }
+    }
+}
+impl ::std::str::FromStr for ReportPageKind {
+    type Err = self::error::ConversionError;
+    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+        match value {
+            "start" => Ok(Self::Start),
+            "topology" => Ok(Self::Topology),
+            "run" => Ok(Self::Run),
+            "page" => Ok(Self::Page),
+            _ => Err("invalid value".into()),
+        }
+    }
+}
+impl ::std::convert::TryFrom<&str> for ReportPageKind {
+    type Error = self::error::ConversionError;
+    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
+impl ::std::convert::TryFrom<::std::string::String> for ReportPageKind {
+    type Error = self::error::ConversionError;
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
 ///What a report holds, as Report a problem…'s panel lists it before it's saved (#126).
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
@@ -2804,17 +2885,6 @@ pub struct ReportPreview {
     /**ICMM's version, the engine's and the OS's with its architecture: `ICMM 0.1.0 · engine
     0.1.0 · macOS 15.1 on arm64`. The engine's is left out while no engine has answered.*/
     pub versions: ::std::string::String,
-}
-///A failed start's part of its report: where it is, its job log and its run.
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
-#[serde(deny_unknown_fields)]
-pub struct ReportStart {
-    ///The end of its latest try's job log, as the log view reads it.
-    pub job_log: ::std::string::String,
-    ///`#214/T12 · start 37`.
-    pub name: ::std::string::String,
-    ///The run as it was submitted, as JSON: its config's settings, search seed and engine.
-    pub run: ::std::string::String,
 }
 ///`ResetParams`
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
@@ -3621,14 +3691,16 @@ pub struct SavePlatformSettingsParams {
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct SaveReportParams {
-    ///`null` for a report from Settings' Diagnostic logs, which is about no one failure.
+    /**`null` for a report about no one failure: from Settings' Diagnostic logs, or from a
+    page's ··· or ⌘K.*/
     #[serde(deserialize_with = "::std::option::Option::deserialize")]
     pub failure: ::std::option::Option<ReportFailure>,
+    /**The page it's from: a failed start's, or the one Report a problem… opened on from its ···
+    or ⌘K; `null` for a failure elsewhere and for Settings' Diagnostic logs.*/
+    #[serde(deserialize_with = "::std::option::Option::deserialize")]
+    pub page: ::std::option::Option<ReportPage>,
     ///When, on this computer's clock, written `2026-11-12-0914`: the file's name ends with it.
     pub stamp: ::std::string::String,
-    ///A failed start's report adds it; `null` otherwise.
-    #[serde(deserialize_with = "::std::option::Option::deserialize")]
-    pub start: ::std::option::Option<ReportStart>,
 }
 ///`SavedAsNewDataset`
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]

@@ -1,6 +1,6 @@
 [project]
 name = "icmm"
-version = "0.1.0"
+version = "1.0.0"
 description = "Ion Channel Model Maker: fits Markov-state kinetic models of ion channels with CMA-ES"
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]

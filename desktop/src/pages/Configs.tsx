@@ -30,6 +30,7 @@ import { useBlocker } from "../ui/blocker";
 import { ListEmpty, ReadingFacts } from "../ui/HeadFacts";
 import { PageHeading } from "../ui/PageHeading";
 import type { ConfigSummary, SavedPlatform, WireError } from "../wire/types.gen";
+import { ReportFromHere } from "../report/ReportFromHere";
 
 type Platform = Pick<SavedPlatform, "type" | "name">;
 
@@ -127,6 +128,7 @@ export function ConfigsPage() {
           )}
         </div>
       </section>
+      <ReportFromHere name="Configs" />
       {platform === undefined || shows === "offline" ? (
         <ShowOnceConnected
           platform={platform}

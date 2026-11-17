@@ -7,6 +7,7 @@ import { useBlocker } from "../ui/blocker";
 import { PAGE_HEADING_ATTR } from "../ui/pageChangeFocus";
 import type { Working } from "../ui/working";
 import { BesideButton, WorkingButton } from "../ui/WorkingButton";
+import { ReportFromHere } from "../report/ReportFromHere";
 
 export interface StepHeaderProps {
   step: number;
@@ -35,70 +36,73 @@ export function StepHeader(p: StepHeaderProps) {
     if (p.blocked === undefined) p.onPrimary();
   };
   return (
-    <section className="step-head">
-      <div className="hdr">
-        <div className="hdr-text">
-          <div className="label">Step {p.step} of 4</div>
-          <h1 id="step-heading" className="title" tabIndex={-1} {...{ [PAGE_HEADING_ATTR]: "" }}>
-            {p.title}
-          </h1>
-          <p className="facts">{p.facts}</p>
-        </div>
-        <div className="hacts">
-          <div className="acts">
-            {p.discard !== null && !busy && (
-              <button type="button" className="btn-text" onClick={p.discard}>
-                Discard
-              </button>
-            )}
-            {p.back !== null &&
-              (p.working ? (
-                <BesideButton type="button" className="btn" working={p.working} onClick={p.back}>
-                  Back
-                </BesideButton>
-              ) : (
-                <button type="button" className="btn" onClick={p.back}>
-                  Back
-                </button>
-              ))}
-            <>
-              {p.working ? (
-                <WorkingButton
-                  type="button"
-                  className="btn btn-primary"
-                  working={p.working}
-                  words={p.workingWords ?? "Saving…"}
-                  {...block.props}
-                  onClick={(e) => {
-                    block.props.onClick(e);
-                    press();
-                  }}
-                >
-                  {p.primary}
-                </WorkingButton>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  {...block.props}
-                  onClick={(e) => {
-                    block.props.onClick(e);
-                    press();
-                  }}
-                >
-                  {p.primary}
+    <>
+      <section className="step-head">
+        <div className="hdr">
+          <div className="hdr-text">
+            <div className="label">Step {p.step} of 4</div>
+            <h1 id="step-heading" className="title" tabIndex={-1} {...{ [PAGE_HEADING_ATTR]: "" }}>
+              {p.title}
+            </h1>
+            <p className="facts">{p.facts}</p>
+          </div>
+          <div className="hacts">
+            <div className="acts">
+              {p.discard !== null && !busy && (
+                <button type="button" className="btn-text" onClick={p.discard}>
+                  Discard
                 </button>
               )}
-              {block.bubble}
-            </>
+              {p.back !== null &&
+                (p.working ? (
+                  <BesideButton type="button" className="btn" working={p.working} onClick={p.back}>
+                    Back
+                  </BesideButton>
+                ) : (
+                  <button type="button" className="btn" onClick={p.back}>
+                    Back
+                  </button>
+                ))}
+              <>
+                {p.working ? (
+                  <WorkingButton
+                    type="button"
+                    className="btn btn-primary"
+                    working={p.working}
+                    words={p.workingWords ?? "Saving…"}
+                    {...block.props}
+                    onClick={(e) => {
+                      block.props.onClick(e);
+                      press();
+                    }}
+                  >
+                    {p.primary}
+                  </WorkingButton>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    {...block.props}
+                    onClick={(e) => {
+                      block.props.onClick(e);
+                      press();
+                    }}
+                  >
+                    {p.primary}
+                  </button>
+                )}
+                {block.bubble}
+              </>
+            </div>
+            <span id="step-status" className={`astat ${p.tone ?? "plain"}`} role="status">
+              {p.tone === "wait" && <span className="g g-queued" aria-hidden="true" />}
+              {p.status}
+            </span>
           </div>
-          <span id="step-status" className={`astat ${p.tone ?? "plain"}`} role="status">
-            {p.tone === "wait" && <span className="g g-queued" aria-hidden="true" />}
-            {p.status}
-          </span>
         </div>
-      </div>
-      <p className="lede">{p.lede}</p>
-    </section>
+        <p className="lede">{p.lede}</p>
+      </section>
+      <ReportFromHere name="New dataset" />
+    </>
   );
 }

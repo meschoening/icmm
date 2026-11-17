@@ -32,6 +32,7 @@ import { PlatformCard } from "./PlatformCard";
 import { PlatformSettings } from "./PlatformSettings";
 import { Reset } from "./Reset";
 import { SshFormCard } from "./SshFormCard";
+import { ReportFromHere } from "../report/ReportFromHere";
 
 export function SettingsPage() {
   const facts = settingsFacts(useConnection());
@@ -63,6 +64,7 @@ export function SettingsPage() {
           <PageHeading>Settings</PageHeading>
           {facts !== undefined && <p className="facts">{facts}</p>}
         </div>
+        <ReportFromHere name="Settings" />
         <Platforms ref={platforms} />
         <General />
         <Reset
