@@ -425,11 +425,18 @@ function Protocol({
     return issue === undefined ? [] : [{ key: field.key, row, issue }];
   });
 
-  const swept = (unit: "mV" | "ms") => (
-    <span className="ln swept">
-      swept · <span className="mono">{span(xs, null, unit === "mV")}</span> {unit}
-    </span>
-  );
+  // One sweep's one value isn't swept: "−10 mV · 1 sweep" (C08).
+  const swept = (unit: "mV" | "ms") =>
+    xs.length === 1 ? (
+      <span className="ln swept">
+        <span className="mono">{span(xs, null, unit === "mV")}</span> {unit} ·{" "}
+        <span className="mono">1</span> sweep
+      </span>
+    ) : (
+      <span className="ln swept">
+        swept · <span className="mono">{span(xs, null, unit === "mV")}</span> {unit}
+      </span>
+    );
 
   const others = forms.filter((g, i) => i !== index && errorUnit(g) !== errorUnit(f));
   const otherUnit = errorUnit(f) === "ms" ? "fractions" : "ms";
@@ -450,9 +457,24 @@ function Protocol({
   ]);
   const rest = [...issues.entries()].filter(([key]) => !shown.has(key));
 
+  /**
+   * Next protocol shows the new protocol from its head (C09). Its panel is a
+   * new one, so the new panel's head and button are found by their ids, and
+   * the button keeps focus (ADR-0028).
+   */
+  const next = () => {
+    flushSync(() => select((index + 1) % forms.length));
+    // Focus first, without scrolling to the button at the panel's foot, then show the head.
+    document.getElementById(`${idp}-next`)?.focus({ preventScroll: true });
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    document
+      .getElementById(`${idp}-head`)
+      ?.scrollIntoView?.({ block: "nearest", behavior: still ? "instant" : "smooth" });
+  };
+
   return (
     <section aria-labelledby={`${idp}-h`} className="protocol">
-      <header className="protocol-head">
+      <header id={`${idp}-head`} className="protocol-head">
         <h2 id={`${idp}-h`} className="pn">
           {f.name}
         </h2>
@@ -720,7 +742,7 @@ function Protocol({
           <span className="mono">{index + 1}</span> of <span className="mono">{forms.length}</span>
         </span>
         {forms.length > 1 && (
-          <button type="button" className="btn" onClick={() => select((index + 1) % forms.length)}>
+          <button type="button" id={`${idp}-next`} className="btn" onClick={next}>
             Next protocol: <span className="mono">{forms[(index + 1) % forms.length].name}</span>
           </button>
         )}

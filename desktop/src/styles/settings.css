@@ -574,6 +574,18 @@
 .general-row + .general-row {
   border-top: 1px solid var(--line);
 }
+/* A status line goes under the row's text, in a second grid row, so the row's controls hold
+   still as it shows (#497). */
+.general-row.hold {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 20px;
+  row-gap: 0;
+}
+.general-row.hold > .general-said,
+.general-row.hold > .rsent {
+  grid-column: 1;
+}
 .general-text {
   flex-grow: 1;
   display: flex;

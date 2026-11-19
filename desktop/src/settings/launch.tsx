@@ -83,7 +83,7 @@ export function LaunchSwitch({
 }) {
   const id = useId();
   const hint = on
-    ? "this computer only"
+    ? "this device only"
     : other !== undefined
       ? `ICMM connects to ${other} instead`
       : "ICMM opens without connecting";

@@ -302,7 +302,7 @@ function Builder({
 
   const choose = async (template: Template | undefined) => {
     const chosen = await dialog.open(() =>
-      commands.choose_file({ title: "Choose a workbook", folder: null }),
+      commands.choose_workbook({ title: "Choose a workbook", folder: null }),
     );
     if (chosen.path === null) return;
     setFailure(undefined);

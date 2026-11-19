@@ -1,10 +1,10 @@
 /**
  * Home's Ended (#391, LaptopMain): the latest 3 runs to end, whatever their
- * age. A run with ranked topologies draws one chart, of the protocol its top
- * topology's Best start's page marks highest, simulated on this computer
- * (ADR-0013), which opens that start; its name opens Run detail, and its
- * foot says its RMSE and how it compares with its dataset's best, which a
- * hover says (#398). A failed or canceled run says why and Run detail's next
+ * age. A run with ranked topologies draws one chart, of its dataset
+ * revision's first protocol as its top topology's Best start fits it (#517),
+ * simulated on this computer (ADR-0013), which opens that start; its name
+ * opens Run detail, and its foot says its RMSE and how it compares with its
+ * dataset's best, which a hover says (#398). A failed or canceled run says why and Run detail's next
  * step, with Resume and, where Run detail offers it, Open its log, gray with
  * the reason while Home shows what it read as of when the connection went.
  * All ended runs opens Runs at its Ended list.
@@ -29,7 +29,7 @@ import { HoverWord, TipWord } from "../ui/TipWord";
 import { WorkingButton } from "../ui/WorkingButton";
 import type { RunBest, RunsDataset, RunSummary, SavedPlatform, WireError } from "../wire/types.gen";
 import { useEarlierTip } from "./earlier";
-import { driftedOf, endedParts, higherTip, highestOf, type Drifted } from "./ended";
+import { driftedOf, endedParts, higherTip, shownRmse, type Drifted } from "./ended";
 import { Whole } from "../ui/Whole";
 
 type Platform = Pick<SavedPlatform, "type" | "name">;
@@ -350,9 +350,9 @@ function Actions({
 }
 
 /**
- * A run's chart: the protocol its Best start's page marks highest, its data
- * and the start's model simulated on this computer, captioned with the start
- * and opening it. A revision that can't be read gets one sentence instead;
+ * A run's chart: its revision's first protocol, the one a start's page opens
+ * on, its data and the start's model simulated on this computer, captioned
+ * with the start and opening it. A revision that can't be read gets one sentence instead;
  * a start this computer's engine scores differently is flagged under it.
  */
 function Glance({ run: r, best }: { run: RunSummary; best: RunBest }) {
@@ -360,7 +360,8 @@ function Glance({ run: r, best }: { run: RunSummary; best: RunBest }) {
   const platform = platformOf(c);
   const ref = { run: r.id, graph: best.graph, openState: best.open_state, start: best.start };
   const top = `${topologyName(r.id, best)} · start ${best.start}`;
-  const highest = highestOf(best.scores, r.validation) ?? { index: 0, rmse: null };
+  // The revision's first protocol: cards on one dataset chart the same one (#517).
+  const stored = shownRmse(best.scores[0], r.validation);
   const revision = useQuery({
     ...revisionQuery(platform, { id: r.dataset.id, revision: r.dataset.revision }),
     enabled: canAsk(c),
@@ -370,18 +371,20 @@ function Glance({ run: r, best }: { run: RunSummary; best: RunBest }) {
   const simulation = useStartSimulation(unreadable === undefined ? ref : undefined);
   // An unreadable revision's protocols are named as the run recorded them.
   const recorded = useRun(unreadable === undefined ? undefined : r.id).data;
-  const protocol = revision.data?.content.protocols[highest.index];
-  const name = protocol?.name ?? recorded?.protocols[highest.index]?.name;
-  const drawn = simulation.data?.protocols[highest.index];
+  const protocol = revision.data?.content.protocols[0];
+  const name = protocol?.name ?? recorded?.protocols[0]?.name;
+  const drawn = simulation.data?.protocols[0];
   const drift = simulation.data?.drift ?? null;
   const failure = (simulation.error ??
     (unreadable === undefined ? error : null)) as WireError | null;
 
   const head = (
     <span className="hm-hi">
-      <span className="label hm-grow">Highest error</span>
-      {name !== undefined && <span className="mono hm-hiname">{name}</span>}
-      <span className="mono hm-hiv">{highest.rmse === null ? "—" : rmse(highest.rmse)}</span>
+      <span className="label hm-hiname">{name}</span>
+      <span className="hm-hival">
+        <span className="hm-hiunit">{r.validation ? "val RMSE" : "train RMSE"}</span>
+        <span className="mono hm-hiv">{stored === null ? "—" : rmse(stored)}</span>
+      </span>
     </span>
   );
   const params = {
@@ -401,7 +404,7 @@ function Glance({ run: r, best }: { run: RunSummary; best: RunBest }) {
           to="/runs/$id/$topology/$start"
           params={params}
           className="row-link hm-plot"
-          aria-label={`${protocol.name}, the highest error of ${top}: opens its page`}
+          aria-label={`${protocol.name}, the first protocol, as ${top} fits it: opens its page`}
         >
           {head}
           <span className="sp-plot hm-chart">

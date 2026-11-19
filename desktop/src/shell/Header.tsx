@@ -135,6 +135,7 @@ export function Header({ onSearch }: { onSearch: () => void }) {
         to="/settings"
         className="icon-btn settings"
         aria-label="Settings"
+        title={`Settings (${shortcutLabel(",")})`}
         activeOptions={{ includeSearch: false }}
         activeProps={CURRENT}
       >

@@ -187,6 +187,21 @@ const HELD: Record<string, (where: string) => string> = {
     "An administrator is holding its jobs on the cluster. It starts once they release them.",
 };
 
+/**
+ * The run a queued run on This computer waits on: the newest run in flight
+ * before it, running or queued, since its slots go to waiting starts earlier
+ * run first, and a run queued before it goes first (ADR-0019; #507, F11). A
+ * run held for space sends nothing, so it holds no slot.
+ */
+export function queueAheadOf<R extends Pick<RunSummary, "id" | "state">>(
+  r: Pick<RunSummary, "id">,
+  inFlight: R[],
+): R | undefined {
+  return inFlight
+    .filter((o) => o.id < r.id && (o.state === "running" || o.state === "queued"))
+    .sort((x, y) => y.id - x.id)[0];
+}
+
 /** Why a run in flight that isn't running waits, as its row says it. */
 export function waitingOf(r: RunSummary, a: Around, now: number): Waiting {
   const local = !a.slurm;
@@ -219,10 +234,7 @@ export function waitingOf(r: RunSummary, a: Around, now: number): Waiting {
   const queuedSince = r.queued === null ? r.submitted_at : r.queued.since;
   const since = `queued since ${clock(Date.parse(queuedSince), now)}`;
   if (local) {
-    // This computer's slots go to waiting starts earlier run first: it waits on the newest run before it.
-    const ahead = a.inFlight
-      .filter((o) => o.id < r.id && o.state === "running")
-      .sort((x, y) => y.id - x.id)[0];
+    const ahead = queueAheadOf(r, a.inFlight);
     const cap =
       a.cap === undefined
         ? ""

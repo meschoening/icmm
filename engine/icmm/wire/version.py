@@ -5,4 +5,4 @@ hash, and `icmm-wire gen` (which the gate's `wire` step runs) refuses a schema t
 since `main` at the protocol `main` has.
 """
 
-PROTOCOL_VERSION = "1.63"
+PROTOCOL_VERSION = "1.66"

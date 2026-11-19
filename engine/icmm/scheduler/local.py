@@ -164,7 +164,8 @@ class LocalScheduler:
 
     def submit_array(self, launch: ArrayLaunch) -> str:
         """Queues the array's tasks, waiting, for this process's run; one already queued under
-        the launch's identity is answered, never taken twice."""
+        the launch's identity is answered, never taken twice. Its coordinator sweeps again at once
+        (`Coordinator.interval_s`), so the next tick starts them."""
         with self._write() as conn:
             row = conn.execute(
                 "SELECT id FROM local_jobs WHERE identity = ?", (launch.identity,)
@@ -455,9 +456,13 @@ class LocalScheduler:
         ).fetchall()
         mine_waits = any(run == mine for _, run, *_ in waiting)
         claims: dict[int, bool] = {mine: True}
+        # Each earlier run's starts still to send hold their slots after its waiting tasks.
+        held = sorted(self._to_send(conn, mine, cap, claims).items()) if mine_waits else []
         taken: list[_Taken] = []
         waits_for_slots = False
         for job, run, jobs, folder, threads, throttle, task in waiting:
+            while held and held[0][0] < run:
+                free -= held.pop(0)[1]
             if free <= 0:
                 # No slot is left for this task or any after it, so this run's waiting tasks
                 # wait for one, unless all of them came before it (held back by their throttle).
@@ -481,6 +486,43 @@ class LocalScheduler:
             ((me, at, t.job, t.task) for t in taken),
         )
         return taken, waits_for_slots
+
+    def _to_send(
+        self, conn: sqlite3.Connection, mine: int, cap: int, claims: dict[int, bool]
+    ) -> dict[int, int]:
+        """How many slots each earlier run in flight holds for starts it hasn't queued here yet,
+        up to the cap: those its window is still to send, or has recorded and not yet queued. So
+        between one of its topologies and the next, when its tick has ended the last start of one
+        before its window sends the next, a later run takes none of its slots (ADR-0019; #507,
+        F05). A run that sends nothing now holds none: one held for space, stopping, canceling, or
+        whose coordinator is gone. One whose topologies aren't listed yet holds them all."""
+        earlier = conn.execute(
+            "SELECT id, topologies_listed_at IS NULL FROM runs WHERE id < ? AND end_seq IS NULL "
+            "AND deleted_at IS NULL AND canceling_since IS NULL AND stopping IS NULL "
+            "AND hold IS NULL",
+            (mine,),
+        ).fetchall()
+        held: dict[int, int] = {}
+        for run, unlisted in earlier:
+            if run not in claims:
+                claims[run] = self._claims(conn, run)
+            if not claims[run]:
+                continue
+            if unlisted:
+                held[run] = cap
+                continue
+            (pending,) = conn.execute(
+                "SELECT COUNT(*) FROM (SELECT 1 FROM starts INDEXED BY starts_pending "
+                "WHERE run_id = ? AND state = 'pending' LIMIT ?)",
+                (run, cap),
+            ).fetchone()
+            (unqueued,) = conn.execute(
+                "SELECT COALESCE(SUM(tasks), 0) FROM arrays WHERE run_id = ? AND job_id IS NULL",
+                (run,),
+            ).fetchone()
+            if pending + unqueued > 0:
+                held[run] = min(cap, pending + unqueued)
+        return held
 
     def _claims(self, conn: sqlite3.Connection, run: int) -> bool:
         """Whether the run, in flight, has a coordinator that runs: its latest generation's, the

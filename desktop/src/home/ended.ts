@@ -1,7 +1,7 @@
 /**
  * Home's Ended (#391, LaptopMain): the latest 3 runs to end, whatever their
- * age, each with one chart, of the protocol its top topology's Best start's
- * page marks highest (`FitSection`'s rule: Val RMSE ranks, else Train RMSE).
+ * age, each with one chart, of its dataset revision's first protocol as its
+ * top topology's Best start fits it (#517).
  */
 import { clock } from "../ui/clock";
 import { comparedOf, fitFor, rmse } from "../runs/words";
@@ -23,23 +23,14 @@ export function latestEnded<T extends Pick<RunSummary, "ended_at">>(
 }
 
 /**
- * The protocol with the highest stored error, as a start's page marks it:
- * by val RMSE with validation points, else by train RMSE. One whose sweep
- * failed has none, so it's the highest only when none has one.
+ * A protocol's RMSE as a card shows it: Val RMSE with validation points, else
+ * Train RMSE; `null` when its sweep failed or there's no score.
  */
-export function highestOf(
-  scores: readonly ProtocolScore[],
-  validation: boolean,
-): { index: number; rmse: number | null } | undefined {
-  let highest: { index: number; rmse: number | null } | undefined;
-  scores.forEach((s, index) => {
-    const rmse = validation
-      ? protocolRmse(s.val_sse, s.val_points, s.val_failed)
-      : protocolRmse(s.train_sse, s.train_points, s.train_failed);
-    if (highest === undefined || (rmse !== null && (highest.rmse === null || rmse > highest.rmse)))
-      highest = { index, rmse };
-  });
-  return highest;
+export function shownRmse(s: ProtocolScore | undefined, validation: boolean): number | null {
+  if (s === undefined) return null;
+  return validation
+    ? protocolRmse(s.val_sse, s.val_points, s.val_failed)
+    : protocolRmse(s.train_sse, s.train_points, s.train_failed);
 }
 
 /** "ended Tue, Aug 11, 11:52 PM after 5 d 5 h"; without its fitting time when no start ran. */
@@ -104,10 +95,7 @@ export function driftedOf(
   validation: boolean,
 ): Drifted[] {
   const shown = (s: ProtocolScore | undefined) => {
-    if (s === undefined) return "—";
-    const x = validation
-      ? protocolRmse(s.val_sse, s.val_points, s.val_failed)
-      : protocolRmse(s.train_sse, s.train_points, s.train_failed);
+    const x = shownRmse(s, validation);
     return x === null ? "—" : rmse(x);
   };
   return drifting.flatMap((name) => {

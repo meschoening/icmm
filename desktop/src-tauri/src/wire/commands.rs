@@ -37,9 +37,9 @@ use super::types::{
 };
 
 /// The protocol this app speaks, `major.minor`.
-pub const PROTOCOL_VERSION: &str = "1.63";
+pub const PROTOCOL_VERSION: &str = "1.66";
 /// Identifies the wire schema this app was built from.
-pub const SCHEMA_HASH: &str = "3503fdc1f56c1a47dc56d4305107ec7ff110bd9dd5c442887bad45fc1b145bdf";
+pub const SCHEMA_HASH: &str = "771a553c18258326cae58f5b87d642930ebba665d9b13ec68840caf54270599e";
 /// The longest line either side sends or accepts, its newline included.
 pub const MAX_LINE_BYTES: usize = 16777216;
 
@@ -761,7 +761,7 @@ pub async fn match_topology(
     crate::desktop::match_topology(params).await
 }
 
-/// Submit's time estimate for a config the platform's finished starts haven't timed at its CPUs per start, on this computer's engine whatever the Active platform (ADR-0013): a few dozen of the dataset's evaluations at this many states, on one thread. A dataset that fails its checks, or a number of states without a list, is `invalid`.
+/// Submit's time estimate for a config the platform's finished starts haven't timed at its CPUs per start, on this computer's engine whatever the Active platform (ADR-0013): about a second of a start's evaluations of the dataset at this many states, at its population and CPUs, as many at once as its starts run (#508). A dataset that fails its checks, a number of states without a list, or a population, CPUs or starts at once too few, is `invalid`.
 #[tauri::command]
 pub async fn time_evaluations(
     params: TimeEvaluationsParams,
@@ -1041,6 +1041,12 @@ pub async fn choose_folder(params: ChooseParams) -> Chosen {
     crate::desktop::choose_folder(params).await
 }
 
+/// Asks the user for an Excel workbook, an `.xlsx`, with the OS's dialog; with no folder given it opens in Downloads.
+#[tauri::command]
+pub async fn choose_workbook(params: ChooseParams) -> Chosen {
+    crate::desktop::choose_workbook(params).await
+}
+
 /// Asks the user for a dataset file, a `.zip`, with the OS's dialog.
 #[tauri::command]
 pub async fn choose_dataset_file(params: ChooseParams) -> Chosen {
@@ -1223,6 +1229,7 @@ macro_rules! wire_handler {
             crate::wire::commands::ssh_config_host,
             crate::wire::commands::choose_file,
             crate::wire::commands::choose_folder,
+            crate::wire::commands::choose_workbook,
             crate::wire::commands::choose_dataset_file,
             crate::wire::commands::read_dataset_file,
             crate::wire::commands::choose_export_file,

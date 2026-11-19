@@ -144,7 +144,11 @@ def run_start(
 
     job.log.write_bytes(b"")
     with Session(core, topology, arrays) as session:
-        es = cma.CMAEvolutionStrategy(x0, 1.0, _options(job, lower, upper, _streams(seed)[1]))
+        es = cma.CMAEvolutionStrategy(
+            x0,
+            1.0,
+            _options(job.population, job.evaluation_budget, lower, upper, _streams(seed)[1]),
+        )
         best_f, best_x, best_fit = math.inf, x0.tolist(), None
         end_reason: EndReason = "budget"
         rmse_at_window: float | None = None
@@ -271,6 +275,53 @@ def run_start(
     return result
 
 
+class GenerationsTime(TypedDict):
+    scoring_s: float
+    """The seconds spent in the core, scoring each generation's candidates."""
+    searching_s: float
+    """The rest of the generations' seconds: CMA-ES sampling and updating, and each score."""
+    evaluations: int
+
+
+def time_generations(
+    session: Session,
+    box: Sequence[tuple[float, float]],
+    weights: Sequence[float],
+    *,
+    population: int,
+    threads: int,
+    seconds: float,
+    clock: Callable[[], float] = time.perf_counter,
+) -> GenerationsTime:
+    """Submit's time estimate (#508): generations of a start's search on `session`, as
+    `run_start` runs them, from a start point drawn from seed 0, timed for `seconds` after one
+    untimed generation that warms the core and CMA-ES; then the generation it's in ends."""
+    lower, upper = (np.array(side) for side in zip(*box, strict=True))
+    draws, search = _streams(0)
+    budget = population * 10**6  # no generation here comes near it
+    es = cma.CMAEvolutionStrategy(
+        draws.uniform(lower, upper), 1.0, _options(population, budget, lower, upper, search)
+    )
+    scoring = searching = 0.0
+    evaluations = 0
+    warm = False
+    while evaluations == 0 or scoring + searching < seconds:
+        began = clock()
+        asked = es.ask()
+        candidates = [x.tolist() for x in asked]
+        sent = clock()
+        scores = session.score_batch(candidates, threads)
+        scored = clock()
+        es.tell(asked, [score(weights, s).train.penalized for s in scores])
+        ended = clock()
+        if warm:
+            scoring += scored - sent
+            searching += (ended - began) - (scored - sent)
+            evaluations += population
+        warm = True
+    return GenerationsTime(scoring_s=scoring, searching_s=searching, evaluations=evaluations)
+
+
 def _steps(
     es: cma.CMAEvolutionStrategy, lower: np.ndarray, upper: np.ndarray
 ) -> tuple[float, float]:
@@ -342,14 +393,14 @@ def _streams(seed: int) -> tuple[np.random.Generator, np.random.Generator]:
 
 
 def _options(
-    job: StartJob, lower: np.ndarray, upper: np.ndarray, rng: np.random.Generator
+    population: int, budget: int, lower: np.ndarray, upper: np.ndarray, rng: np.random.Generator
 ) -> cma.CMAOptions:
     """The old `optimize.py`'s options, with its draws from `rng` rather than numpy's global
     state, and silent."""
     options = cma.CMAOptions()
-    options.set("popsize", job.population)
+    options.set("popsize", population)
     options.set("bounds", [lower, upper])
-    options.set("maxfevals", job.evaluation_budget)
+    options.set("maxfevals", budget)
     for key in ("mindx", "minstd", "tolfun", "tolfunhist", "tolfunrel", "tolx"):
         options.set(key, 0)
     for key in (

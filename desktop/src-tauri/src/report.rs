@@ -5,7 +5,8 @@
 //! newest app and agent logs; one from a page adds the page (#470): a
 //! start's the end of its job log and its run, a topology's or a run's its
 //! run, another page its name. User names on this computer and its platforms are written
-//! `user`; host names stay, since they show which cluster failed. A new-issue
+//! `user`, and this computer's own host name `this computer`; a cluster's
+//! host names stay, since they show which cluster failed. A new-issue
 //! link can't carry a file, so the logs go only in the file, which the user
 //! drags onto the page.
 
@@ -26,6 +27,8 @@ pub const MAX_LINK: usize = 8000;
 pub const MAX_LOG_LINES: usize = 10_000;
 /// What a user name is written as.
 pub const USER: &str = "user";
+/// What this computer's host name is written as.
+pub const THIS_COMPUTER: &str = "this computer";
 
 /// The report's file name, from the page's clock: `icmm-report-<stamp>.txt`,
 /// the stamp written `2026-11-12-0914`. Any other stamp is `None`.
@@ -69,7 +72,27 @@ pub fn redact(text: &str, names: &[String]) -> String {
     names.dedup();
     let mut out = text.to_owned();
     for name in names {
-        out = replace_word(&out, name);
+        out = replace_word(&out, name, USER);
+    }
+    out
+}
+
+/// `text` with this computer's host names in `hosts` written `this
+/// computer`, as whole words: a report from This computer otherwise names
+/// the user's machine in a public issue (#505). They're matched as written,
+/// as `hostname` and the engine both write them, so a host `ubuntu` leaves
+/// `Ubuntu 24.04`; `localhost` names no one and stays.
+pub fn redact_hosts(text: &str, hosts: &[String]) -> String {
+    let mut hosts: Vec<&str> = hosts
+        .iter()
+        .map(|h| h.trim())
+        .filter(|h| !h.is_empty() && *h != "localhost")
+        .collect();
+    hosts.sort_by_key(|h| std::cmp::Reverse(h.len()));
+    hosts.dedup();
+    let mut out = text.to_owned();
+    for host in hosts {
+        out = replace_word(&out, host, THIS_COMPUTER);
     }
     out
 }
@@ -78,7 +101,8 @@ fn word(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 
-fn replace_word(text: &str, name: &str) -> String {
+/// `text` with `name` written `with` wherever it stands as a word.
+fn replace_word(text: &str, name: &str, with: &str) -> String {
     let mut out = String::with_capacity(text.len());
     // Where `out` has copied `text` up to.
     let mut copied = 0;
@@ -89,7 +113,7 @@ fn replace_word(text: &str, name: &str) -> String {
         let after = text[end..].chars().next();
         if !before.is_some_and(word) && !after.is_some_and(word) {
             out.push_str(&text[copied..at]);
-            out.push_str(USER);
+            out.push_str(with);
             copied = end;
         }
     }
@@ -199,8 +223,14 @@ pub fn compose(r: &Report) -> String {
          Drag this file onto ICMM's issue page. User names are written `user`; keys, passwords \
          and dataset contents are left out.\n",
     );
+    // A section with nothing in it says so, where a blank one read as lost (an
+    // ended start's job log that it wrote nothing to, WB5-2).
     let mut section = |title: &str, body: &str| {
-        out.push_str(&format!("\n== {title}\n{}\n", body.trim_end()));
+        let body = match body.trim_end() {
+            "" => "(empty)",
+            body => body,
+        };
+        out.push_str(&format!("\n== {title}\n{body}\n"));
     };
     if let Some(f) = r.failure {
         let body = [Some(f.what.as_str()), f.next.as_deref(), f.raw.as_deref()]
@@ -388,6 +418,46 @@ pub fn local_names(home: Option<&Path>) -> Vec<String> {
     names
 }
 
+/// This computer's host names: what `hostname` says, which is what its
+/// engine's hello and logs write, the environment's, and each without its
+/// domain (`Adas-MacBook-Air` of `Adas-MacBook-Air.local`).
+pub fn local_hosts() -> Vec<String> {
+    let mut hosts: Vec<String> = ["COMPUTERNAME", "HOSTNAME"]
+        .iter()
+        .filter_map(|v| std::env::var(v).ok())
+        .collect();
+    hosts.extend(host_name());
+    let short: Vec<String> = hosts
+        .iter()
+        .filter_map(|h| h.split_once('.').map(|(name, _)| name.to_owned()))
+        .collect();
+    hosts.extend(short);
+    hosts
+}
+
+fn host_name() -> Option<String> {
+    // Linux's own record, where `hostname` may not be installed.
+    #[cfg(target_os = "linux")]
+    if let Ok(name) = std::fs::read_to_string("/proc/sys/kernel/hostname") {
+        let name = name.trim();
+        if !name.is_empty() {
+            return Some(name.to_owned());
+        }
+    }
+    let mut command = std::process::Command::new("hostname");
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        // No console window flashes up for it.
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    let out = command.output().ok().filter(|o| o.status.success())?;
+    let name = String::from_utf8(out.stdout).ok()?;
+    let name = name.trim();
+    (!name.is_empty()).then(|| name.to_owned())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -456,6 +526,45 @@ mod tests {
     #[test]
     fn a_name_inside_a_longer_word_stays_after_another_match() {
         assert_eq!(redact("maxmax max", &names(&["max"])), "maxmax user");
+    }
+
+    #[test]
+    fn this_computers_host_name_becomes_this_computer() {
+        let hosts = names(&["Adas-MacBook-Air.local", "Adas-MacBook-Air", "DESKTOP-AB12"]);
+        assert_eq!(
+            redact_hosts(
+                "This computer: engine 1.0.0 on Adas-MacBook-Air.local (protocol 1.0) · \
+                 coordinator Adas-MacBook-Air:4123 · DESKTOP-AB12 · DESKTOP-AB123 · \
+                 login1.cluster.example.edu · localhost",
+                &hosts
+            ),
+            "This computer: engine 1.0.0 on this computer (protocol 1.0) · \
+             coordinator this computer:4123 · this computer · DESKTOP-AB123 · \
+             login1.cluster.example.edu · localhost"
+        );
+        assert_eq!(
+            redact_hosts("on localhost", &names(&["localhost", ""])),
+            "on localhost"
+        );
+    }
+
+    #[test]
+    fn a_host_named_like_the_os_leaves_the_os_named() {
+        assert_eq!(
+            redact_hosts(
+                "ICMM 1.0.0 · Ubuntu 24.04.1 LTS on x64 · ubuntu:4123",
+                &names(&["ubuntu"])
+            ),
+            "ICMM 1.0.0 · Ubuntu 24.04.1 LTS on x64 · this computer:4123"
+        );
+    }
+
+    #[test]
+    fn this_computers_host_names_include_each_without_its_domain() {
+        let hosts = local_hosts();
+        for h in hosts.iter().filter(|h| h.contains('.')) {
+            assert!(hosts.contains(&h.split('.').next().unwrap().to_owned()));
+        }
     }
 
     #[test]
@@ -591,6 +700,24 @@ mod tests {
         ));
         assert!(text.contains("\n== The run, as submitted\n{\"search_seed\": 7}\n"));
         assert!(text.contains("\n== Logs\nNone were found.\n"));
+    }
+
+    #[test]
+    fn an_empty_job_log_says_so() {
+        let s = ReportPage {
+            kind: ReportPageKind::Start,
+            name: "start 3 of #1/T0.3".into(),
+            job_log: Some(String::new()),
+            run: None,
+        };
+        let text = compose(&Report {
+            failure: None,
+            page: Some(&s),
+            versions: "v",
+            platform: "This computer",
+            logs: &[],
+        });
+        assert!(text.contains("\n== The end of its job log\n(empty)\n"));
     }
 
     #[test]

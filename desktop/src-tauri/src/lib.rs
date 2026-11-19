@@ -56,6 +56,9 @@ pub fn run() {
             );
             let theme = preferences::stored(app.handle()).load().theme;
             preferences::apply_theme(app.handle(), theme);
+            // The plugin has put the window where it was left; on a first
+            // launch, or on a smaller screen, it may hang off the work area.
+            window::fit(app.handle());
             active::start(app.handle());
             #[cfg(target_os = "macos")]
             quit::ask_on_terminate();

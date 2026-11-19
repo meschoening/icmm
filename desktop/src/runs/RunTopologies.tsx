@@ -20,6 +20,7 @@ import {
   phaseOf,
   rankedSub,
   stopped,
+  topologiesMiddle,
   topologyId,
   topologyKey,
   type Chart,
@@ -240,6 +241,7 @@ export function ProgressChart({ chart }: { chart: Chart }) {
 /** The chart beside the grid, 456 px wide, up to 2,000 topologies: a dot a complete topology. */
 function NarrowChart({ d }: { d: ChartDrawn }) {
   const dense = d.dots.length > DENSE_DOTS;
+  const mid = topologiesMiddle(d.topologies.total);
   return (
     <div className="rd-chart">
       <svg
@@ -250,13 +252,18 @@ function NarrowChart({ d }: { d: ChartDrawn }) {
         role="img"
         aria-label={d.aria}
       >
-        <path className="rd-c-grid" d="M48 116.5H452M48 74.5H452M48 32.5H452" />
+        <path
+          className="rd-c-grid"
+          d={`M48 116.5H452${mid === undefined ? "" : `M48 ${mid.y}H452`}M48 32.5H452`}
+        />
         <text className="rd-ax" x="40" y="120" textAnchor="end">
           0
         </text>
-        <text className="rd-ax" x="40" y="78" textAnchor="end">
-          {whole(Math.round(d.topologies.total / 2))}
-        </text>
+        {mid !== undefined && (
+          <text className="rd-ax" x="40" y={mid.y + 3.5} textAnchor="end">
+            {whole(mid.n)}
+          </text>
+        )}
         <text className="rd-ax" x="40" y="36" textAnchor="end">
           {whole(d.topologies.total)}
         </text>
@@ -350,6 +357,7 @@ function WideChart({ d }: { d: ChartDrawn }) {
   const at = across((left ? d.now.x - 4 : d.now.x + 4) / SPAN);
   const anchor = left ? "end" : "start";
   const p = d.projection;
+  const mid = topologiesMiddle(d.topologies.total);
   return (
     <StretchChart
       height={296}
@@ -359,9 +367,11 @@ function WideChart({ d }: { d: ChartDrawn }) {
           <text className="rd-ax" x="40" y="120" textAnchor="end">
             0
           </text>
-          <text className="rd-ax" x="40" y="78" textAnchor="end">
-            {whole(Math.round(d.topologies.total / 2))}
-          </text>
+          {mid !== undefined && (
+            <text className="rd-ax" x="40" y={mid.y + 3.5} textAnchor="end">
+              {whole(mid.n)}
+            </text>
+          )}
           <text className="rd-ax" x="40" y="36" textAnchor="end">
             {whole(d.topologies.total)}
           </text>
@@ -374,7 +384,10 @@ function WideChart({ d }: { d: ChartDrawn }) {
       }
       plot={
         <>
-          <path className="rd-c-grid" d={`M0 116.5H${SPAN}M0 74.5H${SPAN}M0 32.5H${SPAN}`} />
+          <path
+            className="rd-c-grid"
+            d={`M0 116.5H${SPAN}${mid === undefined ? "" : `M0 ${mid.y}H${SPAN}`}M0 32.5H${SPAN}`}
+          />
           {p !== undefined && (
             <>
               <path className="rd-c-proj" d={p.line} />

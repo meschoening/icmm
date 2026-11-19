@@ -217,6 +217,8 @@ struct ReportFacts {
     platform: &'static str,
     /// User names on this computer and its platforms.
     names: Vec<String>,
+    /// This computer's host names.
+    hosts: Vec<String>,
     logs_dir: Option<std::path::PathBuf>,
 }
 
@@ -248,6 +250,7 @@ impl ReportFacts {
             ),
             platform: crate::report::platform(kind),
             names,
+            hosts: crate::report::local_hosts(),
             logs_dir: crate::active::app().path().app_log_dir().ok(),
         }
     }
@@ -279,7 +282,12 @@ fn write_report(params: &SaveReportParams) -> Result<(SavedReport, String), Wire
         platform: facts.platform,
         logs: &logs,
     };
-    let redact = |text: &str| crate::report::redact(text, &facts.names);
+    let redact = |text: &str| {
+        crate::report::redact(
+            &crate::report::redact_hosts(text, &facts.hosts),
+            &facts.names,
+        )
+    };
     let text = redact(&crate::report::compose(&report));
     let link = crate::report::issue_link(
         &redact(&crate::report::title(params.failure.as_ref())),
@@ -358,18 +366,48 @@ fn open_folder(folder: &std::path::Path) -> std::io::Result<()> {
 /// Hands `target`, a folder or a web address, to the OS's opener: its file
 /// manager or its web browser.
 fn open_with_os(target: &std::ffi::OsStr) -> std::io::Result<()> {
-    #[cfg(target_os = "macos")]
-    let opener = "open";
-    #[cfg(windows)]
-    let opener = "explorer";
-    #[cfg(all(unix, not(target_os = "macos")))]
-    let opener = "xdg-open";
     // Explorer exits with 1 even when it opened what it was given, so only
     // a spawn that fails is a failure. Its exit is collected off the main
     // thread, so no process is left behind.
-    let mut child = std::process::Command::new(opener).arg(target).spawn()?;
+    let mut child = opener(target).spawn()?;
     std::thread::spawn(move || child.wait());
     Ok(())
+}
+
+/// The OS's opener, given `target`.
+fn opener(target: &std::ffi::OsStr) -> std::process::Command {
+    #[cfg(target_os = "macos")]
+    let command = {
+        let mut c = std::process::Command::new("open");
+        c.arg(target);
+        c
+    };
+    #[cfg(windows)]
+    let command = {
+        use std::os::windows::process::CommandExt;
+        let mut c = std::process::Command::new("explorer");
+        c.raw_arg(quoted(target));
+        c
+    };
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let command = {
+        let mut c = std::process::Command::new("xdg-open");
+        c.arg(target);
+        c
+    };
+    command
+}
+
+/// `target` as Explorer's one argument, quoted whole: Explorer splits an
+/// unquoted one at `=` and `,`, so a link's `?template=` opened Documents
+/// instead of the browser (#505). Neither a Windows path nor a
+/// percent-encoded link holds a `"`.
+#[cfg(any(windows, test))]
+fn quoted(target: &std::ffi::OsStr) -> std::ffi::OsString {
+    let mut arg = std::ffi::OsString::from("\"");
+    arg.push(target);
+    arg.push("\"");
+    arg
 }
 
 fn internal(message: String) -> WireError {
@@ -557,11 +595,38 @@ pub async fn choose_folder(params: ChooseParams) -> Chosen {
     choose(params, |dialog, answer| dialog.pick_folder(answer)).await
 }
 
+/// The Dataset wizard's workbook, an `.xlsx`, the only kind it reads: the
+/// dialog opens in Downloads, not the OS's choice, which on Windows was
+/// ICMM's install folder (#505), with Excel workbooks shown first.
+pub async fn choose_workbook(params: ChooseParams) -> Chosen {
+    let folder = params.folder.or_else(|| {
+        let downloads = crate::active::app().path().download_dir().ok()?;
+        Some(downloads.to_string_lossy().into_owned())
+    });
+    choose(ChooseParams { folder, ..params }, |dialog, answer| {
+        let dialog = dialog.add_filter(WORKBOOK_FILTER, &["xlsx"]);
+        // macOS shows every filter's files at once, so all files there would
+        // be no filter at all.
+        #[cfg(not(target_os = "macos"))]
+        let dialog = dialog.add_filter("All files (*.*)", &["*"]);
+        dialog.pick_file(answer)
+    })
+    .await
+}
+
+/// What the workbook dialog's filter is called: Windows and Linux show it as
+/// it is, with no pattern of their own.
+const WORKBOOK_FILTER: &str = "Excel workbook (*.xlsx)";
+
+/// What a dataset file's filter is called, Import's and Export's: Windows shows
+/// the name as it is, so it says the extension (WB02).
+const DATASET_FILTER: &str = "Dataset file (*.zip)";
+
 /// Import's file: a `.zip` that Export saved.
 pub async fn choose_dataset_file(params: ChooseParams) -> Chosen {
     choose(params, |dialog, answer| {
         dialog
-            .add_filter("Dataset file", &[dataset_file::EXTENSION])
+            .add_filter(DATASET_FILTER, &[dataset_file::EXTENSION])
             .pick_file(answer)
     })
     .await
@@ -604,7 +669,7 @@ pub async fn choose_export_file(params: ExportFileParams) -> Chosen {
 /// extension.
 fn filter_of(format: ExportFormat) -> (&'static str, &'static str) {
     match format {
-        ExportFormat::Zip => ("Dataset file", dataset_file::EXTENSION),
+        ExportFormat::Zip => (DATASET_FILTER, dataset_file::EXTENSION),
         ExportFormat::Json => ("JSON", "json"),
         ExportFormat::Csv => ("CSV", "csv"),
     }
@@ -779,8 +844,37 @@ async fn choose(params: ChooseParams, open: impl FnOnce(FileDialogBuilder<Wry>, 
 
 #[cfg(test)]
 mod tests {
-    use super::home_shown;
+    use super::{home_shown, opener, quoted};
+    use std::ffi::OsStr;
     use std::path::Path;
+
+    const LINK: &str = "https://github.com/meschoening/icmm/issues/new?template=report.yml&title=x";
+
+    #[test]
+    fn explorer_gets_its_target_quoted_whole() {
+        assert_eq!(quoted(OsStr::new(LINK)), format!("\"{LINK}\"").as_str());
+        assert_eq!(
+            quoted(OsStr::new(r"C:\Users\ada\AppData\Roaming\ICMM\logs")),
+            r#""C:\Users\ada\AppData\Roaming\ICMM\logs""#
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn explorer_opens_a_link_as_one_quoted_argument() {
+        let command = opener(OsStr::new(LINK));
+        assert_eq!(command.get_program(), "explorer");
+        let args: Vec<_> = command.get_args().collect();
+        assert_eq!(args, [OsStr::new(&format!("\"{LINK}\""))]);
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn other_openers_get_the_link_as_it_is() {
+        let command = opener(OsStr::new(LINK));
+        let args: Vec<_> = command.get_args().collect();
+        assert_eq!(args, [OsStr::new(LINK)]);
+    }
 
     #[test]
     fn only_windows_shows_the_home_folder_in_full() {

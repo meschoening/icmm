@@ -415,7 +415,7 @@ const LATER: LaterStep[] = [
   {
     title: "Add a dataset",
     description:
-      "Drop in the Excel workbook of your voltage-clamp recordings. Each sheet becomes a protocol: start from a template (G/V activation, inactivation, recovery, time constant, time to peak) or build your own step by step.",
+      "Drop in the Excel workbook of your voltage-clamp recordings. Each sheet becomes a protocol: start from a template (G/V activation, inactivation, recovery, decay time, time to peak) or build your own step by step.",
     lock: "",
     button: "New dataset",
     to: "/datasets/new",

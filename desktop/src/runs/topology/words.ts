@@ -92,7 +92,10 @@ export interface Part {
 }
 
 export interface StatusContext {
-  run: Pick<RunSummary, "id" | "state" | "ended_at" | "queued" | "held" | "canceling" | "progress">;
+  run: Pick<
+    RunSummary,
+    "id" | "state" | "ended_at" | "queued" | "held" | "canceling" | "progress" | "first_running_at"
+  >;
   platform: Platform;
   /** Whether the Active platform's scheduler is SLURM. */
   slurm: boolean;
@@ -109,6 +112,17 @@ export interface StatusContext {
   causes?: FailedStarts[];
   /** While not connected: when the page was last read. */
   asOf?: number;
+}
+
+/**
+ * When a topology sent at `sent` (ms) began fitting, as its "took" counts it
+ * (#507, F11): when it went out, or its run's first start running, if later,
+ * so a topology sent while its run waited queued behind another run doesn't
+ * count that wait.
+ */
+export function fitFrom(sent: number, run: Pick<RunSummary, "first_running_at">): number {
+  const began = run.first_running_at === null ? NaN : Date.parse(run.first_running_at);
+  return Number.isNaN(began) ? sent : Math.max(sent, began);
 }
 
 /** What follows the status word: " · SLURM array 4482163 · 16 running (run cap) · sent 9:04 AM · …". */
@@ -205,7 +219,7 @@ export function statusParts(stage: Stage, t: Topology, a: StatusContext): Part[]
       sentAt();
       if (ended !== undefined) say(` · ended ${clock(ended, a.now)}`);
       if (sent !== undefined && ended !== undefined) {
-        say(` · took ${durationWords((ended - sent) / 1000)}`);
+        say(` · took ${durationWords(Math.max(0, ended - fitFrom(sent, a.run)) / 1000)}`);
       }
       break;
     case "failed":
@@ -831,20 +845,22 @@ export function emptyWords(
 // ── when it ends ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * When the topology's last start ends: each start takes the median wall time
- * of its finished starts (or `perStartS`, the platform's, before one has),
- * the running ones counted from when they began, the rest taking the slots as
- * they free; as many slots as run now, or `slots` while none does. `undefined`
- * with nothing left to run, or no time per start to go by.
+ * When the topology's last start ends: each start takes the median time of its
+ * finished starts with what a start takes beside its evaluations (`overheadS`,
+ * #508), or `perStartS`, the platform's, before one has finished; the running
+ * ones counted from when they began, the rest taking the slots as they free;
+ * as many slots as run now, or `slots` while none does. `undefined` with
+ * nothing left to run, or no time per start to go by.
  */
 export function etaOf(
   starts: StartSummary[],
-  a: { now: number; slots: number; perStartS?: number },
+  a: { now: number; slots: number; overheadS: number; perStartS?: number },
 ): number | undefined {
   const times = starts
     .flatMap((s) => (s.state === "finished" && s.elapsed_s !== null ? [s.elapsed_s] : []))
     .sort((x, y) => x - y);
-  const per = times.length > 0 ? times[Math.floor((times.length - 1) / 2)] : a.perStartS;
+  const per =
+    times.length > 0 ? times[Math.floor((times.length - 1) / 2)] + a.overheadS : a.perStartS;
   const running = starts.filter((s) => s.state === "running");
   const left = starts.filter((s) => s.state === "queued" || s.state === "waiting").length;
   if (per === undefined || running.length + left === 0) return undefined;

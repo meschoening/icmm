@@ -437,15 +437,27 @@
 .hm-plot:hover .hm-cap {
   color: var(--cobalt);
 }
+/* The chart's head: the protocol's name, then its RMSE pushed right and kept whole (#517). */
 .hm-hi {
   display: flex;
   align-items: baseline;
   gap: 8px;
   font-size: 13px;
+  color: var(--ink-3);
 }
 .hm-hiname {
-  color: var(--ink-2);
+  min-width: 0;
   overflow-wrap: anywhere;
+}
+.hm-hival {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+}
+.hm-hiunit {
+  font-size: 12px;
 }
 .hm-hiv {
   color: var(--ink);

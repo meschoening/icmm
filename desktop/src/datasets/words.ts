@@ -79,7 +79,7 @@ export interface ProtocolsStatus {
 
 /**
  * The status line: what to fix first, then interpolated points out of
- * range, or the defaults left to check. Keeping one train point is the
+ * range, or how many values are template defaults. Keeping one train point is the
  * dataset's. `stale` are the issues of an answer the checks are asking
  * again for.
  */
@@ -116,9 +116,14 @@ export function protocolsStatus(
     blocked: false,
     text:
       defaults > 0
-        ? `${count(defaults, "template default")} to check`
+        ? defaultsTally(defaults)
         : `${count(forms.length, "protocol")} ready`,
   };
+}
+
+/** How many values are still a template's defaults (#501): "1 value is a template default". */
+export function defaultsTally(n: number): string {
+  return n === 1 ? "1 value is a template default" : `${n} values are template defaults`;
 }
 
 /** What a template's fixed step voltages are, by step, where they have a name. */
@@ -149,9 +154,9 @@ export function defaultsWords(forms: ProtocolForm[]): string {
 
 /** The decay window's presets, as the Window menu offers them (#50). */
 export const WINDOWS = {
-  tau: { label: "Time constant τ · 100 → 37 %", from: "100", to: "37" },
-  half: { label: "Half-decay · 100 → 50 %", from: "100", to: "50" },
-  rise: { label: "Rise · 10 → 90 %", from: "10", to: "90" },
+  tau: { label: "Time constant τ · 100 → 37\u00a0%", from: "100", to: "37" },
+  half: { label: "Half-decay · 100 → 50\u00a0%", from: "100", to: "50" },
+  rise: { label: "Rise · 10 → 90\u00a0%", from: "10", to: "90" },
 } as const;
 
 /**
@@ -183,12 +188,12 @@ export function windowValid(from: number, to: number): boolean {
 export function windowWords(from: number, to: number): string {
   if (!windowValid(from, to)) return WINDOW_RULE;
   if (from < to) {
-    return `Upward fractions time a rise before the peak: from ${from} % of the peak to ${to} %, each counted once the open probability stays above it.`;
+    return `Upward fractions time a rise before the peak: from ${from}\u00a0% of the peak to ${to}\u00a0%, each counted once the open probability stays above it.`;
   }
   const s =
     from === 100
-      ? `From the peak until the open probability falls to ${to} % of it and stays below.`
-      : `From when the open probability falls to ${from} % of its peak and stays below, until it does the same at ${to} %.`;
+      ? `From the peak until the open probability falls to ${to}\u00a0% of it and stays below.`
+      : `From when the open probability falls to ${from}\u00a0% of its peak and stays below, until it does the same at ${to}\u00a0%.`;
   return from === 100 && to === 37 ? `${s} For one exponential, that’s its time constant τ.` : s;
 }
 
@@ -277,10 +282,26 @@ const DECAY_LINES: Record<"decay" | "rise" | "either", string> = {
     "Between two fractions of the peak: as the current falls after it (100 → 37\u00a0%), or rises before it (10 → 90\u00a0%).",
 };
 
-export function templateLine(template: Template, direction: Direction): string {
+/**
+ * What a template measures, in a line. A decay time with its window known
+ * (the Protocols step's, or the one guessed from the sheet's name) says that
+ * window's fractions, so a half-decay sheet falls to 50 %, not 37 %.
+ */
+export function templateLine(
+  template: Template,
+  direction: Direction,
+  window?: { from: number; to: number },
+): string {
   if (template === "custom") return "Steps you set yourself, in the protocol builder.";
   if (template !== "decay_time") return TEMPLATE_LINES[template];
-  return DECAY_LINES[direction ?? "either"];
+  if (window === undefined || !windowValid(window.from, window.to)) {
+    return DECAY_LINES[direction ?? "either"];
+  }
+  const { from, to } = window;
+  if (from < to) return `From ${from}\u00a0% to ${to}\u00a0% of the peak, as the current rises.`;
+  return from === 100
+    ? `From the peak until the current falls to ${to}\u00a0% of it.`
+    : `From when the current falls to ${from}\u00a0% of the peak until it falls to ${to}\u00a0%.`;
 }
 
 /** A measure in words, as facts and checks name it; a decay time running upward is a rise. */
@@ -319,7 +340,7 @@ export function normalizeHint(
 
 /** The one-line hint under Peak and Time to peak (#50). */
 export const MEASURE_HINTS: Partial<Record<Measure["kind"], string>> = {
-  peak: "The highest open probability on this step, counting its first moment.",
+  peak: "The highest open probability on this step, including the step’s first reading.",
   time_to_peak: "The time from this step’s start to its peak, in ms.",
 };
 

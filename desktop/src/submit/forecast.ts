@@ -9,7 +9,7 @@
 import { asSubject, inSentence } from "../setup/form";
 import { clock } from "../ui/clock";
 import type { JobCounts, RunSummary, SavedPlatform } from "../wire/types.gen";
-import { plural } from "./estimate";
+import { plural, startSeconds } from "./estimate";
 
 type Platform = Pick<SavedPlatform, "type" | "name">;
 
@@ -292,20 +292,32 @@ export function localForecast(a: {
 
 /**
  * When a run's last start ends: its starts left (not finished, not failed) in
- * waves of `cap` at once, each as long as one start, from `now` (ms). A cap
- * under 1 runs one at a time; nothing left ends now.
+ * waves of `cap` at once, each as long as one start (`startSeconds`), from
+ * `now` (ms). A cap under 1 runs one at a time; nothing left ends now.
+ *
+ * A running run counts the time it has spent fitting (`fittingS`, #507's
+ * F12): its starts that don't fail take their waves from its first start
+ * running, so its ETA holds while they run on time, rather than slipping a
+ * minute a minute until one ends. Running late, it's never sooner than the
+ * waves its waiting starts still need after those running.
  */
 export function etaOf(a: {
   run: Pick<RunSummary, "progress">;
   evaluations: number;
   perEvaluationS: number;
+  overheadS: number;
   cap: number;
   now: number;
+  fittingS?: number;
 }): number {
-  const { starts, starts_finished, starts_failed } = a.run.progress;
+  const { starts, starts_finished, starts_failed, starts_running } = a.run.progress;
+  const cap = Math.max(1, a.cap);
+  const perStartS = startSeconds(a.evaluations, a.perEvaluationS, a.overheadS);
   const remaining = Math.max(0, starts - starts_finished - starts_failed);
-  const waves = Math.ceil(remaining / Math.max(1, a.cap));
-  return a.now + waves * a.evaluations * a.perEvaluationS * 1000;
+  if (a.fittingS === undefined) return a.now + Math.ceil(remaining / cap) * perStartS * 1000;
+  const due = Math.ceil(Math.max(0, starts - starts_failed) / cap) * perStartS - a.fittingS;
+  const waiting = Math.max(0, remaining - starts_running);
+  return a.now + Math.max(due, Math.ceil(waiting / cap) * perStartS) * 1000;
 }
 
 /** "ETA 6:30 AM" today, "ETA Thu, Aug 20, 6:30 AM" another day. */

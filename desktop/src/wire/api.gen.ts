@@ -4,9 +4,9 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AcceptedRun, AddPlatformParams, AddSshKeyParams, CancelRunParams, CancelingRun, CanonicalParameters, CanonicalParametersParams, CheckFoldersParams, ChooseParams, Chosen, ConfigCheck, ConfigCount, ConfigList, ConfigRevision, ConnectionState, CoordinatingJobs, CountConfigsParams, DatasetContent, DatasetFile, DatasetIssues, DatasetList, DatasetRevision, DeleteConfigParams, DeleteDatasetParams, DeleteRunParams, DeletedConfig, DeletedDataset, DeletedRun, DigestMatches, DuplicateConfigParams, DuplicateDatasetParams, DuplicatedConfig, DuplicatedDataset, EdgeRates, EdgeRatesParams, EditPlatformParams, EndedRuns, EndedRunsParams, EvaluationTime, ExportFileParams, ExportFolderParams, FindScoringDigestParams, FolderChecks, ForgetHostKeyParams, GroupRank, GuardQuitParams, HomeFolder, JobLogPage, LaunchPlatformParams, Leaderboard, ListConfigsParams, ListCoordinatingJobsParams, ListDatasetsParams, ListLeaderboardParams, ListRankingGroupsParams, ListRunsParams, ListStartsParams, ListTopologiesParams, LogFrontendEventParams, LogsFolder, MarkRunsParams, MatchTopologyParams, NotificationParams, PlatformRef, PlatformSettingsResult, Preferences, ProposeSplitParams, Protocol, RankingGroups, ReadConfigParams, ReadCoordinatingJobLogParams, ReadDatasetFileParams, ReadDatasetParams, ReadDatasetRevisionParams, ReadGroupRankParams, ReadJobLogParams, ReadRunParams, ReadStartFitParams, ReadStartLogParams, ReadStartParams, ReadStateGraphsParams, ReadTopologyParams, ReadWorkbookParams, RecentlyOpened, RecentlyOpenedParams, RecordOpenedParams, RegenerateDatasetParams, ReportPreview, ResetParams, ResumeRunParams, ResumedRun, RevealLogParams, RevealParams, Revision, RevisionFiles, RevisionFilesParams, Run, RunList, RunMarks, RunMarksParams, RunStretches, RunStretchesParams, RunTimings, RunsOverview, SaveAsNewDatasetParams, SaveConfigParams, SaveDatasetParams, SavePlatformSettingsParams, SaveReportParams, SavedAsNewDataset, SavedConfig, SavedDataset, SavedPlatforms, SavedReport, SchedulerLookup, SimulateStartParams, SshConfigHost, SshConfigHostParams, SshConfigHosts, SshKeys, Start, StartFit, StartList, StartLogPage, StartSimulation, StartWatch, StateGraphs, SubmitRunParams, TimeEvaluationsParams, TimeFormat, Topology, TopologyList, TopologyMatch, TopologyProgress, TopologyProgressParams, TrustHostKeyParams, UseSshKeyParams, UserJobs, ValidateConfigParams, ValidateDatasetParams, WatchStartParams, WebviewInfo, Workbook, WriteDatasetFileParams, WriteExportFileParams, WriteFiguresParams, WriteFitParams, WriteParametersParams, WrittenFile, WrittenFit } from "./types.gen";
 
 /** The protocol this app speaks, `major.minor`. */
-export const PROTOCOL_VERSION = "1.63";
+export const PROTOCOL_VERSION = "1.66";
 /** Identifies the wire schema this app was built from. */
-export const SCHEMA_HASH = "3503fdc1f56c1a47dc56d4305107ec7ff110bd9dd5c442887bad45fc1b145bdf";
+export const SCHEMA_HASH = "771a553c18258326cae58f5b87d642930ebba665d9b13ec68840caf54270599e";
 
 /** The app's Tauri commands, each named and typed like its registry method. */
 export const commands = {
@@ -157,7 +157,7 @@ export const commands = {
   /** Find custom topology: the id of a topology typed as transitions between states numbered however the user likes, with ICMM's number for each, or every rule it breaks, on this computer's engine whatever the Active platform (ADR-0013, #223). A topology within the rules that the lists don't hold means they're damaged: `internal`. */
   match_topology: (params: MatchTopologyParams): Promise<TopologyMatch> =>
     invoke<TopologyMatch>("match_topology", { params }),
-  /** Submit's time estimate for a config the platform's finished starts haven't timed at its CPUs per start, on this computer's engine whatever the Active platform (ADR-0013): a few dozen of the dataset's evaluations at this many states, on one thread. A dataset that fails its checks, or a number of states without a list, is `invalid`. */
+  /** Submit's time estimate for a config the platform's finished starts haven't timed at its CPUs per start, on this computer's engine whatever the Active platform (ADR-0013): about a second of a start's evaluations of the dataset at this many states, at its population and CPUs, as many at once as its starts run (#508). A dataset that fails its checks, a number of states without a list, or a population, CPUs or starts at once too few, is `invalid`. */
   time_evaluations: (params: TimeEvaluationsParams): Promise<EvaluationTime> =>
     invoke<EvaluationTime>("time_evaluations", { params }),
   /** A start's curves, on this computer's engine whatever the Active platform (ADR-0013): each sweep's open probability over its measured step, at most 256 strided moments and its end, each point's value and each protocol's score, and the protocols whose scores drift from the stored ones beyond rounding, naming the engine that fit it and this one. A revision that fails this engine's checks, or a topology or vector it can't simulate, is `invalid`. */
@@ -269,6 +269,9 @@ export const commands = {
   /** Asks the user for a folder with the OS's dialog. */
   choose_folder: (params: ChooseParams): Promise<Chosen> =>
     invoke<Chosen>("choose_folder", { params }),
+  /** Asks the user for an Excel workbook, an `.xlsx`, with the OS's dialog; with no folder given it opens in Downloads. */
+  choose_workbook: (params: ChooseParams): Promise<Chosen> =>
+    invoke<Chosen>("choose_workbook", { params }),
   /** Asks the user for a dataset file, a `.zip`, with the OS's dialog. */
   choose_dataset_file: (params: ChooseParams): Promise<Chosen> =>
     invoke<Chosen>("choose_dataset_file", { params }),

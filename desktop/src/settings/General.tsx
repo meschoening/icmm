@@ -3,6 +3,9 @@
  * still-improving starts (#234) and the logs folder, each applying at once.
  * The logs row shows where the folder is, as text to copy (#118's U22), and
  * Report a problem… for a problem no failure shows (#126).
+ *
+ * A row with a status line (Test sent, a saved report) holds it in a second
+ * grid row under its text, so the row's controls stay level as it shows (#497).
  */
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useId, useState } from "react";
@@ -76,7 +79,7 @@ export function General() {
             ))}
           </div>
         </div>
-        <div className="general-row">
+        <div className="general-row hold">
           <div className="general-text">
             <label htmlFor={`${id}-n`} className="general-title">
               Notifications
@@ -85,12 +88,6 @@ export function General() {
               A notification from your computer when a run completes or fails. Send a test to check
               that they show.
             </span>
-            {sent && on && (
-              <span role="status" className="general-hint general-said">
-                Test sent. If none appeared, allow notifications for ICMM in your computer’s
-                settings.
-              </span>
-            )}
           </div>
           <div className="general-controls">
             <button
@@ -125,6 +122,11 @@ export function General() {
               <span className="trk" aria-hidden="true" />
             </label>
           </div>
+          {sent && on && (
+            <span role="status" className="general-hint general-said">
+              Test sent. If none appeared, allow notifications for ICMM in your computer’s settings.
+            </span>
+          )}
         </div>
         <div className="general-row">
           <div className="general-text">
@@ -148,7 +150,7 @@ export function General() {
             <span className="trk" aria-hidden="true" />
           </label>
         </div>
-        <div className="general-row">
+        <div className="general-row hold">
           <div className="general-text">
             <span className="general-title">Diagnostic logs</span>
             <span className="general-hint">
@@ -156,9 +158,10 @@ export function General() {
               versions.
             </span>
             {logs !== undefined && logs !== "" && <span className="mono general-path">{logs}</span>}
-            {report.sentence}
           </div>
+          {/* Report a problem… first: hiding it while its panel is open moves nothing (#497). */}
           <div className="general-controls general-logs">
+            {report.button}
             <button
               type="button"
               className="btn btn-sm"
@@ -166,8 +169,8 @@ export function General() {
             >
               Open logs folder
             </button>
-            {report.button}
           </div>
+          {report.sentence}
         </div>
         {report.panel}
       </div>

@@ -769,6 +769,8 @@ h2.pn {
   align-items: baseline;
   flex-wrap: wrap;
   gap: 4px 12px;
+  /* Next protocol scrolls it to the page's top padding, not flush under the header. */
+  scroll-margin-top: 28px;
 }
 .charts {
   display: grid;

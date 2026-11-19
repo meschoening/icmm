@@ -3,11 +3,12 @@
  * estimate of the config's run, for the platform it is on. The rate is read
  * as Submit reads it, from the platform's finished starts at these states and
  * CPUs, else timed on this computer (ADR-0013), so the two pages agree. Typing
- * evaluations or starts only does the arithmetic again; a new dataset or
- * number of states (or box) times again.
+ * evaluations or starts only does the arithmetic again; a new dataset, number
+ * of states, box or population times again.
  */
 import { usePlatformSettings } from "../../setup/queries";
 import { useConnection } from "../../shell/connection";
+import { startOverheadS } from "../../submit/estimate";
 import {
   needsHostTiming,
   timeGap,
@@ -44,6 +45,8 @@ export function builderTime(a: {
   job: JobDefaults | undefined;
   gap: SettingsGap | undefined;
   timing: Timing;
+  /** What each start takes beside its evaluations: `startOverheadS`, once the settings are read. */
+  overheadS: number;
   /** The run's work, once counted. */
   work: Work | undefined;
   /** What each start runs, as the engine counts it; `null` until it can. */
@@ -57,6 +60,7 @@ export function builderTime(a: {
       work,
       evaluations: a.evaluations ?? 0,
       cap: job?.max_running_starts ?? 1,
+      overheadS: a.overheadS,
       limitMin,
       timing,
     });
@@ -88,6 +92,7 @@ export interface Checked {
   datasetId: string;
   numStates: number;
   bounds: Bounds;
+  population: number;
 }
 
 /** Time, from the platform's settings and finished starts, or this computer's timing. */
@@ -120,6 +125,8 @@ export function useBuilderTime(a: {
     content: content.data?.content,
     numStates,
     bounds: checked?.bounds,
+    population: checked?.population,
+    job,
     live,
     unreadable: content.isError,
   });
@@ -127,5 +134,6 @@ export function useBuilderTime(a: {
     checked === undefined
       ? { kind: live ? "reading" : "offline" }
       : timingOf({ timings, numStates, cpus: job?.cpus_per_start ?? 1, host, live });
-  return builderTime({ ...a, job, gap, timing });
+  const overheadS = job === undefined ? 0 : startOverheadS(job);
+  return builderTime({ ...a, job, gap, timing, overheadS });
 }

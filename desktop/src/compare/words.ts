@@ -36,6 +36,8 @@ export interface CandidateProtocol {
   /** Its RMSEs as the run stored them; `null` for a failed sweep, or no points. */
   val: number | null;
   train: number | null;
+  /** Its validation points as the run counted them, where its revision can't be read for them. */
+  valPoints?: number;
 }
 
 export interface Candidate {
@@ -293,8 +295,10 @@ export interface ProtocolRow {
   letter: string;
   /** Its data, when the candidates' data differ; or why it has no fit here. */
   note: string;
-  /** "0.0043", "—" for a failed sweep, or empty where it has no such protocol. */
+  /** "0.0043", "—" for a failed sweep or no validation points, or empty where it has no such protocol. */
   value: string;
+  /** Why its value is "—": "no validation points" where the protocol has none to score, else a failed sweep. */
+  why?: "no validation points";
   /**
    * Which RMSE its value is, when the candidates rank by different metrics: its data's, so a
    * candidate reads the same word on every chart. `undefined` without a value, or on one metric.
@@ -381,6 +385,14 @@ export function protocolsOf(candidates: readonly Candidate[], pointsFrom: number
       rows: candidates.map((c, i) => {
         const group = groups.find((g) => g.members.includes(i))!;
         const v = values[i];
+        // A protocol without validation points has no Val RMSE to show: say so, not a failed sweep.
+        const unscored =
+          v === null &&
+          ranksByVal(c.data) &&
+          (read[i] !== undefined
+            ? !read[i]!.points.some((pt) => pt.validation)
+            : own[i]?.valPoints === 0);
+        const why = unscored ? ("no validation points" as const) : undefined;
         return {
           letter: LETTERS[i],
           note:
@@ -388,10 +400,9 @@ export function protocolsOf(candidates: readonly Candidate[], pointsFrom: number
               ? "not drawn"
               : own[i] === undefined
                 ? `not in ${c.data.name}`
-                : span
-                  ? group.short
-                  : "",
+                : [span ? group.short : "", why ?? ""].filter(Boolean).join(" · "),
           value: own[i] === undefined ? "" : v === null || v === undefined ? "—" : rmse(v),
+          ...(why === undefined ? {} : { why }),
           metric: !mixed || own[i] === undefined ? undefined : ranksByVal(c.data) ? "val" : "train",
           lowest: lowest[i],
         };

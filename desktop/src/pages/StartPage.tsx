@@ -948,16 +948,18 @@ function ProgressSection({
   const drawn = chart?.finished ?? 0;
   const live = phase === "running" && c.asOf === undefined;
   const of = budget === undefined ? "its" : `its full ${evaluationsWords(budget)}`;
+  // Unless it ends there, finished, as its step size overflows (#468).
+  const runs = `Every start runs ${of} evaluations unless CMA-ES’s step size overflows first.`;
   const empty =
     phase === "queued" || phase === "waiting"
       ? {
           say: "Its best so far shows here once it starts and logs its first generation.",
-          meta: `Every start runs ${of} evaluations.`,
+          meta: runs,
         }
       : phase === "starting"
         ? {
             say: "Starting up: its best so far shows here once its first generation is logged.",
-            meta: `Every start runs ${of} evaluations.`,
+            meta: runs,
           }
         : {
             say: "It stopped before its first generation, so it has no best to show.",
@@ -1132,16 +1134,6 @@ function FitSection({
         : protocolRmse(latest?.val_sse?.[i], counts.val, latest?.val_failed?.[i]),
     };
   });
-  const ranks = (card: Pick<Card, "train" | "val">) => (validation ? card.val : card.train);
-  const worstOf = <T extends Pick<Card, "train" | "val">>(all: T[] | undefined) =>
-    all !== undefined && all.length > 1
-      ? all.reduce<T | undefined>(
-          (w, card) =>
-            ranks(card) !== null && (w === undefined || ranks(card)! > ranks(w)!) ? card : w,
-          undefined,
-        )
-      : undefined;
-  const worst = worstOf(cards);
   const drift = stored ? simulation?.drift : null;
   const which = validation ? "train and val RMSE" : "train RMSE";
   const hint =
@@ -1201,7 +1193,6 @@ function FitSection({
         val: storedRmse(c.start, i, true),
       };
     });
-    const worstNumbered = worstOf(numbered);
     body = (
       <>
         <div className="sp-empty sp-unread">
@@ -1240,13 +1231,11 @@ function FitSection({
                 aria-label={
                   `${card.name}${card.label === undefined ? "" : `, ${card.label}`}, as its run ` +
                   `stored it: train RMSE ${rmseOr(card.train)}` +
-                  (validation ? `, val RMSE ${rmseOr(card.val)}` : "") +
-                  (card === worstNumbered ? ", the highest" : "")
+                  (validation ? `, val RMSE ${rmseOr(card.val)}` : "")
                 }
               >
                 <CardWords
                   name={card.name}
-                  worst={card === worstNumbered}
                   label={card.label}
                   train={card.train}
                   val={card.val}
@@ -1271,7 +1260,6 @@ function FitSection({
             <FitCard
               key={card.protocol.name}
               card={card}
-              worst={card === worst}
               validation={validation}
               so={!stored}
               n={n}
@@ -1500,17 +1488,15 @@ function InfoGlyph() {
   );
 }
 
-/** A card's words: its protocol's name, "highest", its template, and its RMSEs. */
+/** A card's words: its protocol's name, its template, and its RMSEs. */
 function CardWords({
   name,
-  worst,
   label,
   train,
   val,
   validation,
 }: {
   name: string;
-  worst: boolean;
   label?: string;
   train: number | null;
   val: number | null;
@@ -1520,7 +1506,6 @@ function CardWords({
     <span className="sp-cardwords">
       <span className="sp-stem">
         <span className="mono">{name}</span>
-        {worst && <span className="sp-worst">highest</span>}
       </span>
       {label !== undefined && <span className="sp-proto">{label}</span>}
       <span className="sp-rmses">
@@ -1543,7 +1528,6 @@ function CardWords({
  */
 function FitCard({
   card,
-  worst,
   validation,
   so,
   n,
@@ -1551,7 +1535,6 @@ function FitCard({
   onPress,
 }: {
   card: Card;
-  worst: boolean;
   validation: boolean;
   so: boolean;
   n: number;
@@ -1568,8 +1551,7 @@ function FitCard({
     (card.line === undefined
       ? "its data; the simulation draws once it's read"
       : `simulated with start ${n}’s best parameters${so ? " so far" : ""} over the data`) +
-    `; train RMSE ${rmseOr(card.train)}${validation ? `, val RMSE ${rmseOr(card.val)}` : ""}` +
-    (worst ? ", the highest" : "");
+    `; train RMSE ${rmseOr(card.train)}${validation ? `, val RMSE ${rmseOr(card.val)}` : ""}`;
   const inner = (
     <>
       <span className="sp-plot">
@@ -1595,7 +1577,6 @@ function FitCard({
       </span>
       <CardWords
         name={protocol.name}
-        worst={worst}
         label={card.label}
         train={card.train}
         val={card.val}

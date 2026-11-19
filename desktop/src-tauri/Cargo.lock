@@ -2194,7 +2194,7 @@ dependencies = [
 
 [[package]]
 name = "icmm-desktop"
-version = "1.0.0-rc.2"
+version = "1.0.0-rc.3"
 dependencies = [
  "aws-lc-rs",
  "calamine",

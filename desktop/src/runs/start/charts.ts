@@ -169,7 +169,7 @@ export function progressOf(
   const [lo, hi] = logEnds(low, high);
   const tx = (e: number) => X0 + (Math.min(e, budget) / budget) * (X1 - X0);
   const ty = (v: number) => Y0 - (Math.log10(v / lo) / Math.log10(hi / lo)) * (Y0 - Y1);
-  const xt = [0, 0.25, 0.5, 0.75, 1].map((k) => k * budget);
+  const xt = progressTicks(budget);
   const yt = oneThrees(lo, hi);
   const labels: Label[] = [
     ...xt.map((e, i): Label => ({
@@ -426,7 +426,73 @@ function pointsOf(
   return { whiskers, dots, rings, diamonds, hollow };
 }
 
-/** A model's values as a line, by x, broken where a sweep failed; each clamped to lo…hi. */
+const SUPERSCRIPT: Record<string, string> = {
+  "-": "⁻",
+  "0": "⁰",
+  "1": "¹",
+  "2": "²",
+  "3": "³",
+  "4": "⁴",
+  "5": "⁵",
+  "6": "⁶",
+  "7": "⁷",
+  "8": "⁸",
+  "9": "⁹",
+};
+
+/**
+ * The open probability axis' ticks in one format. Tiny ones, under 0.001,
+ * share the top tick's power of ten, "1.2 × 10⁻⁶ · 0.9 × 10⁻⁶ … 0", where
+ * each read shortest ("0.0000012" beside "9e-7", a hyphen for its minus).
+ */
+export function openTicks(ticks: readonly number[]): string[] {
+  const top = Math.max(...ticks.map(Math.abs));
+  if (!(top > 0) || top >= 1e-3) return ticks.map((v) => minus(short(v)));
+  const e = Math.floor(Math.log10(top));
+  const power = `10${[...String(e)].map((c) => SUPERSCRIPT[c]).join("")}`;
+  return ticks.map((v) =>
+    v === 0 ? "0" : `${minus(String(Number((v / 10 ** e).toPrecision(6))))} × ${power}`,
+  );
+}
+
+/** Whether an evaluation count reads exactly as `evaluationsWords` writes it: "25k", not 12.5k's "13k". */
+const readsExactly = (n: number) =>
+  n < 1000 || (n < 1_000_000 ? n % 1000 === 0 : n % 100_000 === 0);
+
+/**
+ * Optimization progress's x ticks: 0, round steps of evaluations, and the
+ * budget, where quarters of it read rounded ("13k · 25k · 38k" of 50k). The
+ * step is the largest of 1, 2, 2.5 and 5 × 10ⁿ giving at least four, each
+ * reading exactly; ticks stop at 80 % of the budget so none crowds the
+ * budget's own label. A budget no step fits keeps its quarters.
+ */
+export function progressTicks(budget: number): number[] {
+  const steps = [5, 2.5, 2, 1].flatMap((m) => {
+    const k = Math.floor(Math.log10(budget / 4));
+    return [m * 10 ** k, m * 10 ** (k - 1)];
+  });
+  const step = steps
+    .filter((st) => Number.isInteger(st) && st > 0 && budget / st >= 4)
+    .sort((p, q) => q - p)
+    .find((st) => {
+      for (let t = st; t <= budget * 0.8; t += st) if (!readsExactly(t)) return false;
+      return true;
+    });
+  if (step === undefined) return [0, 0.25, 0.5, 0.75, 1].map((k) => k * budget);
+  const ticks = [0];
+  for (let t = step; t <= budget * 0.8 + 1e-9; t += step) ticks.push(t);
+  return [...ticks, budget];
+}
+
+/** Half the width of the tick a lone model value is drawn as: a run of one has no line to draw. */
+const TICK = 6;
+
+/**
+ * A model's values as a line, by x, broken where a sweep failed; each clamped
+ * to lo…hi. A value alone in its run (a protocol of one sweep, or a sweep
+ * between failed ones) is a short level tick at its x, since a path of one
+ * point draws nothing (F09).
+ */
 function lineOf(
   model: readonly { x: number; value: number | null }[],
   tx: (v: number) => number,
@@ -435,17 +501,24 @@ function lineOf(
   hi: number,
 ): string {
   const sorted = [...model].sort((m, n) => m.x - n.x);
-  let line = "";
-  let drawing = false;
+  const runs: [number, number][][] = [[]];
   for (const m of sorted) {
     if (m.value === null || !Number.isFinite(m.value)) {
-      drawing = false;
+      if (runs[runs.length - 1].length > 0) runs.push([]);
       continue;
     }
-    line += `${drawing ? "L" : "M"}${f1(tx(m.x))} ${f1(ty(Math.min(hi, Math.max(lo, m.value))))}`;
-    drawing = true;
+    runs[runs.length - 1].push([tx(m.x), ty(Math.min(hi, Math.max(lo, m.value)))]);
   }
-  return line;
+  return runs
+    .filter((run) => run.length > 0)
+    .map((run) => {
+      if (run.length === 1) {
+        const [[x, y]] = run;
+        return `M${f1(x - TICK)} ${f1(y)}L${f1(x + TICK)} ${f1(y)}`;
+      }
+      return run.map(([x, y], k) => `${k === 0 ? "M" : "L"}${f1(x)} ${f1(y)}`).join("");
+    })
+    .join("");
 }
 
 const valuesOf = (points: readonly Point[]) =>
@@ -717,10 +790,10 @@ export function sweepsOf(
     base: `M${X0} ${f1(R0)}H${X1}`,
     curves: responseCurves,
     labels: [
-      ...yt.map((v): Label => ({
-        t: minus(short(v)),
+      ...openTicks(yt).map((t, k): Label => ({
+        t,
         left: pc(X0 - 6, W),
-        top: ry(v),
+        top: ry(yt[k]),
         align: "y",
       })),
       { t: o.peak ? "P open ÷ peak" : "P open", left: "0%", top: 0, kind: "unit" },

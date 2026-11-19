@@ -45,7 +45,8 @@ export function Shell() {
   }, [router]);
   const close = () => {
     setOpen(null);
-    back.current?.focus();
+    // Where it was, without scrolling: a page heading it was on sits at the page's top (#509, F15).
+    back.current?.focus({ preventScroll: true });
   };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

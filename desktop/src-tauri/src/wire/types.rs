@@ -1379,7 +1379,8 @@ pub struct EndedRunsParams {
 pub struct EvaluationTime {
     ///How many it timed.
     pub evaluations: i64,
-    ///On one thread of this computer.
+    /**A start's time for one evaluation on this computer, at its CPUs, beside as many starts as
+    run at once, with CMA-ES's own work for each.*/
     pub seconds_per_evaluation: f64,
 }
 ///`ExportFileParams`
@@ -3069,7 +3070,7 @@ pub struct RunBest {
     pub graph: i64,
     pub open_state: i64,
     /**How the Best start's worker scored its best, per protocol in the run's revision's order:
-    each protocol's stored RMSE, as its page marks the highest (#389).*/
+    each protocol's stored RMSE.*/
     pub scores: ::std::vec::Vec<ProtocolScore>,
     ///Its **Best start**, `#214/T12.3` start 37, whose RMSEs these are.
     pub start: i64,
@@ -4927,14 +4928,22 @@ impl ::std::convert::TryFrom<::std::string::String> for Theme {
         value.parse()
     }
 }
-///Submit's time estimate for a config the platform's finished starts haven't timed (#229).
+/**Submit's time estimate for a config the platform's finished starts haven't timed (#229),
+timed as its starts would run on this computer (#508).*/
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct TimeEvaluationsParams {
     pub bounds: Bounds,
+    ///The Job defaults': the threads each start scores on.
+    pub cpus_per_start: i64,
     ///The config's dataset, as `read_dataset` read its current revision.
     pub dataset: DatasetContent,
     pub num_states: i64,
+    ///The config's: each generation's evaluations, scored together.
+    pub population: i64,
+    /**How many of its starts run at once here: on This computer the Running-starts cap; 1 for a
+    cluster, whose starts run on other computers.*/
+    pub running_starts: i64,
 }
 ///How this computer shows the time of day.
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]

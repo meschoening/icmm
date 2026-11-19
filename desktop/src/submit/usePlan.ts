@@ -24,7 +24,7 @@ import type {
   SavedConfig,
   SavedPlatform,
 } from "../wire/types.gen";
-import { evaluationsPerStart } from "./estimate";
+import { evaluationsPerStart, runningStartsOf, startOverheadS } from "./estimate";
 import { localForecast, slurmForecast } from "./forecast";
 import {
   admissionSpace,
@@ -125,9 +125,10 @@ export interface Plan {
 
 /**
  * This computer's own timing of a config, when no finished start has timed
- * this many states at this many CPUs (`needed`): its dataset, states and box,
- * kept as long as the page lives. Not connected, a dataset that was never read
- * can't be. Submit run's, and the Config builder's Time (#471).
+ * this many states at this many CPUs (`needed`): its dataset, states, box and
+ * population, its starts run as the Job defaults run them (#508), kept as long
+ * as the page lives. Not connected, a dataset that was never read can't be.
+ * Submit run's, and the Config builder's Time (#471).
  */
 export function useHostTiming(a: {
   /** No finished start can say: `needsHostTiming`. */
@@ -136,23 +137,33 @@ export function useHostTiming(a: {
   content: DatasetContent | undefined;
   numStates: number | null;
   bounds: Bounds | undefined;
+  population: number | undefined;
+  job: JobDefaults | undefined;
   live: boolean;
   /** Its content couldn't be read, or it is deleted or unreadable. */
   unreadable: boolean;
 }): HostTiming {
-  const { needed, content, numStates, bounds } = a;
+  const { needed, content, numStates, bounds, population } = a;
+  const cpus = a.job?.cpus_per_start;
+  const runningStarts = a.job === undefined ? undefined : runningStartsOf(a.job);
   // One object for as long as its parts are the same, so the timing is asked once.
   const input = useMemo(
     () =>
-      needed && content !== undefined && numStates !== null && bounds !== undefined
-        ? { dataset: content, numStates, bounds }
+      needed &&
+      content !== undefined &&
+      numStates !== null &&
+      bounds !== undefined &&
+      population !== undefined &&
+      cpus !== undefined &&
+      runningStarts !== undefined
+        ? { dataset: content, numStates, bounds, population, cpus, runningStarts }
         : undefined,
-    [needed, content, numStates, bounds],
+    [needed, content, numStates, bounds, population, cpus, runningStarts],
   );
   const query = useEvaluationTime(input);
   if (input !== undefined) {
     if (query.data !== undefined) {
-      return { kind: "ready", secondsOneThread: query.data.seconds_per_evaluation };
+      return { kind: "ready", seconds: query.data.seconds_per_evaluation };
     }
     return query.isError ? { kind: "failed" } : { kind: "pending" };
   }
@@ -270,6 +281,7 @@ function useBegins(a: {
       timings: a.timings ?? NO_TIMINGS,
       cpus: job.cpus_per_start,
       cap,
+      overheadS: startOverheadS(job),
       now,
     });
     from = {
@@ -331,6 +343,8 @@ export function usePlan(a: {
     content: seen?.content,
     numStates,
     bounds: ready?.config.bounds,
+    population: ready?.config.search.population,
+    job,
     live,
     unreadable:
       a.reads.contentFailed || !!ready?.dataset.deleted || ready?.dataset.unreadable != null,
@@ -397,6 +411,7 @@ export function usePlan(a: {
           work,
           evaluations: evaluationsPerStart(search.evaluation_budget, search.population),
           cap: job.max_running_starts,
+          overheadS: startOverheadS(job),
           limitMin: job.type === "slurm" ? job.time_limit_per_start_min : null,
           timing: timingOf({ timings, numStates, cpus, host, live }),
         });

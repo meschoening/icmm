@@ -374,24 +374,29 @@ export function coresLine(
   cpusText: string,
   runningText: string,
 ): string {
+  // The field holds a bare number: that it counts every run's starts is said here (C27).
   const start = `${START} process.`;
-  if (cores === undefined) return start;
+  const shared = "Max running starts is shared by all runs.";
+  if (cores === undefined) return `${start} ${shared}`;
   const has = `has ${count(cores)} ${cores === 1 ? "core" : "cores"}`;
   const cpus = wholeNumber(cpusText);
   const running = wholeNumber(runningText);
   if (cpus === undefined || running === undefined || cpus < 1 || running < 1) {
-    return `${start} ${asSubject(platform)} ${has}.`;
+    return `${start} ${shared} ${asSubject(platform)} ${has}.`;
   }
   const used = cpus * running;
   const one = running === 1;
-  const starts = `${count(running)} ${one ? "start" : "starts"} of ${count(cpus)} ${cpus === 1 ? "CPU" : "CPUs"}`;
+  const starts = `${count(running)} ${one ? "start" : "starts"} of ${count(cpus)} ${cpus === 1 ? "CPU" : "CPUs"} at once, across all runs,`;
+  // At every core, lowering it is how to keep the computer usable for other work (C25).
+  const lower = "Lower Max running starts to keep cores free for other work.";
   if (used > cores) {
-    return `${start} ${starts} ${one ? "asks" : "ask"} for ${count(used)} CPUs, and ${inSentence(platform)} ${has}. They’d share them, so each start runs slower.`;
+    return `${start} ${starts} ${one ? "asks" : "ask"} for ${count(used)} CPUs, and ${inSentence(platform)} ${has}. They’d share them, so each start runs slower. ${lower}`;
   }
   const use = one ? "uses" : "use";
   const its = `${inSentence(platform)}’s`;
   if (cores === 1) return `${start} ${starts} ${use} ${its} only core.`;
-  if (used === cores) return `${start} ${starts} ${use} all ${count(cores)} of ${its} cores.`;
+  if (used === cores)
+    return `${start} ${starts} ${use} all ${count(cores)} of ${its} cores. ${lower}`;
   return `${start} ${starts} ${use} ${count(used)} of ${its} ${count(cores)} cores.`;
 }
 

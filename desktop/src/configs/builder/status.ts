@@ -5,6 +5,7 @@
  * valid, with the notes counted; one another computer deleted says so, and
  * saves as a new config (CF04). A save waiting for the connection, and a
  * save's failure, say so in its place, as the wizard's Review step does.
+ * Its notes count is a link to the first of them (#509, F17).
  */
 import { joinAnd } from "../../datasets/format";
 import type { Field, FieldIssue } from "./draft";
@@ -64,6 +65,8 @@ export interface Status {
   mark: "ok" | "bad" | null;
   /** Why Save can't save now; `undefined` when it can. */
   blocked: string | undefined;
+  /** `text` around its notes count ("1 note", "3 notes"), which links to the first of them. */
+  notes?: { before: string; count: string; after: string };
 }
 
 /** "02 Topology has 3 checks to fix", or "02 Topology and 03 Optimization have 4 …". */
@@ -74,8 +77,8 @@ function checksWords(errors: FieldIssue[]): string {
   return `${joinAnd(at.map((s) => s.name))} ${at.length === 1 ? "has" : "have"} ${checks} to fix`;
 }
 
-/** "· 1 note", or nothing. */
-const notesWords = (n: number) => (n === 0 ? "" : n === 1 ? " · 1 note" : ` · ${n} notes`);
+/** "1 note", "3 notes", or nothing. */
+const notesWords = (n: number) => (n === 0 ? undefined : n === 1 ? "1 note" : `${n} notes`);
 
 export function statusOf(s: StatusInput): Status {
   const offline = `Checks run once ${s.platform} is connected`;
@@ -112,17 +115,17 @@ export function statusOf(s: StatusInput): Status {
       blocked,
     };
   }
-  const notes = notesWords(s.notes);
-  if (s.deleted) {
-    const text = `Deleted on another computer · all three sections are valid${notes}`;
-    return { text, tone: "plain", mark: null, blocked };
-  }
+  const count = notesWords(s.notes);
+  const [before, after] = s.deleted
+    ? ["Deleted on another computer · all three sections are valid", ""]
+    : s.editing
+      ? ["Unsaved changes · all three sections are valid", ""]
+      : ["All three sections are valid", " · not saved yet"];
   return {
-    text: s.editing
-      ? `Unsaved changes · all three sections are valid${notes}`
-      : `All three sections are valid${notes} · not saved yet`,
+    text: count === undefined ? before + after : `${before} · ${count}${after}`,
     tone: "plain",
-    mark: blocked === undefined ? "ok" : null,
+    mark: blocked === undefined && !s.deleted ? "ok" : null,
     blocked,
+    notes: count === undefined ? undefined : { before: `${before} · `, count, after },
   };
 }

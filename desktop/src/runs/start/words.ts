@@ -233,9 +233,11 @@ export function statusParts(phase: Phase, c: StartContext, bestOf?: string): Par
       if (started !== undefined) say(` · started ${clock(started, c.now)}`);
       if (phase === "finished" && ended !== undefined) {
         say(` · ended ${clock(ended, c.now)}`);
-        if (started !== undefined) {
+        const took =
+          tookSeconds(c) ?? (started === undefined ? undefined : (ended - started) / 1000);
+        if (took !== undefined) {
           say(" · took ");
-          parts.push(...wallParts((ended - started) / 1000));
+          parts.push(...wallParts(took));
         }
       }
       if (phase === "starting") say(" · starting up");
@@ -323,7 +325,9 @@ export function signedPercent(x: number): string {
  * still-improving mark weighs (`start.py`'s, from generation 9/10 of its
  * budget), so a finished start's is its stored `still_improving_change`.
  * Another's covers its latest tenth of the budget, from the last log point at
- * or before a tenth back; before it has run a tenth, it's "not yet". So does
+ * or before a tenth back, and names the span it covers where that's over half
+ * again a tenth ("Last 10k of 20k", logged every 10k); before it has run a
+ * tenth, it's "not yet". So does
  * one whose step size overflowed: its stored change is null, as it ended
  * before the budget's last tenth (#478).
  */
@@ -354,10 +358,17 @@ function lastTenth(phase: Phase, c: StartContext): Tile {
   }
   const from = c.points.filter((p) => p.evaluations <= latest.evaluations - span).pop();
   const start = from ?? c.points[0];
+  // Logged so sparsely that its points span more than half again a tenth, the label names what
+  // they cover (F16); a log point's usual overshoot of a tenth keeps "Last tenth".
+  const covered = latest.evaluations - start.evaluations;
+  const named =
+    covered <= span * 1.5
+      ? label
+      : `Last ${evaluationsWords(covered)} of ${evaluationsWords(budget)}`;
   if (start === latest || start.train_rmse === null || latest.train_rmse === null)
-    return { label, parts: dash };
-  if (!(start.train_rmse > 0)) return { label, parts: dash };
-  return { label, parts: change(latest.train_rmse / start.train_rmse - 1) };
+    return { label: named, parts: dash };
+  if (!(start.train_rmse > 0)) return { label: named, parts: dash };
+  return { label: named, parts: change(latest.train_rmse / start.train_rmse - 1) };
 }
 
 /**
@@ -743,6 +754,15 @@ export function wallWords(seconds: number): string {
   return m === 0 ? `${h} h` : m === 60 ? `${h + 1} h` : `${h} h ${String(m).padStart(2, "0")} m`;
 }
 
+/**
+ * How long a finished start's search took, by the clock the topology page's
+ * Best starts and its start log read (its result's `elapsed_s`), not from
+ * when the coordinator first saw it running to when it collected it (F13).
+ */
+function tookSeconds(c: StartContext): number | undefined {
+  return c.start.state === "finished" && c.start.elapsed_s !== null ? c.start.elapsed_s : undefined;
+}
+
 /** "13 m 10 s" in its parts: each number in mono, each unit after it. */
 function wallParts(seconds: number): Part[] {
   const words = wallWords(seconds).split(" ");
@@ -814,13 +834,16 @@ export function clusterOf(
     rows.push({ k: "CPUs", parts: [n(String(r.cpus)), ...rounds] });
   }
   if (r?.peak_memory_mb != null) {
-    // "3.0 of 4 GB at most": the peak to a decimal in its limit's unit.
+    // "3.0 of 4 GB at most": the peak to a decimal in its limit's unit; under 1 GB, its own
+    // unit, "35 MB of 4 GB", where it read "0.0" (F13).
     const used =
       r.memory_mb === null
         ? memoryParts(r.peak_memory_mb)
-        : r.memory_mb >= 1024
-          ? [n((r.peak_memory_mb / 1024).toFixed(1)), { t: " of " }, ...memoryParts(r.memory_mb)]
-          : [n(whole(r.peak_memory_mb)), { t: " of " }, ...memoryParts(r.memory_mb)];
+        : r.memory_mb < 1024
+          ? [n(whole(r.peak_memory_mb)), { t: " of " }, ...memoryParts(r.memory_mb)]
+          : r.peak_memory_mb >= 1024
+            ? [n((r.peak_memory_mb / 1024).toFixed(1)), { t: " of " }, ...memoryParts(r.memory_mb)]
+            : [...memoryParts(r.peak_memory_mb), { t: " of " }, ...memoryParts(r.memory_mb)];
     rows.push({
       k: "Memory",
       parts: [...used, { t: " at most" }],
@@ -832,8 +855,13 @@ export function clusterOf(
   const started = at(r?.started_at);
   const stopped = ended ? at(r?.ended_at) : (c.asOf ?? readAt);
   const limit = r?.time_limit_min ?? null;
+  const took = tookSeconds(c);
   if (phase === "time_limit" && limit !== null) {
     rows.push({ k: "Wall time", parts: [...hourParts(limit), dim(" · its limit")] });
+  } else if (ended && took !== undefined) {
+    const parts = wallParts(took);
+    if (limit !== null) parts.push(dim(` · limit ${durationWords(limit * 60)}`));
+    rows.push({ k: "Wall time", parts });
   } else if (started !== undefined && stopped !== undefined) {
     const parts = wallParts((stopped - started) / 1000);
     if (limit !== null) parts.push(dim(` · limit ${durationWords(limit * 60)}`));

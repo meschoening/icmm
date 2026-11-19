@@ -53,7 +53,14 @@ import {
 import { outOfRangeOf, useRangeFix } from "../rangeFix";
 import { useDatasetIssues } from "../queries";
 import { pointsOf, TEMPLATE_LABELS, type SheetRead } from "../sheets";
-import { DECAY_OR_RISE, measureFact, measureWords, outOfRangeWords, templateLabel } from "../words";
+import {
+  DECAY_OR_RISE,
+  defaultsTally,
+  measureFact,
+  measureWords,
+  outOfRangeWords,
+  templateLabel,
+} from "../words";
 import { SweepsChart, TemplateGlyph, type DrawnStep, type Swept } from "./charts";
 import { Checks } from "./Checks";
 import { DataCard } from "./DataCard";
@@ -418,7 +425,7 @@ export function ProtocolBuilder(p: ProtocolBuilderProps) {
               {save.bubble}
             </div>
             {defaults.length > 0 && (
-              <span className="astat">{count(defaults.length, "template default")} to check</span>
+              <span className="astat">{defaultsTally(defaults.length)}</span>
             )}
           </div>
         </div>

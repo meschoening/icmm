@@ -235,7 +235,16 @@ function SheetRow({
     });
     reason = `Set to ${named} by you${renamed ? `: mapped ${mapping(read, template!, choice.roles)}` : ""}`;
   }
-  const line = none ? null : templateLine(custom ? "custom" : template!, direction);
+  // The window's fractions, so a half-decay sheet says 50 %: the Protocols step's, else the guess.
+  const window =
+    from !== null && to !== null
+      ? { from, to }
+      : choice.rise
+        ? { from: 10, to: 90 }
+        : choice.half
+          ? { from: 100, to: 50 }
+          : undefined;
+  const line = none ? null : templateLine(custom ? "custom" : template!, direction, window);
 
   const columns = shownColumns(read, choice, named);
   const recoveryX = (spec: RoleSpec | null) => spec?.unit === "s|ms";

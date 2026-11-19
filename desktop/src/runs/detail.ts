@@ -19,6 +19,7 @@ import {
   paceWords,
   plural,
   sizeWords,
+  startSeconds,
 } from "../submit/estimate";
 import { etaOf as forecastEta } from "../submit/forecast";
 import { clock, weekdayDate } from "../ui/clock";
@@ -36,7 +37,7 @@ import type {
 } from "../wire/types.gen";
 import { endOf, fittingSeconds } from "./fitting";
 import { SPAN } from "./stretch";
-import { barOf, counted, refusalOf, rmse, topologyName } from "./words";
+import { barOf, counted, queueAheadOf, refusalOf, rmse, topologyName } from "./words";
 
 type Platform = Pick<SavedPlatform, "type" | "name">;
 
@@ -164,11 +165,14 @@ export interface EtaAround {
   /** CPUs per start and the Running-starts cap; `undefined` before Platform settings are read. */
   cpus: number | undefined;
   cap: number | undefined;
+  /** What each start takes beside its evaluations: `startOverheadS`, with the settings. */
+  overheadS: number | undefined;
   /** When its numbers are from: now, or as of when the connection went (#326). */
   now: number;
   /**
-   * This computer's time for an evaluation of the run, on one thread (`time_evaluations`):
-   * Submit's estimate where no finished start here has timed its states and CPUs (#324).
+   * This computer's time for an evaluation of the run, as its starts run here
+   * (`time_evaluations`, #508): Submit's estimate where no finished start here
+   * has timed its states and CPUs (#324).
    */
   host?: number;
 }
@@ -176,30 +180,33 @@ export interface EtaAround {
 /**
  * Submit's model of when a run's last start ends (#229): its starts left in
  * waves of `cap`, each as long as one of its starts at `cpus` CPUs, from the
- * platform's finished starts, or else this computer's timing (`host`, #324).
+ * platform's finished starts, or else this computer's timing (`host`, #324),
+ * counting the time it has spent fitting (#507).
  * `undefined` for a run whose settings this ICMM can't read, or that neither
  * times.
  */
 function submitEtaOf(r: Run, a: EtaAround): number | undefined {
   const t = submitTimingOf(r, a);
   if (t === undefined) return undefined;
-  return forecastEta({ run: r, ...t, now: a.now });
+  return forecastEta({ run: r, ...t, now: a.now, fittingS: fittingSeconds(r, a.now) });
 }
 
 /** Submit's time for one of the run's starts, from what `submitEtaOf` reads; `undefined` where it can't. */
 function submitTimingOf(
   r: Run,
   a: EtaAround,
-): { evaluations: number; perEvaluationS: number; cap: number } | undefined {
+): { evaluations: number; perEvaluationS: number; overheadS: number; cap: number } | undefined {
   const search = r.settings?.search;
-  if (search === undefined || a.cpus === undefined || a.cap === undefined) return undefined;
+  const { cpus, cap, overheadS } = a;
+  if (search === undefined || cpus === undefined || cap === undefined || overheadS === undefined)
+    return undefined;
   const per =
-    fromRuns(a.timings, r.num_states, a.cpus)?.seconds ??
-    (a.host !== undefined ? fromHost(a.host, a.cpus).seconds : undefined);
+    fromRuns(a.timings, r.num_states, cpus)?.seconds ??
+    (a.host !== undefined ? fromHost(a.host).seconds : undefined);
   if (per === undefined || !(per > 0)) return undefined;
   const evaluations = evaluationsPerStart(search.evaluation_budget, search.population);
   if (evaluations <= 0) return undefined;
-  return { evaluations, perEvaluationS: per, cap: a.cap };
+  return { evaluations, perEvaluationS: per, overheadS, cap };
 }
 
 /**
@@ -215,7 +222,7 @@ export function firstDueOf(r: Run, a: EtaAround): number | undefined {
   const t = submitTimingOf(r, a);
   if (t === undefined || Number.isNaN(began) || p.topologies <= 0) return undefined;
   const waves = Math.ceil(Math.ceil(p.starts / p.topologies) / Math.max(1, t.cap));
-  const due = began + waves * t.evaluations * t.perEvaluationS * 1000;
+  const due = began + waves * startSeconds(t.evaluations, t.perEvaluationS, t.overheadS) * 1000;
   return due > a.now ? due : undefined;
 }
 
@@ -246,18 +253,24 @@ export interface SubmitTotal {
 /**
  * Submit's estimate of a whole run, before it starts: from the platform's
  * finished runs, or, before any has timed its states and CPUs, this
- * computer's timing of an evaluation (`host`, one thread's seconds, #324);
- * `undefined` where neither can.
+ * computer's timing of an evaluation (`host`, as its starts run here, #324,
+ * #508); `undefined` where neither can.
  */
 export function submitTotalOf(
   r: Run,
-  a: { timings: RunTiming[] | undefined; job: JobDefaults | undefined; host?: number },
+  a: {
+    timings: RunTiming[] | undefined;
+    job: JobDefaults | undefined;
+    /** What each start takes beside its evaluations: `startOverheadS`. */
+    overheadS: number;
+    host?: number;
+  },
 ): SubmitTotal | undefined {
   const search = r.settings?.search;
   if (search === undefined || a.timings === undefined || a.job === undefined) return undefined;
   const per =
     fromRuns(a.timings, r.num_states, a.job.cpus_per_start) ??
-    (a.host !== undefined && a.host > 0 ? fromHost(a.host, a.job.cpus_per_start) : undefined);
+    (a.host !== undefined && a.host > 0 ? fromHost(a.host) : undefined);
   if (per === undefined || !(per.seconds > 0)) return undefined;
   const evaluations = evaluationsPerStart(search.evaluation_budget, search.population);
   if (evaluations <= 0) return undefined;
@@ -266,6 +279,7 @@ export function submitTotalOf(
     topologies: r.progress.topologies,
     evaluations,
     perEvaluationS: per.seconds,
+    overheadS: a.overheadS,
     cap: a.job.max_running_starts,
   });
   return { seconds: e.totalS, from: per.from, cap: a.job.max_running_starts };
@@ -493,9 +507,7 @@ function waitsOn(r: Run, a: StageAround): string {
       : "held by the cluster";
   }
   if (!a.slurm) {
-    const ahead = a.inFlight
-      .filter((o) => o.id < r.id && o.state === "running")
-      .sort((x, y) => y.id - x.id)[0];
+    const ahead = queueAheadOf(r, a.inFlight);
     return ahead === undefined
       ? `waiting for a free slot ${onPlatform(a.platform)}`
       : `waiting for #${ahead.id}’s starts to end`;
@@ -689,7 +701,7 @@ export function stagesOf(r: Run, a: StageAround): StageView[] {
         line: "faint",
         time: "",
         name: "Fitting",
-        detail: `${plural(p.topologies, "topology", "topologies")}, ${a.slurm ? "one array at a time" : "one at a time"}`,
+        detail: `${plural(p.topologies, "topology", "topologies")}, ${a.slurm ? "sent" : "started"} one at a time`,
         tone: "dim",
       });
       S.push({
@@ -951,29 +963,87 @@ function whose(ids: number[]): string {
   return named.length > 1 ? `${named.slice(0, -1).join(", ")} and ${named.at(-1)}` : named[0];
 }
 
+/** Starts still running in the topologies sent before the card's (#500), and in how many. */
+export interface Earlier {
+  running: number;
+  topologies: number;
+}
+
+/**
+ * What the topologies sent before `card`, the newest fitting, still run, so
+ * the card and its "+ 3 running in 2 earlier arrays" add up to the box (#500).
+ * `undefined` when none still has a start running.
+ */
+export function earlierOf(sent: TopologySummary[], card: TopologySummary): Earlier | undefined {
+  const before = sent
+    .slice(0, Math.max(0, sent.indexOf(card)))
+    .filter((t) => t.state === "fitting" && t.starts_running > 0);
+  if (before.length === 0) return undefined;
+  return { running: before.reduce((n, t) => n + t.starts_running, 0), topologies: before.length };
+}
+
+/** The card's words after that count: "running in 2 earlier arrays" ("topologies" without SLURM). */
+export function earlierWords(e: Earlier, slurm: boolean): string {
+  const k = e.topologies;
+  const what = slurm
+    ? plural(k, "earlier array", "earlier arrays")
+    : plural(k, "earlier topology", "earlier topologies");
+  return `running in ${what}`;
+}
+
+/** Facts set as one line (#500): each keeps its words together, so it breaks only after a dot. */
+export function factLine(...facts: string[]): string {
+  return facts.map((f) => f.replace(/ /g, "\u00a0")).join("\u00a0· ");
+}
+
+/** The slots in use on a platform without SLURM: this run's, and the other runs' holding some. */
+function slotsOf(r: Run, a: BoxAround): { used: number; mine: number; others: RunSummary[] } {
+  const others = a.inFlight.filter((o) => o.id !== r.id && o.progress.starts_running > 0);
+  const mine = r.ended_at === null ? r.progress.starts_running : 0;
+  return { used: mine + others.reduce((n, o) => n + o.progress.starts_running, 0), mine, others };
+}
+
+/**
+ * The box's number on a platform without SLURM (#500): the slots in use of
+ * the cap all its runs share, and how many are this run's ("of 5 in use ·
+ * 3 #214's"). On the cluster the cap is each run's own, so it counts the run's.
+ */
+function slotsInUse(r: Run, a: BoxAround): { big: string; bigOf: string } {
+  const { used, mine } = slotsOf(r, a);
+  const cap = a.job?.max_running_starts;
+  const own = mine === 0 ? "none" : mine === used ? "all" : whole(mine);
+  return {
+    big: whole(used),
+    bigOf: factLine(
+      cap === undefined ? "in use" : `of ${whole(cap)} in use`,
+      ...(used === 0 ? [] : [`${own} #${r.id}’s`]),
+    ),
+  };
+}
+
 /** The cap line of the box: the cap and CPUs from Platform settings, then whose jobs or slots. */
 function capLineOf(r: Run, a: BoxAround, holders: boolean): CapLine | undefined {
   const job = a.job;
   if (job === undefined) return undefined;
   const cpus = plural(job.cpus_per_start, "CPU", "CPUs");
-  const others = a.inFlight.filter((o) => o.id !== r.id && o.progress.starts_running > 0);
+  const { mine, others } = slotsOf(r, a);
+  const theirs = others.reduce((n, o) => n + o.progress.starts_running, 0);
   // The time doesn't break from its AM or PM where the line wraps.
   const asOf =
     a.asOf === undefined ? "" : ` · as of ${clock(a.asOf, a.now).replace(/ (?=[AP]M$)/, "\u00a0")}`;
   if (!a.slurm) {
-    const mine = r.ended_at === null ? r.progress.starts_running : 0;
-    const used = mine + others.reduce((n, o) => n + o.progress.starts_running, 0);
-    const holding = [...(mine > 0 ? [r.id] : []), ...others.map((o) => o.id)];
-    const who =
-      used === 0
-        ? "none in use"
-        : holding.length === 1 && used === job.max_running_starts
-          ? `all ${whole(used)} are ${whose(holding)}`
-          : `${whole(used)} of ${whole(job.max_running_starts)} in use${mine > 0 && mine < used ? `, ${whole(mine)} of them #${r.id}’s` : ""}`;
+    // The box's number says how many slots are this run's; this line names the others' (#500).
+    const holding = whose(others.map((o) => o.id));
+    const fact =
+      mine === 0 && theirs === job.max_running_starts
+        ? `all ${whole(theirs)} are ${holding}`
+        : `${whole(theirs)} ${theirs === 1 ? "is" : "are"} ${holding}`;
+    // It breaks after the dot, never inside "2 are #41's".
+    const who = theirs === 0 ? "" : `\u00a0· ${factLine(fact)}`;
     return {
       before: `Up to ${whole(job.max_running_starts)} at once, shared by all runs ${onPlatform(a.platform)}, ${cpus} each, from `,
       link: true,
-      after: ` · ${who}${asOf}`,
+      after: `${who}${asOf}`,
     };
   }
   let jobs = "";
@@ -982,7 +1052,6 @@ function capLineOf(r: Run, a: BoxAround, holders: boolean): CapLine | undefined 
       a.limit == null
         ? `${whole(a.jobs)} of your cluster jobs running`
         : `${whole(a.jobs)} of your ${whole(a.limit)} cluster jobs in use`;
-    const theirs = others.reduce((n, o) => n + o.progress.starts_running, 0);
     if (holders && theirs > 0 && a.jobs > 0) {
       const ids = whose(others.map((o) => o.id));
       jobs += theirs >= a.jobs ? `, all ${ids}` : `, ${whole(theirs)} of them ${ids}`;
@@ -1007,11 +1076,11 @@ export function boxOf(r: Run, a: BoxAround): StateBox | undefined {
   const label = local ? `On ${inSentence(a.platform)} now` : "On the cluster now";
   const cap = a.job?.max_running_starts;
   const of = cap === undefined ? "starts running" : `of ${plural(cap, "start", "starts")} running`;
+  const number = local ? slotsInUse(r, a) : { big: whole(p.starts_running), bigOf: of };
   if (phase === "running") {
     return {
       label,
-      big: whole(p.starts_running),
-      bigOf: of,
+      ...number,
       cap: capLineOf(r, a, true),
       live: true,
       keep: KEEPS_GOING,
@@ -1021,8 +1090,7 @@ export function boxOf(r: Run, a: BoxAround): StateBox | undefined {
     const w = a.waiting;
     return {
       label,
-      big: whole(p.starts_running),
-      bigOf: of,
+      ...number,
       // A run held at the job limit names whose jobs in its own line; the rest say it here.
       cap: capLineOf(r, a, !(r.state === "held" && r.held?.kind !== "space")),
       live: false,
@@ -1346,8 +1414,10 @@ export function gridOf(r: Run, sent: TopologySummary[], rankOf: Map<string, numb
     .filter((v): v is number => v !== null);
   const lo = values.length > 0 ? Math.min(...values) : 0;
   const hi = values.length > 0 ? Math.max(...values) : 0;
+  // Before any start has run, those sent wait like the rest, as a queued run draws them (#507).
+  const fits = (t: TopologySummary) => t.state === "fitting" && (ended || !nothingYet(r));
   // The latest sent of those fitting is the one whose queue the next waits on.
-  const fitting = sent.filter((t) => t.state === "fitting").at(-1);
+  const fitting = sent.filter(fits).at(-1);
   const next = ended || fitting === undefined ? undefined : sent.find((t) => t.state === "next");
   const bestKey = r.best === null ? undefined : topologyKey(r.best);
   const counts = new Map<CellKind, number>();
@@ -1357,7 +1427,7 @@ export function gridOf(r: Run, sent: TopologySummary[], rankOf: Map<string, numb
     let kind: CellKind;
     if (t.state === "complete") kind = "complete";
     else if (t.state === "failed") kind = "failed";
-    else if (t.state === "fitting") kind = ended ? "unfinished" : "fitting";
+    else if (fits(t)) kind = ended ? "unfinished" : "fitting";
     else if (t === next) kind = "next";
     else kind = ended ? "not-fitted" : "waiting";
     counts.set(kind, (counts.get(kind) ?? 0) + 1);
@@ -1613,6 +1683,18 @@ export interface Chart {
   /** Drawn once a start has finished; else the empty frame's words. */
   drawn: ChartDrawn | undefined;
   empty: { what: string; estimate: string } | undefined;
+}
+
+/**
+ * Topologies complete's middle gridline: the whole number of topologies
+ * nearest half the total, at its own height, where the line at half an odd
+ * total was labeled a number it isn't; none under 2, where it would sit on
+ * 0 or the total. Its y is the gridline's, on the half pixel as theirs.
+ */
+export function topologiesMiddle(total: number): { n: number; y: number } | undefined {
+  if (total < 2) return undefined;
+  const n = Math.round(total / 2);
+  return { n, y: Math.round(116 - (n / total) * 84) + 0.5 };
 }
 
 /** Three round ticks spanning `lo` to `hi`: the smallest round step whose three ticks cover both. */

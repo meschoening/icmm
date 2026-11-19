@@ -156,9 +156,9 @@ function Labels({ labels }: { labels: Label[] }) {
 }
 
 /** A row's RMSE as a screen reader says it: "—" as its meaning, none as its note, its metric's word. */
-const said = (r: { value: string; note: string; metric: string | undefined }) =>
+const said = (r: { value: string; note: string; metric: string | undefined; why?: string }) =>
   r.value === "—"
-    ? "none, a sweep failed"
+    ? `none, ${r.why ?? "a sweep failed"}`
     : r.value === ""
       ? r.note
       : r.metric === undefined

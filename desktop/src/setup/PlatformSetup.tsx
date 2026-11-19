@@ -58,6 +58,7 @@ import {
 } from "./form";
 import { FailureBox } from "./FailureBox";
 import { agentKey, useFolderCheck, useReadAgain, useSchedulerLookup } from "./queries";
+import { usePathField, useShownPath } from "../ui/paths";
 import { bytes } from "./units";
 
 export interface PlatformSetupProps {
@@ -114,7 +115,8 @@ export function PlatformSetup({
     if (idle) heading.current?.focus();
   }, []);
   const local = platform.type === "local";
-  const data = <span className="mono">{platform.data_folder}</span>;
+  const shown = useShownPath(platform);
+  const data = <span className="mono">{shown(platform.data_folder)}</span>;
   // An SSH host's lead says what the lookup found there, so it waits for the lookup (#281).
   const found = local ? undefined : lookup.data?.scheduler;
 
@@ -311,6 +313,7 @@ export function SetupForm({
   const queries = useQueryClient();
   const desktop = usePlatformCommands();
   const connection = useConnection();
+  const path = usePathField(platform);
   /** What the edit compares with: the settings it opened on, or reloaded. */
   const [base, setBase] = useState(() =>
     edit === undefined
@@ -434,6 +437,12 @@ export function SetupForm({
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       set(field, e.target.value),
   });
+  /** The Output folder's field: This computer's folder shown as its OS writes it (#505). */
+  const outputText = () => ({
+    value: path.shown(f.output),
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) =>
+      set("output", path.stored(e.target.value)),
+  });
   const props = (field: SetupField, ...described: string[]) => {
     const issue = issueOf(field);
     const ids = [
@@ -466,7 +475,9 @@ export function SetupForm({
       field === "container" || WORDS.includes(said) ? (
         said
       ) : (
-        <span className={field === "output" ? "mono" : "mono whole"}>{said}</span>
+        <span className={field === "output" ? "mono" : "mono whole"}>
+          {field === "output" ? path.shown(said) : said}
+        </span>
       );
     return (
       <>
@@ -657,7 +668,7 @@ export function SetupForm({
             className={cls("output")}
             type="text"
             spellCheck={false}
-            {...text("output")}
+            {...outputText()}
             onBlur={() => setChecked(f.output.trim())}
           />
           {platform.type === "local" && (
@@ -810,7 +821,7 @@ export function SetupForm({
           )}
           <div className="field">
             {label("running", "Max running starts")}
-            <div className="with-unit">
+            {local ? (
               <input
                 {...props("running")}
                 className={cls("running")}
@@ -818,10 +829,20 @@ export function SetupForm({
                 inputMode="numeric"
                 {...text("running")}
               />
-              <span className="unit" aria-hidden="true">
-                {local ? "all runs" : "per run"}
-              </span>
-            </div>
+            ) : (
+              <div className="with-unit">
+                <input
+                  {...props("running")}
+                  className={cls("running")}
+                  type="text"
+                  inputMode="numeric"
+                  {...text("running")}
+                />
+                <span className="unit" aria-hidden="true">
+                  per run
+                </span>
+              </div>
+            )}
             {issue("running")}
             {wasLine("running")}
           </div>

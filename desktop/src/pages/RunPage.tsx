@@ -27,6 +27,7 @@ import {
   cancelWords,
   chartOf,
   deleteWords,
+  earlierOf,
   factsOf,
   gridOf,
   improvingNote,
@@ -85,7 +86,7 @@ import { usePreferences } from "../settings/preferences";
 import { inSentence } from "../setup/form";
 import { canAsk, usePlatformSettings, useReadAgain, useSchedulerLookup } from "../setup/queries";
 import { heardAtOf, useConnection } from "../shell/connection";
-import { aboutWords } from "../submit/estimate";
+import { aboutWords, startOverheadS } from "../submit/estimate";
 import { useKept } from "../submit/kept";
 import { needsHostTiming, slurmOf } from "../submit/plan";
 import { useInFlightRuns, useRun, useRunTimings, useUserJobs } from "../submit/queries";
@@ -195,6 +196,7 @@ export function RunPage() {
   // start here has timed its states and CPUs (#324, SR05).
   const host = useRunHostTiming(
     run,
+    job,
     going &&
       run.progress.topologies_complete + run.progress.topologies_failed === 0 &&
       needsHostTiming(timingsQ.data?.timings, run.num_states, job),
@@ -448,14 +450,21 @@ function Detail({
   // The numbers are as of `asOf` while the connection is away: the pace and the ETA are held
   // there, rather than sliding as if the run had stood still (#326).
   const pace = paceOf(r, asOf ?? now);
+  const overheadS = reads.job === undefined ? undefined : startOverheadS(reads.job);
   const eta = runEtaOf(r, {
     timings: reads.timings ?? [],
     cpus: reads.job?.cpus_per_start,
     cap: reads.job?.max_running_starts,
+    overheadS,
     now: asOf ?? now,
     host: reads.host,
   });
-  const total = submitTotalOf(r, { timings: reads.timings, job: reads.job, host: reads.host });
+  const total = submitTotalOf(r, {
+    timings: reads.timings,
+    job: reads.job,
+    overheadS: overheadS ?? 0,
+    host: reads.host,
+  });
 
   const fitting = sent.filter((t) => t.state === "fitting").at(-1);
   const rest =
@@ -520,6 +529,7 @@ function Detail({
           next: waiting[0],
           nextIn,
           waiting: Math.max(0, notSent - 1),
+          earlier: earlierOf(sent, fitting),
           slurm,
           now,
         }

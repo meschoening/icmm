@@ -22,6 +22,7 @@
  */
 import { Link, useNavigate, useParams, useRouterState, useSearch } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useNow } from "../../connection/useNow";
 import { useActivePlatform, useHeldFailure } from "../../datasets/detail/read";
 import { ShowOnceConnected } from "../../datasets/detail/ShowOnceConnected";
@@ -529,6 +530,7 @@ function Builder({
   const [openedFor, setOpenedFor] = useState("");
   const note = useRef<HTMLDivElement>(null);
   const nameField = useRef<HTMLInputElement>(null);
+  const form = useRef<HTMLFormElement>(null);
   const primary = useRef<HTMLButtonElement>(null);
 
   /** Every dataset's name it has seen, so one deleted while it's open keeps its name. */
@@ -692,6 +694,22 @@ function Builder({
     message: write.message,
     blocked: stale ? "Reload first" : undefined,
   });
+
+  // The status line's notes count goes to the first note's field, opening Advanced for one it
+  // holds once closed again (#509, F17).
+  const toFirstNote = () => {
+    const first = () => form.current?.querySelector<HTMLElement>(".fnote") ?? null;
+    if (first() === null) flushSync(() => setAdvanced(true));
+    const found = first();
+    if (found === null) return;
+    const field = found.closest<HTMLElement>(".cb-field, .cb-sub, fieldset") ?? found;
+    const control =
+      field.querySelector<HTMLElement>("input:not([type=radio]), select, textarea") ??
+      field.querySelector<HTMLElement>("input:checked");
+    control?.focus({ preventScroll: true });
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    field.scrollIntoView({ block: "center", behavior: still ? "instant" : "smooth" });
+  };
 
   // Advanced opens by itself when a field inside it has a check or a note.
   const inside = shown
@@ -896,6 +914,7 @@ function Builder({
             datasetId: timed.dataset_id,
             numStates: timed.topology.num_states,
             bounds: timed.bounds,
+            population: timed.search.population,
           }
         : undefined,
     work:
@@ -994,7 +1013,11 @@ function Builder({
             {status.tone === "wait" && <span className="g g-queued" aria-hidden="true" />}
             {status.mark === "ok" && <OkIcon />}
             {status.mark === "bad" && <BadIcon />}
-            {status.text}
+            {status.notes === undefined ? (
+              status.text
+            ) : (
+              <NotesLine {...status.notes} onNotes={toFirstNote} />
+            )}
           </span>
         </div>
       </section>
@@ -1042,6 +1065,7 @@ function Builder({
       ) : null}
       <div className="cb-body">
         <form
+          ref={form}
           aria-label={editing === null ? "New config" : "Edit config"}
           className="cb-form"
           onSubmit={(e) => e.preventDefault()}
@@ -1125,5 +1149,28 @@ function BadIcon() {
       <path d="M6 3.2v3.4" stroke="currentColor" strokeWidth="1.4" />
       <circle cx="6" cy="8.6" r=".8" fill="currentColor" />
     </svg>
+  );
+}
+
+/** The status line with its notes count a link to the first note (#509, F17). */
+function NotesLine({
+  before,
+  count,
+  after,
+  onNotes,
+}: {
+  before: string;
+  count: string;
+  after: string;
+  onNotes: () => void;
+}) {
+  return (
+    <span>
+      {before}
+      <button type="button" className="link" onClick={onNotes}>
+        {count}
+      </button>
+      {after}
+    </span>
   );
 }

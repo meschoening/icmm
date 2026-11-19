@@ -15,10 +15,12 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { agentKey, canAsk, platformOf } from "../setup/queries";
 import { useConnection } from "../shell/connection";
+import { runningStartsOf } from "../submit/estimate";
 import { useEvaluationTime } from "../submit/queries";
 import { commands } from "../wire/api.gen";
 import type {
   FailedStarts,
+  JobDefaults,
   Run,
   StartCause,
   TopologyOrder,
@@ -170,13 +172,19 @@ export function useFailedCauses(
 }
 
 /**
- * This computer's time for an evaluation of the run, on one thread (#324,
- * SR05): Submit's estimate for a run before its first topology ends, where no
- * finished start here has timed its states and CPUs. It times the run's own
- * dataset revision (`read_dataset_revision`, kept as `useRevision` keeps it)
- * on the host engine, as Submit times a config. `wanted` false asks nothing.
+ * This computer's time for an evaluation of the run, as its starts run here
+ * (#324, SR05, #508): Submit's estimate for a run before its first topology
+ * ends, where no finished start here has timed its states and CPUs. It times
+ * the run's own dataset revision (`read_dataset_revision`, kept as
+ * `useRevision` keeps it) on the host engine at its population, with the Job
+ * defaults' CPUs and starts at once (`job`), as Submit times a config.
+ * `wanted` false asks nothing.
  */
-export function useRunHostTiming(r: Run | undefined, wanted: boolean): number | undefined {
+export function useRunHostTiming(
+  r: Run | undefined,
+  job: JobDefaults | undefined,
+  wanted: boolean,
+): number | undefined {
   const c = useConnection();
   const dataset = wanted ? r?.dataset : undefined;
   const q = useQuery({
@@ -188,13 +196,21 @@ export function useRunHostTiming(r: Run | undefined, wanted: boolean): number | 
   });
   const numStates = r?.num_states;
   const bounds = r?.settings?.bounds;
+  const population = r?.settings?.search.population;
+  const cpus = job?.cpus_per_start;
+  const runningStarts = job === undefined ? undefined : runningStartsOf(job);
   const content = wanted ? q.data?.content : undefined;
   const input = useMemo(
     () =>
-      content === undefined || bounds === undefined || numStates === undefined
+      content === undefined ||
+      bounds === undefined ||
+      numStates === undefined ||
+      population === undefined ||
+      cpus === undefined ||
+      runningStarts === undefined
         ? undefined
-        : { dataset: content, numStates, bounds },
-    [content, bounds, numStates],
+        : { dataset: content, numStates, bounds, population, cpus, runningStarts },
+    [content, bounds, numStates, population, cpus, runningStarts],
   );
   return useEvaluationTime(input).data?.seconds_per_evaluation;
 }

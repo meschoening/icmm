@@ -1109,11 +1109,18 @@ impl Supervisor {
         }
         let mut end = match hello {
             Ok(hello) => {
+                // This computer's host name stays out of the log, which a
+                // report carries into a public issue (#505); a cluster's
+                // login host shows which cluster answered.
+                let on = if self.publisher.local {
+                    String::new()
+                } else {
+                    format!(" on {}", hello.facts.host)
+                };
                 tracing::info!(
-                    "{}: engine {} on {} (protocol {}, {} CPUs, scheduler {})",
+                    "{}: engine {}{on} (protocol {}, {} CPUs, scheduler {})",
                     self.publisher.platform,
                     hello.engine_version,
-                    hello.facts.host,
                     hello.protocol,
                     hello.facts.cpus,
                     hello.facts.scheduler,

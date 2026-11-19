@@ -80,7 +80,7 @@ import { Reading } from "../setup/PlatformSetup";
 import { inSentence } from "../setup/form";
 import { canAsk, usePlatformSettings, useReadAgain, useSchedulerLookup } from "../setup/queries";
 import { heardAtOf, useConnection } from "../shell/connection";
-import { evaluationsPerStart, fromRuns } from "../submit/estimate";
+import { evaluationsPerStart, fromRuns, startOverheadS, startSeconds } from "../submit/estimate";
 import { useKept } from "../submit/kept";
 import { slurmOf } from "../submit/plan";
 import { useRun, useRunTimings } from "../submit/queries";
@@ -389,15 +389,20 @@ function Shown({
   const search = run.settings?.search;
   const perEvaluation =
     job === undefined ? undefined : fromRuns(timings ?? [], run.num_states, job.cpus_per_start);
+  const overheadS = job === undefined ? 0 : startOverheadS(job);
   const perStartS =
     perEvaluation === undefined || search === undefined
       ? undefined
-      : perEvaluation.seconds * evaluationsPerStart(search.evaluation_budget, search.population);
+      : startSeconds(
+          evaluationsPerStart(search.evaluation_budget, search.population),
+          perEvaluation.seconds,
+          overheadS,
+        );
   const causes = causesOf(starts);
   // Held at the time the reads are from while the connection is away (#326).
   const eta =
     stage === "fitting" || stage === "queued"
-      ? etaOf(starts, { now: asOf ?? now, slots: cap ?? 1, perStartS })
+      ? etaOf(starts, { now: asOf ?? now, slots: cap ?? 1, overheadS, perStartS })
       : undefined;
   const status = statusParts(stage, t, {
     run,

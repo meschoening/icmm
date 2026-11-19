@@ -1261,7 +1261,8 @@ export interface EndedRunsParams {
 }
 export interface EvaluationTime {
   /**
-   * On one thread of this computer.
+   * A start's time for one evaluation on this computer, at its CPUs, beside as many starts as
+   * run at once, with CMA-ES's own work for each.
    */
   seconds_per_evaluation: number;
   /**
@@ -2677,7 +2678,7 @@ export interface RunBest {
   val_rmse: number | null;
   /**
    * How the Best start's worker scored its best, per protocol in the run's revision's order:
-   * each protocol's stored RMSE, as its page marks the highest (#389).
+   * each protocol's stored RMSE.
    */
   scores: ProtocolScore[];
 }
@@ -3675,12 +3676,26 @@ export interface Subscription {
   reset: boolean;
 }
 /**
- * Submit's time estimate for a config the platform's finished starts haven't timed (#229).
+ * Submit's time estimate for a config the platform's finished starts haven't timed (#229),
+ * timed as its starts would run on this computer (#508).
  */
 export interface TimeEvaluationsParams {
   dataset: DatasetContent;
   num_states: number;
   bounds: Bounds;
+  /**
+   * The config's: each generation's evaluations, scored together.
+   */
+  population: number;
+  /**
+   * The Job defaults': the threads each start scores on.
+   */
+  cpus_per_start: number;
+  /**
+   * How many of its starts run at once here: on This computer the Running-starts cap; 1 for a
+   * cluster, whose starts run on other computers.
+   */
+  running_starts: number;
 }
 /**
  * How this computer shows the time of day.

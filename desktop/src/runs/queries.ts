@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { useConnection } from "../shell/connection";
 import { commands } from "../wire/api.gen";
 import { agentKey, canAsk, platformOf, usePlatformSettings } from "../setup/queries";
+import { startOverheadS } from "../submit/estimate";
 import { etasOf } from "../submit/plan";
 import { useRuns, useRunTimings } from "../submit/queries";
 import type { RunList, RunSummary } from "../wire/types.gen";
@@ -123,6 +124,7 @@ export function useEtas(runs: RunSummary[], now: number): Map<number, number | u
     timings: timings ?? [],
     cpus: job.cpus_per_start,
     cap: job.max_running_starts,
+    overheadS: startOverheadS(job),
     now,
   });
 }

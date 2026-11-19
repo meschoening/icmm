@@ -110,7 +110,7 @@ export function DataCard({
     draft.normalized,
     template,
     rise,
-    mStep === null ? "" : `${mStep.from} → ${mStep.to} %`,
+    mStep === null ? "" : `${mStep.from} → ${mStep.to}\u00a0%`,
   );
   const added = points.filter((p) => p.interpolated).length;
   const held = points.filter((p) => p.validation).length;

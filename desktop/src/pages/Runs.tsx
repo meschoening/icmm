@@ -39,6 +39,7 @@ import { FailureBox } from "../setup/FailureBox";
 import { inSentence } from "../setup/form";
 import { usePlatformSettings, useReadAgain, useSchedulerLookup } from "../setup/queries";
 import { heardAtOf, useConnection } from "../shell/connection";
+import { startOverheadS } from "../submit/estimate";
 import { etasOf, slurmOf } from "../submit/plan";
 import { useRuns, useRunTimings, useUserJobs } from "../submit/queries";
 import { runGlyph } from "../submit/words";
@@ -384,6 +385,7 @@ function Lists({
             timings: reads.timings ?? NO_TIMINGS,
             cpus: reads.job.cpus_per_start,
             cap: reads.job.max_running_starts,
+            overheadS: startOverheadS(reads.job),
             now: asOf ?? now,
           }),
     [reads.details, reads.timings, reads.job, now, asOf],

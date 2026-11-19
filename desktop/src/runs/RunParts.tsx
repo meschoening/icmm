@@ -15,6 +15,9 @@ import {
   searchLines,
   topologyId,
   type CapLine,
+  type Earlier,
+  earlierWords,
+  factLine,
   type NotePart,
   type StageView,
   type StateBox,
@@ -258,6 +261,8 @@ export interface LiveCards {
   /** When the next goes out, in words: "in about 30 m". */
   nextIn: string | undefined;
   waiting: number;
+  /** Starts still running in the topologies sent before it (#500). */
+  earlier: Earlier | undefined;
   slurm: boolean;
   now: number;
 }
@@ -406,6 +411,12 @@ function Cards({ c }: { c: LiveCards }) {
               </span>
             ))}
         </span>
+        {c.earlier !== undefined && (
+          <span className="rd-card-earlier">
+            + <span className="n">{whole(c.earlier.running)}</span>{" "}
+            {earlierWords(c.earlier, c.slurm)}
+          </span>
+        )}
       </Link>
       {c.next !== undefined && (
         <>
@@ -431,8 +442,8 @@ function Cards({ c }: { c: LiveCards }) {
             </span>
             <span className="rd-card-quiet">
               {c.slurm
-                ? "not sent yet · one array at a time"
-                : "not started yet · one topology at a time"}
+                ? factLine("not sent yet", "sent one at a time")
+                : factLine("not started yet", "started one at a time")}
             </span>
           </div>
         </>

@@ -4,6 +4,7 @@
  * which opens the OS's file dialog.
  */
 import type { SelectHTMLAttributes } from "react";
+import { useShownPath } from "../ui/paths";
 import { usePlatformCommands, useSshKeys } from "./commands";
 import { CHOOSE } from "./sshFields";
 
@@ -16,6 +17,8 @@ export type SshKeySelectProps = {
 export function SshKeySelect({ value, onChange, ...rest }: SshKeySelectProps) {
   const keys = useSshKeys();
   const commands = usePlatformCommands();
+  // The keys are This computer's files, whichever platform they sign in to.
+  const shown = useShownPath({ type: "local" });
   const options = [...(keys.data?.keys ?? [])];
   if (value !== "" && !options.includes(value)) options.push(value);
 
@@ -32,12 +35,12 @@ export function SshKeySelect({ value, onChange, ...rest }: SshKeySelectProps) {
     <select {...rest} value={value} onChange={(e) => void pick(e.target.value)}>
       {value === "" && (
         <option value="">
-          {options.length > 0 ? "Any of the usual keys" : "No keys in ~/.ssh"}
+          {options.length > 0 ? "Any of the usual keys" : `No keys in ${shown("~/.ssh")}`}
         </option>
       )}
       {options.map((k) => (
         <option key={k} value={k}>
-          {k}
+          {shown(k)}
         </option>
       ))}
       <option value={CHOOSE}>Choose a file…</option>

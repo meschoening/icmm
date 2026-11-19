@@ -16,6 +16,23 @@ export function shownPath(path: string, home: string | null): string {
   return full.replace(/\//g, "\\");
 }
 
+/**
+ * What `shown`, a path as `shownPath` shows it, is written as: from `~/` with
+ * forward slashes where it's in `home` (in any case, as Windows reads it),
+ * else as it is. A field that shows a path takes it back this way, so a
+ * folder the user leaves alone saves as it was (#505).
+ */
+export function storedPath(shown: string, home: string | null): string {
+  if (home === null) return shown;
+  // Windows reads either slash, in any case.
+  const read = (path: string) => path.toLowerCase().replace(/\//g, "\\");
+  const typed = read(shown);
+  const at = read(home).replace(/\\+$/, "");
+  if (typed === at) return "~";
+  if (!typed.startsWith(`${at}\\`)) return shown;
+  return `~/${shown.slice(at.length + 1).replace(/\\/g, "/")}`;
+}
+
 /** This computer's home folder in full on Windows; `null` elsewhere, and until it's read. */
 function useWindowsHome(): string | null {
   return (
@@ -33,4 +50,17 @@ export function useShownPath(
 ): (path: string) => string {
   const home = useWindowsHome();
   return (path) => (platform?.type === "local" ? shownPath(path, home) : path);
+}
+
+/** `useShownPath`, and its way back for a field the user types a path in. */
+export function usePathField(platform: Pick<SavedPlatform, "type"> | undefined): {
+  shown: (path: string) => string;
+  stored: (shown: string) => string;
+} {
+  const home = useWindowsHome();
+  const local = platform?.type === "local";
+  return {
+    shown: (path) => (local ? shownPath(path, home) : path),
+    stored: (shown) => (local ? storedPath(shown, home) : shown),
+  };
 }

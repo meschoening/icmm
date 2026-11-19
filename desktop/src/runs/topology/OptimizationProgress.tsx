@@ -59,7 +59,7 @@ export function OptimizationProgress({
         <span className="topo-hint">
           best train RMSE so far against CMA-ES evaluations · every start runs its full{" "}
           <span className="n">{budget.n}</span>
-          {budget.unit} evaluations
+          {budget.unit} evaluations unless its step size overflows
         </span>
         {toggles && (
           <div className="seg" role="group" aria-label="Progress view">

@@ -621,14 +621,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.sp-worst {
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 17px;
-  padding: 0 5px;
-  border: 1px solid var(--ink);
-  border-radius: 4px;
-}
 .sp-proto {
   font-size: 13px;
   color: var(--ink-3);
@@ -890,10 +882,17 @@
 .sp-rates .hint {
   margin: 0;
 }
+/*
+ * Its right padding is each line's own: a scroll box's padding past content
+ * wider than it scrolls away in WebKit, leaving σ against the edge (F18).
+ */
 .sp-log {
-  padding: 12px 14px;
+  padding: 12px 0 12px 14px;
   line-height: 1.7;
   overflow-x: auto;
+}
+.sp-log > span {
+  padding-right: 14px;
 }
 .sp-log .lh {
   color: var(--ink-3);

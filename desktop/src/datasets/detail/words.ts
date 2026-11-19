@@ -70,12 +70,12 @@ export function windowName(from: number, to: number): string {
   const f = Math.round(from * 1000) / 10;
   const t = Math.round(to * 1000) / 10;
   const preset = Object.values(WINDOWS).find((w) => Number(w.from) === f && Number(w.to) === t);
-  return preset?.label ?? `${f} → ${t} %`;
+  return preset?.label ?? `${f} → ${t}\u00a0%`;
 }
 
 /** The fractions a decay time runs between, as an axis says them: "100 → 37 %". */
 function windowSpan(from: number, to: number): string {
-  return `${Math.round(from * 1000) / 10} → ${Math.round(to * 1000) / 10} %`;
+  return `${Math.round(from * 1000) / 10} → ${Math.round(to * 1000) / 10}\u00a0%`;
 }
 
 export interface Fact {
@@ -174,9 +174,9 @@ function measuredWords(measure: NonNullable<Step["measure"]>): string {
     : MEASURED[measure.kind];
 }
 
-/** A weight with at least one decimal: "1.0", "1.5", "0.25". */
+/** A weight as it was typed, as the wizard and Review show it: "1", "1.5", "0.25". */
 function weightWords(w: number): string {
-  return Number.isInteger(w) ? fixed(w, 1) : minus(String(w));
+  return minus(String(w));
 }
 
 /** "off", or "1 per gap · log x-axis". */

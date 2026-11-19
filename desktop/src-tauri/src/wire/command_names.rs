@@ -97,6 +97,7 @@ pub const COMMANDS: &[&str] = &[
     "ssh_config_host",
     "choose_file",
     "choose_folder",
+    "choose_workbook",
     "choose_dataset_file",
     "read_dataset_file",
     "choose_export_file",

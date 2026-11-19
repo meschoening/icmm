@@ -1,6 +1,6 @@
 [package]
 name = "icmm-desktop"
-version = "1.0.0-rc.2"
+version = "1.0.0-rc.3"
 description = "ICMM desktop app"
 authors = ["Max Schoening <meschoening@wustl.edu>"]
 license = "BSD-3-Clause"

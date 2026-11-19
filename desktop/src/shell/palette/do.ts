@@ -99,7 +99,7 @@ export interface Command {
   /** Its shortcut, shown at the right while another row is chosen. */
   kbd?: string;
   icon: DoIcon;
-  /** Words it's found by besides its label's (Report a problem…'s alone). */
+  /** Words it's found by besides its label's (Report a problem…'s, Settings'). */
   also?: string[];
   /** It needs the platform: gray while it isn't connected. */
   platform: boolean;
@@ -331,6 +331,8 @@ export function doCommands(x: DoContext): Command[] {
     label: ["Settings"],
     kbd: shortcutLabel(","),
     icon: "settings",
+    // What it holds: ICMM's versions at its foot, and the diagnostic logs (#509, F15).
+    also: ["version", "about", "logs", "preferences"],
     platform: false,
     run: (a) => a.settings(),
   });

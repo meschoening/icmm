@@ -63,7 +63,7 @@ export function SourceStep(p: SourceStepProps) {
   const dialog = useSystemDialog();
   const choose = async () => {
     const chosen = await dialog.open(() =>
-      commands.choose_file({ title: "Choose a workbook", folder: null }),
+      commands.choose_workbook({ title: "Choose a workbook", folder: null }),
     );
     if (chosen.path !== null) await p.read(chosen.path);
   };

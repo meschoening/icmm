@@ -15,6 +15,7 @@ import { useRankingGroups } from "../results/queries";
 import { groupName } from "../results/words";
 import { useStart, type StartRef } from "../runs/start/queries";
 import { useStarts, useTopology, type TopologyRef } from "../runs/topology/queries";
+import { fitFrom } from "../runs/topology/words";
 import type { SelectedStart } from "../selection/selection";
 import { canAsk, platformOf } from "../setup/queries";
 import { useConnection } from "../shell/connection";
@@ -204,6 +205,7 @@ export function candidateOf(r: Answers, edges: number | undefined, now: number):
             model: undefined,
             line: undefined,
             ...stored(i),
+            ...(start.val_points == null ? {} : { valPoints: start.val_points[i] ?? 0 }),
           };
         });
   const protocols: CandidateProtocol[] | undefined = revision?.content.protocols.map((p, i) => {
@@ -234,7 +236,8 @@ export function candidateOf(r: Answers, edges: number | undefined, now: number):
             0,
           ),
   };
-  const sent = topology.first_sent_at === null ? NaN : Date.parse(topology.first_sent_at);
+  const sent =
+    topology.first_sent_at === null ? NaN : fitFrom(Date.parse(topology.first_sent_at), run);
   const ended = topology.provisional
     ? now
     : topology.last_ended_at === null

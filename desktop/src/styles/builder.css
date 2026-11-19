@@ -550,6 +550,34 @@
 .ck.wait .g {
   margin: 6px 0 0 3px;
 }
+/* While a check is out (#509): its words on the heading's line, the last answer's rows gray
+   under it. */
+.ck-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ck-head > .label {
+  margin: 0;
+}
+.ck-waiting {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  /* Under the label's line, so its words never make the heading taller. */
+  line-height: 1.2;
+  color: var(--ink-3);
+  text-align: right;
+}
+.ck.stale {
+  color: var(--ink-3);
+}
+.ck.stale .ck-ok,
+.ck.stale .ck-bad {
+  stroke: var(--ink-3);
+}
 .ck-ok {
   stroke: var(--ink-2);
 }

@@ -2150,7 +2150,7 @@
       "additionalProperties": false,
       "properties": {
         "seconds_per_evaluation": {
-          "description": "On one thread of this computer.",
+          "description": "A start's time for one evaluation on this computer, at its CPUs, beside as many starts as\nrun at once, with CMA-ES's own work for each.",
           "type": "number"
         },
         "evaluations": {
@@ -6175,7 +6175,7 @@
           "description": "`null` for a run without validation points, which ranks by Train RMSE."
         },
         "scores": {
-          "description": "How the Best start's worker scored its best, per protocol in the run's revision's order:\neach protocol's stored RMSE, as its page marks the highest (#389).",
+          "description": "How the Best start's worker scored its best, per protocol in the run's revision's order:\neach protocol's stored RMSE.",
           "items": {
             "$ref": "#/$defs/ProtocolScore"
           },
@@ -9671,7 +9671,7 @@
     },
     "TimeEvaluationsParams": {
       "additionalProperties": false,
-      "description": "Submit's time estimate for a config the platform's finished starts haven't timed (#229).",
+      "description": "Submit's time estimate for a config the platform's finished starts haven't timed (#229),\ntimed as its starts would run on this computer (#508).",
       "properties": {
         "dataset": {
           "$ref": "#/$defs/DatasetContent",
@@ -9684,12 +9684,33 @@
         },
         "bounds": {
           "$ref": "#/$defs/Bounds"
+        },
+        "population": {
+          "description": "The config's: each generation's evaluations, scored together.",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer"
+        },
+        "cpus_per_start": {
+          "description": "The Job defaults': the threads each start scores on.",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer"
+        },
+        "running_starts": {
+          "description": "How many of its starts run at once here: on This computer the Running-starts cap; 1 for a\ncluster, whose starts run on other computers.",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer"
         }
       },
       "required": [
         "dataset",
         "num_states",
-        "bounds"
+        "bounds",
+        "population",
+        "cpus_per_start",
+        "running_starts"
       ],
       "title": "TimeEvaluationsParams",
       "type": "object"

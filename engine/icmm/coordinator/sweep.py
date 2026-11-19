@@ -208,6 +208,8 @@ class Coordinator:
         self._successor_refused = False
         self._canceled: set[str] = set()
         """The jobs this generation has canceled, as its run cancels."""
+        self._sent_now = False
+        """Whether its last sweep sent an array."""
 
     @classmethod
     def claim(
@@ -308,14 +310,19 @@ class Coordinator:
 
     @property
     def interval_s(self) -> int:
+        """How long until the next sweep. On This computer, none after a sweep that sent an
+        array: the next one's tick starts its tasks in the slots free now, so a run begins at its
+        claim and its next topology as the last one's starts end, rather than 5 s on (#507, F11).
+        It's a sweep like any other, so its tick counts toward progress as one 5 s on would."""
         jobs = self._job_defaults(self.db.connection())
-        return (
-            jobs.check_for_results_every_s if isinstance(jobs, SlurmJobDefaults) else SWEEP_EVERY_S
-        )
+        if isinstance(jobs, SlurmJobDefaults):
+            return jobs.check_for_results_every_s
+        return 0 if self._sent_now else SWEEP_EVERY_S
 
     # The sweep.
 
     def _sweep(self) -> Sweep:
+        self._sent_now = False
         listed, ended, canceling = (
             self.db.connection()
             .execute(
@@ -1144,6 +1151,7 @@ class Coordinator:
         )
 
     def _sent(self, array: _Array, job_id: str) -> None:
+        self._sent_now = True
         with self._write() as conn:
             at = iso(self.wall_clock())
             conn.execute(

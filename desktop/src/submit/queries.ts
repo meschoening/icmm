@@ -148,24 +148,39 @@ export function useDatasetContent(id: string | undefined) {
   });
 }
 
-/** What `time_evaluations` times: a dataset as the builder holds it, a number of states and the box. */
+/**
+ * What `time_evaluations` times: a dataset as the builder holds it, a number of
+ * states and the box, and how the run's starts run (#508): its population, and
+ * the Job defaults' CPUs per start and starts at once (`runningStartsOf`).
+ */
 export interface EvaluationInput {
   dataset: DatasetContent;
   numStates: number;
   bounds: Bounds;
+  population: number;
+  cpus: number;
+  runningStarts: number;
 }
 
 /**
- * The time of one evaluation on this computer's engine, for a platform whose
- * finished starts can't say (#229). It follows from its input alone, so it's
- * kept as long as the page lives; a timing that failed isn't tried again on
- * its own, since its issues say what to change. `undefined` times nothing.
+ * The time of one of a start's evaluations on this computer's engine, for a
+ * platform whose finished starts can't say (#229). It follows from its input
+ * alone, so it's kept as long as the page lives; a timing that failed isn't
+ * tried again on its own, since its issues say what to change. `undefined`
+ * times nothing.
  */
 export function useEvaluationTime(input: EvaluationInput | undefined) {
   const params =
     input === undefined
       ? undefined
-      : { dataset: input.dataset, num_states: input.numStates, bounds: input.bounds };
+      : {
+          dataset: input.dataset,
+          num_states: input.numStates,
+          bounds: input.bounds,
+          population: input.population,
+          cpus_per_start: input.cpus,
+          running_starts: input.runningStarts,
+        };
   const body = params === undefined ? null : JSON.stringify(params);
   return useQuery({
     queryKey: ["host", "time_evaluations", body],

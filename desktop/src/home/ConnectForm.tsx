@@ -275,7 +275,7 @@ export function ConnectForm({
               </button>
               {!advanced && (
                 <span className="hint">
-                  Data folder <span className="mono ink-2">{f.data}</span>
+                  Data folder on the cluster <span className="mono ink-2">{f.data}</span>
                 </span>
               )}
             </div>
@@ -295,8 +295,8 @@ export function ConnectForm({
                   {issue("data")}
                 </div>
                 <p className="hint beside-field">
-                  Where the platform keeps its datasets, configs, Platform settings and runs. A
-                  folder another computer already set up connects straight in.
+                  Where ICMM keeps this platform’s datasets, configs, Platform settings and runs, on
+                  the cluster. A folder another computer already set up connects straight in.
                 </p>
               </div>
             )}

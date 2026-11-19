@@ -979,9 +979,10 @@ METHODS: tuple[Method, ...] = (
         is_async=True,
         doc="Submit's time estimate for a config the platform's finished starts haven't timed "
         "at its CPUs per start, on this computer's engine whatever the Active platform "
-        "(ADR-0013): a few dozen of the dataset's evaluations at this many states, on one "
-        "thread. A dataset that fails its checks, or a number of states without a list, is "
-        "`invalid`.",
+        "(ADR-0013): about a second of a start's evaluations of the dataset at this many "
+        "states, at its population and CPUs, as many at once as its starts run (#508). A dataset "
+        "that fails its checks, a number of states without a list, or a population, CPUs or "
+        "starts at once too few, is `invalid`.",
     ),
     desktop(
         "simulate_start",
@@ -1324,6 +1325,14 @@ METHODS: tuple[Method, ...] = (
         Chosen,
         is_async=True,
         doc="Asks the user for a folder with the OS's dialog.",
+    ),
+    desktop(
+        "choose_workbook",
+        ChooseParams,
+        Chosen,
+        is_async=True,
+        doc="Asks the user for an Excel workbook, an `.xlsx`, with the OS's dialog; with no folder "
+        "given it opens in Downloads.",
     ),
     desktop(
         "choose_dataset_file",

@@ -12,7 +12,7 @@ import { useRunStretches } from "../runs/detailQueries";
 import { barOf, againLine, rmse, topologiesLine, topologyName, waitingOf } from "../runs/words";
 import { etasOf } from "../submit/plan";
 import { runGlyph } from "../submit/words";
-import { plural } from "../submit/estimate";
+import { plural, startOverheadS } from "../submit/estimate";
 import { useShownPath } from "../ui/paths";
 import { LiveN } from "../ui/LiveN";
 import { HoverWord } from "../ui/TipWord";
@@ -62,6 +62,7 @@ export function Live({
       timings: reads.timings ?? [],
       cpus: reads.job.cpus_per_start,
       cap: reads.job.max_running_starts,
+      overheadS: startOverheadS(reads.job),
       now: at,
     };
     // Before a run's first topology ends, when it's due (#399, HF05).

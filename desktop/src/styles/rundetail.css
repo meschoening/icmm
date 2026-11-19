@@ -525,6 +525,14 @@
   font-family: var(--font-mono);
   color: var(--ink);
 }
+.rd-card-earlier {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.rd-card-earlier .n {
+  font-family: var(--font-mono);
+  color: var(--ink);
+}
 .rd-arrow {
   align-self: center;
   display: flex;

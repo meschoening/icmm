@@ -191,7 +191,7 @@ class RunBest(WireModel):
     """`null` for a run without validation points, which ranks by Train RMSE."""
     scores: list[ProtocolScore]
     """How the Best start's worker scored its best, per protocol in the run's revision's order:
-    each protocol's stored RMSE, as its page marks the highest (#389)."""
+    each protocol's stored RMSE."""
 
 
 class FailureCause(StrEnum):
@@ -436,17 +436,26 @@ class RunTimings(WireModel):
 
 
 class TimeEvaluationsParams(WireModel):
-    """Submit's time estimate for a config the platform's finished starts haven't timed (#229)."""
+    """Submit's time estimate for a config the platform's finished starts haven't timed (#229),
+    timed as its starts would run on this computer (#508)."""
 
     dataset: DatasetContent
     """The config's dataset, as `read_dataset` read its current revision."""
     num_states: WireInt
     bounds: Bounds
+    population: WireInt
+    """The config's: each generation's evaluations, scored together."""
+    cpus_per_start: WireInt
+    """The Job defaults': the threads each start scores on."""
+    running_starts: WireInt
+    """How many of its starts run at once here: on This computer the Running-starts cap; 1 for a
+    cluster, whose starts run on other computers."""
 
 
 class EvaluationTime(WireModel):
     seconds_per_evaluation: float
-    """On one thread of this computer."""
+    """A start's time for one evaluation on this computer, at its CPUs, beside as many starts as
+    run at once, with CMA-ES's own work for each."""
     evaluations: WireInt
     """How many it timed."""
 

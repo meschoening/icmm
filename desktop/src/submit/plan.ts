@@ -34,6 +34,7 @@ import {
   overLimit,
   plural,
   sizeWords,
+  startSeconds,
   type PerEvaluation,
 } from "./estimate";
 import { runEtaOf } from "../runs/detail";
@@ -87,7 +88,7 @@ export type Timing =
 
 /** This computer's own timing of the config, as far as it has got. */
 export type HostTiming =
-  | { kind: "ready"; secondsOneThread: number }
+  | { kind: "ready"; seconds: number }
   | { kind: "pending" }
   | { kind: "failed" }
   | { kind: "offline" };
@@ -95,7 +96,8 @@ export type HostTiming =
 /**
  * The time per evaluation: from the platform's finished starts at this many
  * states and CPUs when it has some (`timings`, `undefined` while they are being
- * read), else from `host`, this computer's timing of a few evaluations.
+ * read), else from `host`, this computer's timing of the config's evaluations
+ * as its starts run them.
  */
 export function timingOf(a: {
   timings: RunTiming[] | undefined;
@@ -112,9 +114,9 @@ export function timingOf(a: {
   switch (a.host.kind) {
     case "ready": {
       // Zero or not a number would make every duration "1 m" or NaN: that isn't a timing.
-      const seconds = a.host.secondsOneThread;
+      const seconds = a.host.seconds;
       if (!(Number.isFinite(seconds) && seconds > 0)) return { kind: "failed" };
-      return { kind: "ready", per: fromHost(seconds, a.cpus) };
+      return { kind: "ready", per: fromHost(seconds) };
     }
     case "pending":
       return { kind: "timing" };
@@ -176,6 +178,8 @@ export function timeView(a: {
   evaluations: number;
   /** The most starts running at once. */
   cap: number;
+  /** What each start takes beside its evaluations: `startOverheadS`. */
+  overheadS: number;
   /** The time limit of a start in minutes (SLURM); `null` where there is none. */
   limitMin: number | null;
   timing: Timing;
@@ -208,7 +212,7 @@ export function timeView(a: {
   if (!(a.evaluations > 0) || !(Number.isFinite(per.seconds) && per.seconds > 0)) {
     return { ...base, big: "—", hint: undefined, ...NOT_ESTIMATED };
   }
-  const perStartS = a.evaluations * per.seconds;
+  const perStartS = startSeconds(a.evaluations, per.seconds, a.overheadS);
   const each = nearWords(perStartS);
   const over = a.limitMin !== null && overLimit(perStartS, a.limitMin);
   const source =
@@ -230,6 +234,7 @@ export function timeView(a: {
     topologies: a.work.topologies,
     evaluations: a.evaluations,
     perEvaluationS: per.seconds,
+    overheadS: a.overheadS,
     cap: a.cap,
   });
   return {
@@ -540,7 +545,7 @@ export function tilesOf(a: {
  */
 export function etasOf(
   runs: Run[],
-  a: { timings: RunTiming[]; cpus: number; cap: number; now: number },
+  a: { timings: RunTiming[]; cpus: number; cap: number; overheadS: number; now: number },
 ): Map<number, number | undefined> {
   const etas = new Map<number, number | undefined>();
   for (const run of runs) {

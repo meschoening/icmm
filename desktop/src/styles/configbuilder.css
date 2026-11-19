@@ -27,6 +27,13 @@
 .cb-head .astat.bad {
   color: var(--red);
 }
+/* Its notes count, a link to the first note (#509): a button drawn as `.link`. */
+.cb-head .astat .link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+}
 /* The kbd in a primary button, on its ink. */
 .kbd-inv {
   border-color: color-mix(in srgb, var(--bg) 35%, transparent);
@@ -165,6 +172,18 @@
 }
 .cb-issues .err {
   display: block;
+}
+/* The name's "is free", its clash or its checks: one line's room kept, so the field is as tall
+   with or without it and nothing under it moves as its check lands (#509). Empty, the room goes
+   under the hint rather than between it and the name. */
+.cb-name-said {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: calc(13px * 1.45);
+}
+.cb-name-said:empty {
+  order: 1;
 }
 
 /* Number of states: − [11] +, and the count under it. */

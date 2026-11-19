@@ -6,9 +6,9 @@ topology's match (#223).
 serve loop, but needs no hello, Data folder or runs database: every call is pure, so the desktop
 keeps one running while it's used and starts another when it's gone (ADR-0015). Import's read
 and Export's write of a dataset file are its too (#147): they touch only the file the user
-chose, which is on this computer. So are Submit's time estimate (#229), which scores a few dozen
-evaluations in libicmm, loaded by the first call that needs it, and simulating a start for its
-curves (#88).
+chose, which is on this computer. So are Submit's time estimate (#229, #508), which runs about a
+second of a start's evaluations in libicmm, loaded by the first call that needs it, and simulating
+a start for its curves (#88).
 """
 
 from __future__ import annotations
@@ -18,8 +18,11 @@ import importlib
 import math
 import os
 import sys
+import threading
 import time
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack
 from functools import cache, partial
 from pathlib import Path
 from typing import NoReturn
@@ -99,11 +102,22 @@ IDLE_TIMEOUT_S = 600.0
 """Long enough for a session in the Dataset wizard; a call after it starts the engine again,
 which takes about 0.12 s on an M1 Pro (ADR-0015)."""
 
-TIMED_TOPOLOGIES, TIMED_EACH = 3, 16
-"""Submit's time estimate scores `TIMED_EACH` random parameter vectors on each of up to
-`TIMED_TOPOLOGIES` state graphs: enough evaluations (48) to average over the cost of the graphs
-a search draws from, and few enough to answer quickly (0.3 s for the lab's EINa data at 16
-states, on an M1 Pro)."""
+TIMED_TOPOLOGIES = 3
+"""Submit's time estimate scores each of up to this many state graphs, spread over the list, to
+average over the cost of the graphs a search draws from."""
+WARM_UP_S = 0.3
+"""How long it scores the dataset before it times any of it (#508). A process's first few tenths
+of a second of work run slow while the OS moves its threads to fast cores: the first call to a new
+host engine read 0.19 ms an evaluation where the next read 0.15, after one batch's warm-up."""
+TIMED_FOR_S = 0.5
+"""How long it then times the scoring for (#508). A few dozen evaluations, about 12 ms, read 0.20
+or 0.32 ms an evaluation on the same Mac from one call to the next, which put 3 states above 4."""
+SEARCHED_FOR_S = 0.2
+"""How long it runs a start's generations for, to time CMA-ES's own work beside the scoring."""
+BATCH_MOST = 64
+"""The most vectors it scores at once, and the most a timed generation has: a start's population
+up to this many keeps its CPUs as busy as a larger one, and a population of thousands would
+otherwise take minutes to time, past the desktop's 60 s wait for an answer."""
 
 
 def run(idle_timeout_s: float | None = None) -> NoReturn:
@@ -170,40 +184,123 @@ def _packaged_core() -> Core:
 
 
 def time_evaluations(
-    params: TimeEvaluationsParams, *, lists: Lists, core: Callable[[], Core]
+    params: TimeEvaluationsParams,
+    *,
+    lists: Lists,
+    core: Callable[[], Core],
+    clock: Callable[[], float] = time.perf_counter,
 ) -> EvaluationTime:
-    """Submit's time estimate for a platform's first run (#229): how long one evaluation of the
-    dataset takes at `num_states` states, on one thread of this computer.
+    """Submit's time estimate for a platform's first run (#229, #508): how long one of a start's
+    evaluations of the dataset takes at `num_states` states on this computer, as a start runs it.
 
-    It scores `TIMED_EACH` random vectors in the search box on each of up to `TIMED_TOPOLOGIES`
-    state graphs spread over the list, at each graph's first open state, and times the scoring
-    alone. The draws are seeded, so two estimates differ only by the computer's noise.
+    Two parts. The scoring: `running_starts` threads at once, as that many starts run at once,
+    each scoring batches of `population` random vectors (up to `BATCH_MOST`) in the search box
+    on `cpus_per_start` threads, a batch on each of up to `TIMED_TOPOLOGIES` state graphs spread
+    over the list in turn (at each graph's first open state), for `TIMED_FOR_S` after
+    `WARM_UP_S`, which brings the core, its threads and the OS's choice of cores up to speed.
+    Then, warm, CMA-ES's own work for each evaluation, from a start's generations on the middle
+    graph (`time_generations`). The draws are seeded, so two estimates differ only by the
+    computer's noise.
     """
     issues = _timing_issues(params, lists)
     if issues:
         raise AgentError(_invalid("These can’t be timed yet.", issues))
 
-    import numpy as np  # Not at import: the host engine starts without it.
+    from icmm.start import time_generations  # Not at import: it loads NumPy and CMA-ES.
 
     num_states = params.num_states
     dataset = Dataset.model_validate(_checked(params.dataset))
     arrays = [core_arrays(p) for p in dataset.protocols]
     bounds = ParameterBounds(**params.bounds.model_dump())
     library = core()
-    rng = np.random.default_rng(0)
-    seconds, evaluations = 0.0, 0
-    for graph in _spread(lists.state_graphs(num_states)):
-        topology = lists.topology(
-            num_states, TopologyId(graph, lists.open_states(num_states, graph)[0])
+    topologies = [
+        lists.topology(num_states, TopologyId(graph, lists.open_states(num_states, graph)[0]))
+        for graph in _spread(lists.state_graphs(num_states))
+    ]
+    at_once = max(1, min(params.running_starts, os.cpu_count() or 1))
+    batch = min(params.population, BATCH_MOST)
+    scoring_s, scored = _scoring(
+        partial(Session, library, protocols=arrays),
+        [(t, bounds.box(t)) for t in topologies],
+        population=batch,
+        threads=params.cpus_per_start,
+        at_once=at_once,
+        clock=clock,
+    )
+    middle = topologies[len(topologies) // 2]
+    with Session(library, middle, arrays) as session:
+        searched = time_generations(
+            session,
+            bounds.box(middle),
+            [p.weight for p in dataset.protocols],
+            population=batch,
+            threads=params.cpus_per_start,
+            seconds=SEARCHED_FOR_S,
+            clock=clock,
         )
-        low, high = np.array(bounds.box(topology)).T
-        vectors = rng.uniform(low, high, size=(TIMED_EACH, len(low))).tolist()
-        with Session(library, topology, arrays) as session:
-            started = time.perf_counter()
-            session.score_batch(vectors, threads=1)
-            seconds += time.perf_counter() - started
-        evaluations += TIMED_EACH
-    return EvaluationTime(seconds_per_evaluation=seconds / evaluations, evaluations=evaluations)
+    per_evaluation = scoring_s / scored + searched["searching_s"] / searched["evaluations"]
+    return EvaluationTime(
+        seconds_per_evaluation=per_evaluation, evaluations=scored + searched["evaluations"]
+    )
+
+
+def _scoring(
+    session: Callable[[Topology], Session],
+    graphs: list[tuple[Topology, list[tuple[float, float]]]],
+    *,
+    population: int,
+    threads: int,
+    at_once: int,
+    clock: Callable[[], float],
+) -> tuple[float, int]:
+    """`at_once` threads, each scoring batches of `population` random vectors on `threads` of
+    the core's threads, a batch on each graph in turn: untimed for `WARM_UP_S`, then from when
+    they've all warmed up, timed for `TIMED_FOR_S`, each ending the round it's in. The core lets go
+    of Python's lock while it scores, so they contend for the computer much as that many starts'
+    processes do; only the Python around each batch takes turns, which separate processes
+    wouldn't. Their seconds scoring, summed, and the evaluations they scored."""
+    import numpy as np  # Not at import: the host engine starts without it.
+
+    ready = threading.Barrier(at_once)
+
+    def scorer(seed: int) -> tuple[float, int]:
+        try:
+            rng = np.random.default_rng(seed)
+            with ExitStack() as stack:
+                sessions = [(stack.enter_context(session(t)), np.array(box).T) for t, box in graphs]
+
+                def batch(s: Session, low: np.ndarray, high: np.ndarray) -> float:
+                    vectors = rng.uniform(low, high, size=(population, len(low))).tolist()
+                    began = clock()
+                    s.score_batch(vectors, threads)
+                    return clock() - began
+
+                began, warm = clock(), False
+                while not warm or clock() - began < WARM_UP_S:
+                    for s, (low, high) in sessions:
+                        batch(s, low, high)
+                    warm = True
+                ready.wait()
+                began, seconds, evaluations = clock(), 0.0, 0
+                while evaluations == 0 or clock() - began < TIMED_FOR_S:
+                    for s, (low, high) in sessions:
+                        seconds += batch(s, low, high)
+                        evaluations += population
+                return seconds, evaluations
+        except BaseException:
+            ready.abort()  # the others wait for it no longer
+            raise
+
+    with ThreadPoolExecutor(at_once) as pool:
+        done = [pool.submit(scorer, seed) for seed in range(at_once)]
+    # A scorer that failed breaks the barrier for the rest: its own error is the one to raise.
+    errors = [e for f in done if (e := f.exception()) is not None]
+    if errors:
+        raise next(
+            (e for e in errors if not isinstance(e, threading.BrokenBarrierError)), errors[0]
+        )
+    results = [f.result() for f in done]
+    return sum(s for s, _ in results), sum(n for _, n in results)
 
 
 def simulate_start(
@@ -420,6 +517,13 @@ def _timing_issues(params: TimeEvaluationsParams, lists: Lists) -> list[DatasetI
     if params.num_states not in lists.numbers_of_states():
         said = f"A topology has {NUM_STATES.start} to {NUM_STATES.stop - 1} states."
         issues.append(DatasetIssue(path=("num_states",), message=said))
+    for field, least, said in (
+        ("population", 2, "A population is at least 2."),
+        ("cpus_per_start", 1, "A start runs on at least 1 CPU."),
+        ("running_starts", 1, "At least 1 start runs at once."),
+    ):
+        if getattr(params, field) < least:
+            issues.append(DatasetIssue(path=(field,), message=said))
     return issues + _bounds_issues(params.bounds)
 
 

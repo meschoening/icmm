@@ -117,6 +117,36 @@ function Issues({ id, issues }: { id: string; issues: FieldIssue[] | undefined }
 }
 
 /**
+ * A field's checks in its hint's place (#509, F07): both laid in the one cell, the hint keeping
+ * its room while a check shows, so a check that lands as you type keeps the field as tall as it
+ * was and moves nothing under it. The hint stays in its `aria-describedby`.
+ */
+function InHintsPlace({
+  id,
+  issues,
+  hintId,
+  hint,
+  className,
+}: {
+  id: string;
+  issues: FieldIssue[] | undefined;
+  hintId: string;
+  hint: React.ReactNode;
+  /** A class the cell adds to `.kept`. */
+  className?: string;
+}) {
+  const said = issues !== undefined && issues.length > 0;
+  return (
+    <div className={className === undefined ? "kept" : `kept ${className}`}>
+      <Issues id={id} issues={issues} />
+      <p id={hintId} className={said ? "hint kept-room" : "hint"}>
+        {hint}
+      </p>
+    </div>
+  );
+}
+
+/**
  * A number field's blur handler: it shows as a saved one does once it's
  * left (CF18), not when its window loses focus, which keeps it focused.
  */
@@ -225,21 +255,24 @@ export function NameData({ nameRef, ...p }: NameDataProps) {
           {...(p.landing ? { [PAGE_HEADING_ATTR]: "" } : {})}
           onChange={(e) => p.set({ name: e.target.value })}
         />
-        {p.free && (
-          <span className="ok" role="status">
-            <CheckIcon />
-            <span>
-              <span className="mono ink">{p.draft.name}</span> is free.
+        {/* Its line keeps its room while the check is out: "is free" moves nothing (F07). */}
+        <div className="cb-name-said">
+          {p.free && (
+            <span className="ok" role="status">
+              <CheckIcon />
+              <span>
+                <span className="mono ink">{p.draft.name}</span> is free.
+              </span>
             </span>
-          </span>
-        )}
-        {p.taken !== undefined && (
-          <p id={`${id}-taken`} className="err" role="alert">
-            {p.platform} already has a config named <span className="mono">{p.taken}</span>. Names
-            are unique ignoring case.
-          </p>
-        )}
-        <Issues id={`${id}-name-i`} issues={nameIssues} />
+          )}
+          {p.taken !== undefined && (
+            <p id={`${id}-taken`} className="err" role="alert">
+              {p.platform} already has a config named <span className="mono">{p.taken}</span>.
+              Names are unique ignoring case.
+            </p>
+          )}
+          <Issues id={`${id}-name-i`} issues={nameIssues} />
+        </div>
         <MarkWords id={`${id}-name`} mark={p.marks.name} />
         <p id={`${id}-name-h`} className="hint">
           Letters, digits, <span className="mono">.</span>, <span className="mono">-</span> and{" "}
@@ -721,11 +754,8 @@ function NumberField({
           <span aria-hidden="true">{affix}</span>
         </div>
       )}
-      <Issues id={`${id}-i`} issues={issues} />
       <MarkWords id={id} mark={p.marks[field]} />
-      <p id={`${id}-h`} className="hint">
-        {hint}
-      </p>
+      <InHintsPlace id={`${id}-i`} issues={issues} hintId={`${id}-h`} hint={hint} />
     </div>
   );
 }
@@ -791,12 +821,9 @@ function BoundsField({
           {worked}
         </p>
       )}
-      <Issues id={`${id}-i`} issues={said} />
       <MarkWords id={`${id}-${lower}`} mark={p.marks[lower]} />
       <MarkWords id={`${id}-${upper}`} mark={p.marks[upper]} />
-      <p id={`${id}-h`} className="hint">
-        {hint}
-      </p>
+      <InHintsPlace id={`${id}-i`} issues={said} hintId={`${id}-h`} hint={hint} />
     </div>
   );
 }
@@ -887,17 +914,17 @@ export function Optimization(p: OptimizationProps) {
         label="Evaluations per start"
         hint={
           <>
-            Every start runs all of them
             {generations !== null && (
               <>
-                : at population <span className="n">{whole(population!)}</span>,{" "}
+                At population <span className="n">{whole(population!)}</span>,{" "}
                 <span className="n">{whole(budget!)}</span> is{" "}
                 <span className="n">{whole(generations)}</span>
                 {"\u00a0"}
-                {generationWords(generations)}
+                {generationWords(generations)}.{" "}
               </>
             )}
-            .
+            {/* A start whose step size overflows ends there, finished (#468, ADR-0008). */}
+            Every start runs them all unless CMA-ES’s step size overflows first.
           </>
         }
       />
@@ -957,13 +984,21 @@ export function Optimization(p: OptimizationProps) {
                 <span className="flabel">Sobol start points</span>
               </label>
               <span className="cb-indent">
-                <Issues id={`${id}-sobol-i`} issues={sobol} />
                 <MarkWords id={`${id}-sobol`} mark={p.marks.sobol} />
               </span>
-              <p id={`${id}-sobol-h`} className="hint cb-indent">
-                Spreads start points evenly across the bounds instead of drawing each at random.
-                Helps with few starts; with many, random points already cover the bounds.
-              </p>
+              <InHintsPlace
+                id={`${id}-sobol-i`}
+                issues={sobol}
+                hintId={`${id}-sobol-h`}
+                className="cb-indent"
+                hint={
+                  <>
+                    Spreads start points evenly across the bounds instead of drawing each at
+                    random. Helps with few starts; with many, random points already cover the
+                    bounds.
+                  </>
+                }
+              />
             </div>
             <div className="cb-rule cb-span2" aria-hidden="true" />
             <BoundsField

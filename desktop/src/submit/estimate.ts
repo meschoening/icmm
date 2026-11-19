@@ -6,7 +6,7 @@
  */
 import { generationsOf, whole } from "../configs/words";
 import { bytes } from "../setup/units";
-import type { RunTiming } from "../wire/types.gen";
+import type { JobDefaults, RunTiming } from "../wire/types.gen";
 
 /** A count with its noun, grouped by thousands: "1 start", "1,500 starts". */
 export const plural = (n: number, one: string, many: string) =>
@@ -60,12 +60,49 @@ export function fromRuns(
 }
 
 /**
- * The time per evaluation this computer's own timing gives: one thread's time
- * for an evaluation, spread over a start's CPUs.
+ * The time per evaluation this computer's own timing gives (`time_evaluations`):
+ * already at a start's CPUs, beside as many starts as run at once (#508).
  */
-export function fromHost(secondsOneThread: number, cpus: number): PerEvaluation {
-  return { seconds: secondsOneThread / Math.max(1, cpus), from: { kind: "host" } };
+export function fromHost(seconds: number): PerEvaluation {
+  return { seconds, from: { kind: "host" } };
 }
+
+/**
+ * How many starts run at once as this computer times them (`time_evaluations`'
+ * `running_starts`): This computer's Running-starts cap, its starts sharing
+ * the computer; 1 on a cluster, whose starts each run on a node of their own.
+ */
+export function runningStartsOf(job: JobDefaults): number {
+  return job.type === "local" ? Math.max(1, job.max_running_starts) : 1;
+}
+
+/**
+ * How long a start's process takes to start, before its first evaluation:
+ * Python, NumPy, CMA-ES and the core loading (#508): 0.2 s on a Mac, 1.5 s when
+ * its files aren't cached; about the same on Windows (the CI VM) once warm.
+ */
+export const PROCESS_START_S = 1.5;
+
+/**
+ * How often This computer's coordinator sweeps: `SWEEP_EVERY_S` in
+ * `engine/icmm/coordinator/sweep.py`. Its workers start and end only on a sweep.
+ */
+export const SWEEP_EVERY_S = 5;
+
+/**
+ * What a start takes beside its evaluations (#508): its process starting, and
+ * on This computer's scheduler the wait for a sweep to see it end and start the
+ * next, half a sweep on average. Measured, This computer's starts held their
+ * slot about 4 s past their evaluations, on a Mac and on Windows alike. On SLURM
+ * a task's slot passes to the next task of its array as it ends.
+ */
+export function startOverheadS(job: Pick<JobDefaults, "type">): number {
+  return PROCESS_START_S + (job.type === "local" ? SWEEP_EVERY_S / 2 : 0);
+}
+
+/** A start's time: its evaluations, and what it takes beside them (`startOverheadS`). */
+export const startSeconds = (evaluations: number, perEvaluationS: number, overheadS: number) =>
+  evaluations * perEvaluationS + overheadS;
 
 /** How long a start, a whole run and each of its topologies take. */
 export interface Estimate {
@@ -76,18 +113,19 @@ export interface Estimate {
 
 /**
  * The time of a run: its starts run in waves of the most that can run at once
- * (`cap`), each wave as long as one start, so `ceil(starts / cap)` waves make
- * the whole run, and each topology takes its share. A cap under 1 runs one at
- * a time; no topologies leave no time for each.
+ * (`cap`), each wave as long as one start (`startSeconds`), so `ceil(starts /
+ * cap)` waves make the whole run, and each topology takes its share. A cap
+ * under 1 runs one at a time; no topologies leave no time for each.
  */
 export function estimate(a: {
   starts: number;
   topologies: number;
   evaluations: number;
   perEvaluationS: number;
+  overheadS: number;
   cap: number;
 }): Estimate {
-  const perStartS = a.evaluations * a.perEvaluationS;
+  const perStartS = startSeconds(a.evaluations, a.perEvaluationS, a.overheadS);
   const waves = Math.ceil(a.starts / Math.max(1, a.cap));
   const totalS = waves * perStartS;
   return { perStartS, totalS, perTopologyS: a.topologies > 0 ? totalS / a.topologies : 0 };
