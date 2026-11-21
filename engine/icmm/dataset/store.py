@@ -103,6 +103,9 @@ class Current:
     revision: int
     modified_at: str
     dataset: Dataset
+    copied_from: str | None
+    """The name of the dataset it was duplicated from, as it was then; `None` for one that isn't
+    a copy."""
 
 
 def revision_folder(data_folder: Path, dataset_id: str, revision: int) -> Path:
@@ -144,9 +147,12 @@ def intend(
     dataset_id: str | None,
     expected_revision: int | None,
     content: dict[str, Any],
+    *,
+    copied_from: str | None = None,
 ) -> Intent:
     """Records the revision a save will write, in the caller's write transaction: revision 1 of
-    a new dataset with a fresh id, or the next revision of `dataset_id`."""
+    a new dataset with a fresh id, a duplicate of the dataset named `copied_from` if one is
+    given, or the next revision of `dataset_id`."""
     if dataset_id is None:
         if expected_revision is not None:
             raise StaleRevisionError
@@ -154,9 +160,11 @@ def intend(
         revision = 1
         # Its name, unlisted until it publishes: a copy's retry finds the name it chose here.
         conn.execute(
-            "INSERT INTO datasets (id, name, next_revision) VALUES (?, ?, 2)",
-            (dataset_id, content.get("name")),
+            "INSERT INTO datasets (id, name, next_revision, copied_from) VALUES (?, ?, 2, ?)",
+            (dataset_id, content.get("name"), copied_from),
         )
+    elif copied_from is not None:
+        raise ValueError("only a new dataset is a copy")
     else:
         row = conn.execute(
             "SELECT current_revision, next_revision FROM datasets "
@@ -415,16 +423,16 @@ def read_current(conn: sqlite3.Connection, data_folder: Path, dataset_id: str) -
     are gone, damaged, changed since they were saved, or in a newer format.
     """
     row = conn.execute(
-        "SELECT d.current_revision, r.saved_at FROM datasets d "
+        "SELECT d.current_revision, r.saved_at, d.copied_from FROM datasets d "
         "JOIN dataset_revisions r ON r.dataset_id = d.id AND r.revision = d.current_revision "
         "WHERE d.id = ? AND d.deleted_at IS NULL",
         (dataset_id,),
     ).fetchone()
     if row is None:
         raise NotFoundError
-    revision, saved_at = row
+    revision, saved_at, copied_from = row
     dataset = read_published(conn, data_folder, dataset_id, revision, live=True)
-    return Current(dataset_id, revision, saved_at, dataset)
+    return Current(dataset_id, revision, saved_at, dataset, copied_from)
 
 
 def protocol_count(conn: sqlite3.Connection, dataset_id: str) -> int | None:

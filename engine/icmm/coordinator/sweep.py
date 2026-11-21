@@ -42,7 +42,7 @@ import time
 from collections.abc import Callable, Generator, Iterable, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Literal
 
@@ -454,7 +454,9 @@ class Coordinator:
         """Ends each try whose result has appeared, or whose task ended without one, with its whole
         log's curve; marks the tries now running, with their latest log points."""
         ended: list[tuple[_Out, StartResult | None, TaskState | None, Curve | None]] = []
-        running: list[tuple[_Out, StartLogPoint | None, str | None, Curve | None]] = []
+        running: list[
+            tuple[_Out, StartLogPoint | None, str | None, Curve | None, StartLogPoint | None]
+        ] = []
         withdrawn: list[_Out] = []
         stopped: list[_Out] = []
         """Tries whose task ended, their results awaited: no longer running."""
@@ -489,7 +491,8 @@ class Coordinator:
                 point = files.last_log_point(task)
                 generation = None if point is None else point.generation
                 if not out.running or generation != out.live_generation:
-                    running.append((out, point, state.node, self._grown(task, out, point)))
+                    first = None if point is None else files.first_log_point(task)
+                    running.append((out, point, state.node, self._grown(task, out, point), first))
         if not (ended or running or withdrawn or stopped):
             return
         wrote = sum(self._written(out) for out, *_ in ended)
@@ -507,8 +510,8 @@ class Coordinator:
                 touched.add(out.topology)
             for out in stopped:
                 self._mark_stopped(conn, out)
-            for out, point, node, curve in running:
-                self._mark_running(conn, out, point, node, curve)
+            for out, point, node, curve, first in running:
+                self._mark_running(conn, out, point, node, curve, self._paced(point, first))
             completed = self._settle_topologies(conn, touched, ended_in, finished, at)
             if ended:
                 self._progressed(conn)
@@ -744,6 +747,23 @@ class Coordinator:
         )
         self._count(conn, out.topology, running=-1)
 
+    def _paced(
+        self, point: StartLogPoint | None, first: StartLogPoint | None
+    ) -> tuple[float, str] | None:
+        """A running try's own pace (#542): its time for an evaluation from its first log point to
+        its latest, so its worker's start-up isn't counted, and when it ends at that pace, from
+        now, when its latest point is read. `None` before it has logged past its first point, and
+        for a log a requeued task started again, whose latest point is behind its first."""
+        if point is None or first is None or point.generation <= first.generation:
+            return None
+        evaluations = point.evaluations - first.evaluations
+        seconds = point.elapsed_s - first.elapsed_s
+        if evaluations <= 0 or not seconds > 0:
+            return None
+        per = seconds / evaluations
+        left = max(0, self.run.per_start - point.evaluations) * per
+        return per, iso(self.wall_clock() + timedelta(seconds=left))
+
     def _mark_running(
         self,
         conn: sqlite3.Connection,
@@ -751,6 +771,7 @@ class Coordinator:
         point: StartLogPoint | None,
         node: str | None,
         curve: Curve | None,
+        paced: tuple[float, str] | None = None,
     ) -> None:
         """A try now running, on its node, with its latest log point and its curve so far: lists
         read them from here (ADR-0009). One the scheduler had said ended, then runs again, as a
@@ -760,6 +781,7 @@ class Coordinator:
             "UPDATE start_tries SET started_at = COALESCE(started_at, ?), task_ended_at = NULL, "
             "live_generation = COALESCE(?, live_generation), "
             "live_evaluations = COALESCE(?, live_evaluations), "
+            "live_seconds_per_evaluation = ?, live_end = ?, "
             "live_train_rmse = CASE WHEN ? THEN ? ELSE live_train_rmse END, "
             "live_val_rmse = CASE WHEN ? THEN ? ELSE live_val_rmse END, "
             "curve = COALESCE(?, curve), node = COALESCE(?, node) "
@@ -768,6 +790,8 @@ class Coordinator:
                 now(),
                 None if point is None else point.generation,
                 None if point is None else point.evaluations,
+                None if paced is None else paced[0],
+                None if paced is None else paced[1],
                 point is not None,
                 None if point is None else point.train_rmse,
                 point is not None,

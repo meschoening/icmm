@@ -390,6 +390,7 @@ function Builder({
         modified_at: new Date().toISOString(),
         content,
         templates: [...templates.slice(0, index), template, ...templates.slice(index)],
+        copied_from: base.copied_from,
       } satisfies SavedDataset);
       back(`protocol-${made.name}`);
     } else if (done.code === "conflict") {

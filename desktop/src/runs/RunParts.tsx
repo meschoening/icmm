@@ -27,6 +27,7 @@ import {
 import type { Revision } from "./detailQueries";
 import { ImprovingMark } from "./ImprovingMark";
 import { NewerRevision } from "./NewerRevision";
+import { fitFrom } from "./topology/words";
 import { topologyName } from "./words";
 import { Whole } from "../ui/Whole";
 
@@ -254,6 +255,8 @@ function Cap({ cap }: { cap: CapLine }) {
 /** What's sent out now: the topology fitting, the next, and how many wait behind it. */
 export interface LiveCards {
   run: number;
+  /** When the run's first start ran: a topology sent before it fits from then (#538). */
+  firstRunningAt: string | null;
   fitting: TopologySummary;
   /** Its full read, for its array and queue; `undefined` until read. */
   detail: Topology | undefined;
@@ -355,10 +358,12 @@ function Cards({ c }: { c: LiveCards }) {
   const running = t.starts_running;
   const queued = Math.max(0, t.starts - finished - failed - running);
   const array = [...(d?.arrays ?? [])].reverse().find((a) => a.job_id !== null);
+  // Since it began fitting, as its "took" counts: not while its run waited queued (#538).
   const sent = t.first_sent_at === null ? NaN : Date.parse(t.first_sent_at);
+  const since = Number.isNaN(sent) ? NaN : fitFrom(sent, { first_running_at: c.firstRunningAt });
   const where = [
     c.slurm && array?.job_id != null ? `SLURM array ${array.job_id.split("_")[0]}` : "",
-    Number.isNaN(sent) ? "" : wholeDate(`since ${clock(sent, c.now)}`),
+    Number.isNaN(since) ? "" : wholeDate(`since ${clock(since, c.now)}`),
   ]
     .filter(Boolean)
     .join(" · ");

@@ -64,12 +64,21 @@ export function SheetPreview({
       <span className="ax" style={{ left: 0, top: 96, width: 22, textAlign: "right" }}>
         {short(yLo)}
       </span>
-      <span className="ax" style={{ left: 28, top: 112 }}>
-        {short(xLo, signed)}
-      </span>
-      <span className="ax" style={{ right: 6, top: 112 }}>
-        {short(xHi, signed)} {xUnit}
-      </span>
+      {xHi === xLo ? (
+        // One row: one x, under its dot, never "−10 … −10 mV" (#538).
+        <span className="ax" style={{ left: px(xLo), top: 112, transform: "translateX(-50%)" }}>
+          {short(xLo, signed)} {xUnit}
+        </span>
+      ) : (
+        <>
+          <span className="ax" style={{ left: 28, top: 112 }}>
+            {short(xLo, signed)}
+          </span>
+          <span className="ax" style={{ right: 6, top: 112 }}>
+            {short(xHi, signed)} {xUnit}
+          </span>
+        </>
+      )}
     </div>
   );
 }

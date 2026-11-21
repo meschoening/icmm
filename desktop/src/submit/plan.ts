@@ -32,7 +32,9 @@ import {
   fromHost,
   fromRuns,
   overLimit,
+  paceWords,
   plural,
+  rangeWords,
   sizeWords,
   startSeconds,
   type PerEvaluation,
@@ -77,13 +79,16 @@ export function workOf(a: {
 /**
  * Where the time per evaluation stands: known; the platform's finished starts
  * still being read; this computer timing a few evaluations (the finished starts
- * are read and none has timed this); couldn't be timed; or waiting for the platform.
+ * are read and none has timed this, on This computer); couldn't be timed; none
+ * to go by (a cluster with no finished runs at these states and CPUs, which is
+ * never timed here, #542); or waiting for the platform.
  */
 export type Timing =
   | { kind: "ready"; per: PerEvaluation }
   | { kind: "reading" }
   | { kind: "timing" }
   | { kind: "failed" }
+  | { kind: "none" }
   | { kind: "offline" };
 
 /** This computer's own timing of the config, as far as it has got. */
@@ -94,15 +99,18 @@ export type HostTiming =
   | { kind: "offline" };
 
 /**
- * The time per evaluation: from the platform's finished starts at this many
+ * The time per evaluation: from the platform's finished runs at this many
  * states and CPUs when it has some (`timings`, `undefined` while they are being
- * read), else from `host`, this computer's timing of the config's evaluations
- * as its starts run them.
+ * read), else on This computer from `host`, this computer's timing of the
+ * config's evaluations as its starts run them, a rough guess. A cluster is
+ * never timed here: its nodes aren't this computer (#542).
  */
 export function timingOf(a: {
   timings: RunTiming[] | undefined;
   numStates: number | null;
   cpus: number;
+  /** The jobs go to a SLURM cluster. */
+  slurm: boolean;
   host: HostTiming;
   /** The agent can be asked: what isn't read yet is being read. */
   live: boolean;
@@ -111,6 +119,7 @@ export function timingOf(a: {
   const row = a.timings === undefined ? undefined : fromRuns(a.timings, a.numStates, a.cpus);
   if (row !== undefined) return { kind: "ready", per: row };
   if (a.timings === undefined) return { kind: a.live ? "reading" : "offline" };
+  if (a.slurm) return { kind: "none" };
   switch (a.host.kind) {
     case "ready": {
       // Zero or not a number would make every duration "1 m" or NaN: that isn't a timing.
@@ -128,19 +137,21 @@ export function timingOf(a: {
 }
 
 /**
- * Whether this computer must time the config: the platform's finished starts
- * are read and none has timed these states at these CPUs. One rule for the
- * read of the dataset and for the timing that follows it.
+ * Whether this computer must time the config: the jobs run on This computer,
+ * and the platform's finished runs are read and none has timed these states at
+ * these CPUs. One rule for the read of the dataset and for the timing that
+ * follows it. A cluster is never timed here (#542).
  */
 export function needsHostTiming(
   timings: RunTiming[] | undefined,
   numStates: number | null,
-  job: Pick<JobDefaults, "cpus_per_start"> | undefined,
+  job: Pick<JobDefaults, "cpus_per_start" | "type"> | undefined,
 ): boolean {
   return (
     timings !== undefined &&
     numStates !== null &&
     job !== undefined &&
+    job.type !== "slurm" &&
     fromRuns(timings, numStates, job.cpus_per_start) === undefined
   );
 }
@@ -150,9 +161,9 @@ export function slurmOf(job: Pick<JobDefaults, "type"> | undefined, platform: Pl
   return job === undefined ? platform.type === "ssh" : job.type === "slurm";
 }
 
-/** The Time tile, and the Each start and Each topology rows. */
+/** The Time tile, and the Each start and Pace rows. */
 export interface TimeView {
-  /** "≈ 23 h", "≈ …" while it's timed, "—" when it can't be said. */
+  /** "≈ 23 h", "2–6 d" (a rough guess), "≈ …" while it's timed, "—" when it can't be said. */
   big: string;
   /** After it: "at 16 running". */
   after: string | undefined;
@@ -160,20 +171,25 @@ export interface TimeView {
   hint: string | undefined;
   /** Past the time limit (SLURM): in the hint's place, in red. */
   past: string | undefined;
-  /** Each start's row: "≈ 43 m", "≈ …" or "—". */
+  /** Each start's row: "≈ 43 m", "26–78 m", "≈ …" or "—". */
   each: string;
   /** After Each start (SLURM): "time limit 24 h". */
   limit: string | undefined;
   /** Each start would run past the time limit. */
   over: boolean;
-  /** Each topology's row. */
-  topology: string;
+  /** The Pace row: "≈ 4 h 35 m per topology", "≈ 23 s per topology", a range, "≈ …" or "—". */
+  pace: string;
 }
 
-const NOT_ESTIMATED = { each: "—", topology: "—" } as const;
+const NOT_ESTIMATED = { each: "—", pace: "—" } as const;
+
+/** "11‑state ", its hyphen one a line never breaks at, or nothing without the states. */
+const statesWords = (n: number | null) => (n === null ? "" : `${n}\u2011state `);
 
 export function timeView(a: {
   work: Work | undefined;
+  /** The config's number of states, which the hint names. */
+  numStates: number | null;
   /** What each start runs: `evaluationsPerStart`. */
   evaluations: number;
   /** The most starts running at once. */
@@ -186,11 +202,17 @@ export function timeView(a: {
 }): TimeView {
   const slurm = a.limitMin !== null;
   const limit = a.limitMin === null ? undefined : `time limit ${upTo(a.limitMin)}`;
-  const base = { after: undefined, past: undefined, limit, over: false } as const;
+  const base = {
+    after: undefined,
+    past: undefined,
+    limit,
+    over: false,
+  } as const;
   const { timing } = a;
+  const states = statesWords(a.numStates);
   // The finished starts are still being read: nothing is being timed yet, so nothing says so.
   if (timing.kind === "reading") {
-    return { ...base, big: "≈ …", hint: undefined, each: "≈ …", topology: "≈ …" };
+    return { ...base, big: "≈ …", hint: undefined, each: "≈ …", pace: "≈ …" };
   }
   if (timing.kind === "timing") {
     return {
@@ -198,36 +220,69 @@ export function timeView(a: {
       big: "≈ …",
       hint: "Timing a few evaluations on this computer…",
       each: "≈ …",
-      topology: "≈ …",
+      pace: "≈ …",
     };
   }
   if (timing.kind === "failed") {
-    return { ...base, big: "—", hint: "Couldn’t time it on this computer.", ...NOT_ESTIMATED };
+    return {
+      ...base,
+      big: "—",
+      hint: "Couldn’t time it on this computer.",
+      ...NOT_ESTIMATED,
+    };
+  }
+  if (timing.kind === "none") {
+    return {
+      ...base,
+      big: "—",
+      hint: `No finished ${states}runs here to go by. The run page gives its ETA once its first starts report their pace.`,
+      ...NOT_ESTIMATED,
+    };
   }
   if (timing.kind === "offline") {
-    return { ...base, big: "—", hint: "Shows once connected", ...NOT_ESTIMATED };
+    return {
+      ...base,
+      big: "—",
+      hint: "Shows once connected",
+      ...NOT_ESTIMATED,
+    };
   }
   const per = timing.per;
   // Nothing to run, or no time to run it in: there is no estimate to give.
   if (!(a.evaluations > 0) || !(Number.isFinite(per.seconds) && per.seconds > 0)) {
     return { ...base, big: "—", hint: undefined, ...NOT_ESTIMATED };
   }
+  // This computer's own timing is a rough guess: a range, ×0.6 to ×1.8 (#542).
+  const guess = per.from.kind === "host";
   const perStartS = startSeconds(a.evaluations, per.seconds, a.overheadS);
-  const each = nearWords(perStartS);
+  const each = guess ? rangeWords(perStartS) : nearWords(perStartS);
   const over = a.limitMin !== null && overLimit(perStartS, a.limitMin);
-  const source =
-    per.from.kind === "runs"
-      ? `From ${plural(per.from.runs, "finished run", "finished runs")} here`
-      : "Timed on this computer";
   const wait = slurm
     ? "Not counting any wait for the cluster."
     : "Not counting the wait for runs ahead of it.";
+  // The runs that ended here with these states and CPUs (#542, L4).
+  const source =
+    per.from.kind === "runs"
+      ? `From ${plural(per.from.runs, `finished ${states}run`, `finished ${states}runs`)} here.`
+      : undefined;
+  const hint =
+    source === undefined
+      ? `A rough guess, timed on this computer: no finished ${states}runs here yet.`
+      : `${source} ${wait}`;
   const past =
     over && a.limitMin !== null
       ? `Each start ${each}, past its ${upTo(a.limitMin)} time limit`
       : undefined;
   if (a.work === undefined) {
-    return { ...base, big: "≈ …", hint: `${source}.`, each, topology: "≈ …", over };
+    // Without the work, only where it comes from: the wait is the run's.
+    return {
+      ...base,
+      big: "≈ …",
+      hint: source ?? hint,
+      each,
+      pace: "≈ …",
+      over,
+    };
   }
   const est = estimate({
     starts: a.work.starts,
@@ -238,14 +293,18 @@ export function timeView(a: {
     cap: a.cap,
   });
   return {
-    big: est.totalS < 60 ? "< 1 m" : `≈ ${durationWords(est.totalS)}`,
+    big: guess
+      ? rangeWords(est.totalS)
+      : est.totalS < 60
+        ? "< 1 m"
+        : `≈ ${durationWords(est.totalS)}`,
     after: `at ${whole(a.cap)} running`,
-    hint: over ? undefined : `${source}. ${wait}`,
+    hint: over ? undefined : hint,
     past,
     each,
     limit,
     over,
-    topology: nearWords(est.perTopologyS),
+    pace: `${guess ? rangeWords(est.perTopologyS) : `≈ ${paceWords(est.perTopologyS)}`} per topology`,
   };
 }
 
@@ -254,16 +313,36 @@ export type SettingsGap = "loading" | "unset" | "failed" | "offline";
 
 /** The Time tile and rows without the platform's settings: the cap, CPUs and limit it is made from. */
 export function timeGap(why: SettingsGap): TimeView {
-  const none = { after: undefined, past: undefined, limit: undefined, over: false } as const;
+  const none = {
+    after: undefined,
+    past: undefined,
+    limit: undefined,
+    over: false,
+  } as const;
   switch (why) {
     case "loading":
-      return { ...none, big: "≈ …", hint: undefined, each: "≈ …", topology: "≈ …" };
+      return { ...none, big: "≈ …", hint: undefined, each: "≈ …", pace: "≈ …" };
     case "unset":
-      return { ...none, big: "—", hint: "Needs Platform settings", ...NOT_ESTIMATED };
+      return {
+        ...none,
+        big: "—",
+        hint: "Needs Platform settings",
+        ...NOT_ESTIMATED,
+      };
     case "failed":
-      return { ...none, big: "—", hint: "Couldn’t read Platform settings", ...NOT_ESTIMATED };
+      return {
+        ...none,
+        big: "—",
+        hint: "Couldn’t read Platform settings",
+        ...NOT_ESTIMATED,
+      };
     case "offline":
-      return { ...none, big: "—", hint: "Shows once connected", ...NOT_ESTIMATED };
+      return {
+        ...none,
+        big: "—",
+        hint: "Shows once connected",
+        ...NOT_ESTIMATED,
+      };
   }
 }
 
@@ -365,7 +444,12 @@ export interface Begins {
   box:
     | { kind: "forecast"; forecast: Forecast }
     | { kind: "message"; text: string }
-    | { kind: "jobs_failed"; what: string; next: string; raw: string | undefined }
+    | {
+        kind: "jobs_failed";
+        what: string;
+        next: string;
+        raw: string | undefined;
+      }
     | { kind: "none" };
 }
 
@@ -545,7 +629,13 @@ export function tilesOf(a: {
  */
 export function etasOf(
   runs: Run[],
-  a: { timings: RunTiming[]; cpus: number; cap: number; overheadS: number; now: number },
+  a: {
+    timings: RunTiming[];
+    cpus: number;
+    cap: number;
+    overheadS: number;
+    now: number;
+  },
 ): Map<number, number | undefined> {
   const etas = new Map<number, number | undefined>();
   for (const run of runs) {

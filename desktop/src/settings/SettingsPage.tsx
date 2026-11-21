@@ -13,7 +13,15 @@
  */
 import { Link, useBlocker, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import { listen } from "@tauri-apps/api/event";
-import { useCallback, useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type Ref,
+  type RefObject,
+} from "react";
 import { settingsFacts } from "../connection/view";
 import { inApp } from "../ipc";
 import { PageHeading } from "../ui/PageHeading";
@@ -38,7 +46,8 @@ export function SettingsPage() {
   const facts = settingsFacts(useConnection());
   const platforms = useRef<PlatformsHandle>(null);
   const list = usePlatforms().data?.platforms ?? [];
-  const general = useSectionInView(useLocation().hash === "general");
+  const main = useRef<HTMLDivElement>(null);
+  const general = useSectionInView(useLocation().hash === "general", main);
   return (
     <div className="page settings-page">
       <nav className="sub" aria-label="Settings sections">
@@ -59,7 +68,7 @@ export function SettingsPage() {
           General
         </Link>
       </nav>
-      <div className="settings-main">
+      <div className="settings-main" ref={main}>
         <div className="page-head">
           <PageHeading>Settings</PageHeading>
           {facts !== undefined && <p className="facts">{facts}</p>}
@@ -80,9 +89,10 @@ export function SettingsPage() {
 /**
  * Whether General is the section in view: from the URL's hash until the page scrolls, then
  * General once its top is in the window's upper half (#449's SF21), as when Reset ICMM… scrolls
- * it there.
+ * it there. Once scrolled, a form opening or closing above it moves it with no scroll, so
+ * `main` changing size asks again (#538).
  */
-function useSectionInView(fromHash: boolean): boolean {
+function useSectionInView(fromHash: boolean, main: RefObject<HTMLElement | null>): boolean {
   const [scrolled, setScrolled] = useState<boolean>();
   const [hash, setHash] = useState(fromHash);
   if (hash !== fromHash) {
@@ -91,15 +101,29 @@ function useSectionInView(fromHash: boolean): boolean {
     setScrolled(undefined);
   }
   useEffect(() => {
-    const onScroll = () => {
+    const inView = () => {
       const section = document.getElementById("general");
-      if (section === null) return;
-      setScrolled(section.getBoundingClientRect().top < window.innerHeight / 2);
+      if (section === null) return undefined;
+      return section.getBoundingClientRect().top < window.innerHeight / 2;
+    };
+    const onScroll = () => {
+      const now = inView();
+      if (now !== undefined) setScrolled(now);
     };
     // Any scroller's scroll, the page's own among them, which doesn't bubble.
     document.addEventListener("scroll", onScroll, { capture: true, passive: true });
-    return () => document.removeEventListener("scroll", onScroll, { capture: true });
-  }, []);
+    // Before a scroll the hash still says; after one, a change of size asks again.
+    const el = main.current;
+    const resized =
+      el === null || typeof ResizeObserver === "undefined"
+        ? undefined
+        : new ResizeObserver(() => setScrolled((was) => (was === undefined ? was : inView() ?? was)));
+    if (el !== null) resized?.observe(el);
+    return () => {
+      document.removeEventListener("scroll", onScroll, { capture: true });
+      resized?.disconnect();
+    };
+  }, [main]);
   return scrolled ?? fromHash;
 }
 

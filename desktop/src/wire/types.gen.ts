@@ -2541,6 +2541,11 @@ export interface Run {
    * and for a run submitted before ICMM counted them.
    */
   folder_bytes: number | null;
+  /**
+   * Its running starts' own pace; `null` until one of them reports it, for a run with none
+   * running, and for one whose settings this ICMM can't read.
+   */
+  pace: RunPace | null;
 }
 /**
  * The dataset a run fits.
@@ -2758,6 +2763,31 @@ export interface RunProtocol {
   template: Template;
 }
 /**
+ * A running run's own pace (#542), from what its coordinator read of its running starts'
+ * **Start logs**: those past their first log point report it.
+ */
+export interface RunPace {
+  /**
+   * The running starts that report it: at least 1.
+   */
+  starts: number;
+  /**
+   * Their times for an evaluation, averaged, each from its first log point to its latest, so
+   * a worker's start-up isn't counted: one start's time on the computers they run on.
+   */
+  seconds_per_evaluation: number;
+  /**
+   * When its running starts end, on average, in UTC (ISO 8601): each at its own pace from when
+   * its latest point was read, or for one that doesn't report one yet, its whole budget at
+   * `seconds_per_evaluation` from when it began running.
+   */
+  mean_end: string;
+  /**
+   * When the last of its running starts ends, so: its ETA is never before it.
+   */
+  last_end: string;
+}
+/**
  * The platform's runs by state. A run canceling counts as canceling, not as the state it's
  * leaving (#324).
  */
@@ -2918,7 +2948,8 @@ export interface RunTiming {
   num_states: number;
   cpus_per_start: number;
   /**
-   * How many runs they're from.
+   * How many runs they're from: only runs that have ended count (#542), so a running run's
+   * finished starts wait for its end.
    */
   runs: number;
   starts: number;
@@ -3089,6 +3120,11 @@ export interface SavedDataset {
    * Each protocol's template, in the order of `content.protocols`.
    */
   templates: Template[];
+  /**
+   * The name of the dataset Duplicate copied it from, as that dataset was named then, never
+   * updated since; `null` for a dataset that isn't a copy.
+   */
+  copied_from: string | null;
 }
 /**
  * A saved platform reached over SSH: its Connection details, kept on this computer.

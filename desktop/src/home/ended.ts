@@ -23,7 +23,7 @@ export function latestEnded<T extends Pick<RunSummary, "ended_at">>(
 }
 
 /**
- * A protocol's RMSE as a card shows it: Val RMSE with validation points, else
+ * A protocol's RMSE as a card's drift note quotes it: Val RMSE with validation points, else
  * Train RMSE; `null` when its sweep failed or there's no score.
  */
 export function shownRmse(s: ProtocolScore | undefined, validation: boolean): number | null {

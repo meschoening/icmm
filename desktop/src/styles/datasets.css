@@ -323,11 +323,21 @@
 }
 
 /* Jump to */
+/* The label stays put; the protocols wrap in their own row, under the first one (#528). */
 .dd-jumps {
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  gap: 22px;
+}
+.dd-jumps > .label {
+  flex-shrink: 0;
+}
+.dd-jump-list {
+  display: flex;
+  align-items: baseline;
   flex-wrap: wrap;
   gap: 4px 22px;
+  min-width: 0;
 }
 .dd-jump {
   display: inline-flex;
@@ -433,13 +443,9 @@
   grid-row: 1;
   margin-bottom: 16px;
 }
-/* The name, and at the right of the facts column, Edit protocol… and Remove… (#146) */
-/* The name keeps whole: Edit protocol… and Remove… wrap below it when both don't fit (#326). */
+/* The name has the column to itself; Edit protocol… and Remove… sit under the type line, on
+   every protocol at every width (#528). */
 .dd-proto-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px 12px;
   min-width: 0;
   align-self: baseline;
 }
@@ -448,7 +454,7 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
-  flex-shrink: 0;
+  margin-top: 10px;
 }
 .dd-proto-why {
   margin: 8px 0 0;
@@ -461,8 +467,7 @@
   font-size: 17px;
   font-weight: 500;
   line-height: 22px;
-  overflow-wrap: break-word;
-  align-self: baseline;
+  overflow-wrap: anywhere;
 }
 .dd-proto-name:focus {
   outline: none;

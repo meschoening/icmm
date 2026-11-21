@@ -1,23 +1,23 @@
 # ICMM's issue form, for the public repository `meschoening/icmm` (#126, #417).
 # The mirror publishes it there as `.github/ISSUE_TEMPLATE/report.yml`
 # (release/public-sync.toml's [place]). Report a problem… opens
-# https://github.com/meschoening/icmm/issues/new?template=report.yml&title=…&versions=…&what-happened=…
-# so the ids `versions` and `what-happened` must stay as they are: the app's
-# `report.rs` fills them, and a test there reads this file.
+# https://github.com/meschoening/icmm/issues/new?template=report.yml&title=…&versions=…&what-happened=…&report=…
+# so the ids `versions`, `what-happened` and `report` must stay as they are:
+# the app's `report.rs` fills them, and a test there reads this file.
 name: Report a problem
-description: Something went wrong in ICMM. Report a problem… in the app fills this in and saves a report to attach.
+description: Something went wrong in ICMM. Report a problem… in the app fills this in.
 labels: ["report"]
 body:
   - type: markdown
     attributes:
       value: |
-        This page is public. Drag the report ICMM saved in your Downloads folder (`icmm-report-….txt`) into What happened, read it over, then submit.
+        This page is public. ICMM filled in What happened, Versions and The report: read them over, add anything you like, then submit.
         User names in the report are written `user`; keys, passwords and dataset contents are left out.
   - type: textarea
     id: what-happened
     attributes:
       label: What happened
-      description: What ICMM said, filled in by the app. Drag the report file here.
+      description: What ICMM said, filled in by the app. Add what went wrong in your own words, if you like.
     validations:
       required: true
   - type: textarea
@@ -31,6 +31,14 @@ body:
     id: versions
     attributes:
       label: Versions
-      description: ICMM's, the engine's and your computer's, filled in by the app.
+      description: ICMM’s, the engine’s and your computer’s, filled in by the app.
     validations:
       required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: The report
+      description: "Filled in by ICMM, its logs cut to the newest warnings and errors. To add the whole report, paste it at the end: ICMM copied it to your clipboard."
+      render: text
+    validations:
+      required: false

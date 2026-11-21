@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ShowOnceConnected } from "../datasets/detail/ShowOnceConnected";
 import { useActivePlatform, useHeldFailure } from "../datasets/detail/read";
 import { useMinute, useRunsList, useRunsOverview } from "../runs/queries";
-import { cancelingWhat, queuedOf } from "../runs/detail";
+import { cancelingWhat, etaDay, queuedOf, runEtasOf, type Eta } from "../runs/detail";
 import { useTopologies } from "../runs/detailQueries";
 import { useResume } from "../runs/resume";
 import {
@@ -40,7 +40,7 @@ import { inSentence } from "../setup/form";
 import { usePlatformSettings, useReadAgain, useSchedulerLookup } from "../setup/queries";
 import { heardAtOf, useConnection } from "../shell/connection";
 import { startOverheadS } from "../submit/estimate";
-import { etasOf, slurmOf } from "../submit/plan";
+import { slurmOf } from "../submit/plan";
 import { useRuns, useRunTimings, useUserJobs } from "../submit/queries";
 import { runGlyph } from "../submit/words";
 import { useKept } from "../submit/kept";
@@ -377,11 +377,12 @@ function Lists({
   const inFlight = reads.runs.filter((r) => r.ended_at === null);
   const ended = reads.runs.filter((r) => r.ended_at !== null);
   const cap = reads.job?.max_running_starts;
-  const etas = useMemo(
+  // The run page's ETA, Submit's estimate marked (L6, #542).
+  const shown = useMemo(
     () =>
       reads.job === undefined || reads.details === undefined
-        ? new Map<number, number | undefined>()
-        : etasOf(reads.details, {
+        ? new Map<number, Eta>()
+        : runEtasOf(reads.details, {
             timings: reads.timings ?? NO_TIMINGS,
             cpus: reads.job.cpus_per_start,
             cap: reads.job.max_running_starts,
@@ -389,6 +390,10 @@ function Lists({
             now: asOf ?? now,
           }),
     [reads.details, reads.timings, reads.job, now, asOf],
+  );
+  const etas = useMemo(
+    () => new Map<number, number | undefined>([...shown].map(([id, e]) => [id, e.at])),
+    [shown],
   );
   const stale = asOf !== undefined;
   const shownPath = useShownPath(platform);
@@ -399,6 +404,8 @@ function Lists({
     cap,
     jobs: reads.jobs,
     inFlight,
+    // A filtered list may leave out the run holding the slots (#538).
+    allInFlight: filtered ? undefined : inFlight,
     shownPath,
     etas,
   };
@@ -447,7 +454,7 @@ function Lists({
               </span>
             </div>
             {inFlight.map((r) => (
-              <LiveRow key={r.id} run={r} around={around} eta={etas.get(r.id)} now={now} />
+              <LiveRow key={r.id} run={r} around={around} eta={shown.get(r.id)} now={now} />
             ))}
           </div>
         </section>
@@ -539,7 +546,7 @@ function LiveRow({
 }: {
   run: RunSummary;
   around: Around;
-  eta: number | undefined;
+  eta: Eta | undefined;
   now: number;
 }) {
   const ds = r.dataset.name ?? "a dataset this platform never had";
@@ -600,7 +607,7 @@ function LiveRow({
   const bar = barOf(r.progress);
   const p = r.progress;
   const again = againLine(r, around.platform, now);
-  const e = eta === undefined ? undefined : etaParts(eta, now);
+  const e = eta === undefined ? undefined : etaParts(eta.at, now);
   const best = r.best;
   const value = best === null ? null : (best.val_rmse ?? best.train_rmse);
   return (
@@ -642,6 +649,12 @@ function LiveRow({
       <span className="runs-eta" role="cell">
         {e === undefined ? (
           <span className="mono runs-big runs-quiet">—</span>
+        ) : eta?.estimate ? (
+          // Before its first starts report their pace: Submit's estimate, to the day (#542).
+          <>
+            <span className="runs-eta-day">about {etaDay(eta.at, now)}</span>
+            <span className="meta">Submit’s estimate</span>
+          </>
         ) : (
           <>
             <span className="runs-eta-day">{e.day}</span>

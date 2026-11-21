@@ -59,6 +59,7 @@ pub fn run() {
             // The plugin has put the window where it was left; on a first
             // launch, or on a smaller screen, it may hang off the work area.
             window::fit(app.handle());
+            window::show_anyway_later(app.handle());
             active::start(app.handle());
             #[cfg(target_os = "macos")]
             quit::ask_on_terminate();
@@ -78,6 +79,10 @@ pub fn run() {
         .on_page_load(move |webview, payload| {
             if payload.event() == PageLoadEvent::Started {
                 quit::GUARD.loaded();
+            }
+            if payload.event() == PageLoadEvent::Finished {
+                // It opened hidden: it shows painted, not blank (#538).
+                window::show(webview.app_handle());
             }
             if smoke && payload.event() == PageLoadEvent::Finished {
                 println!("{}: loaded {}", smoke::ENV, payload.url());

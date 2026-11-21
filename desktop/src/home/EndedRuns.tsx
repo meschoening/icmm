@@ -29,7 +29,7 @@ import { HoverWord, TipWord } from "../ui/TipWord";
 import { WorkingButton } from "../ui/WorkingButton";
 import type { RunBest, RunsDataset, RunSummary, SavedPlatform, WireError } from "../wire/types.gen";
 import { useEarlierTip } from "./earlier";
-import { driftedOf, endedParts, higherTip, shownRmse, type Drifted } from "./ended";
+import { driftedOf, endedParts, higherTip, type Drifted } from "./ended";
 import { Whole } from "../ui/Whole";
 
 type Platform = Pick<SavedPlatform, "type" | "name">;
@@ -361,7 +361,6 @@ function Glance({ run: r, best }: { run: RunSummary; best: RunBest }) {
   const ref = { run: r.id, graph: best.graph, openState: best.open_state, start: best.start };
   const top = `${topologyName(r.id, best)} · start ${best.start}`;
   // The revision's first protocol: cards on one dataset chart the same one (#517).
-  const stored = shownRmse(best.scores[0], r.validation);
   const revision = useQuery({
     ...revisionQuery(platform, { id: r.dataset.id, revision: r.dataset.revision }),
     enabled: canAsk(c),
@@ -378,13 +377,11 @@ function Glance({ run: r, best }: { run: RunSummary; best: RunBest }) {
   const failure = (simulation.error ??
     (unreadable === undefined ? error : null)) as WireError | null;
 
+  // The head names the chart's protocol only: the card's one number is the
+  // run's in its foot, the one Home ranks by (#539 U2).
   const head = (
     <span className="hm-hi">
       <span className="label hm-hiname">{name}</span>
-      <span className="hm-hival">
-        <span className="hm-hiunit">{r.validation ? "val RMSE" : "train RMSE"}</span>
-        <span className="mono hm-hiv">{stored === null ? "—" : rmse(stored)}</span>
-      </span>
     </span>
   );
   const params = {

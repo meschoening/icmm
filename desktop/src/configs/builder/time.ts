@@ -1,8 +1,9 @@
 /**
  * The Config builder's Time (#471, LaptopConfigBuilder): Submit run's own
  * estimate of the config's run, for the platform it is on. The rate is read
- * as Submit reads it, from the platform's finished starts at these states and
- * CPUs, else timed on this computer (ADR-0013), so the two pages agree. Typing
+ * as Submit reads it, from the platform's finished runs at these states and
+ * CPUs, else on This computer a rough guess timed on this computer (ADR-0013),
+ * and on a cluster none (#542), so the two pages agree. Typing
  * evaluations or starts only does the arithmetic again; a new dataset, number
  * of states, box or population times again.
  */
@@ -52,12 +53,15 @@ export function builderTime(a: {
   /** What each start runs, as the engine counts it; `null` until it can. */
   evaluations: number | null;
   uncounted: Uncounted | undefined;
+  /** The config's number of states, which the hint names. */
+  numStates: number | null;
 }): TimeView {
   const { job } = a;
   const limitMin = job?.type === "slurm" ? job.time_limit_per_start_min : null;
   const view = (timing: Timing, work: Work | undefined) =>
     timeView({
       work,
+      numStates: a.numStates,
       evaluations: a.evaluations ?? 0,
       cap: job?.max_running_starts ?? 1,
       overheadS: a.overheadS,
@@ -66,7 +70,10 @@ export function builderTime(a: {
     });
   if (a.need !== undefined) {
     // Nothing to time yet: no time, and the time limit (SLURM) when the settings say it.
-    return { ...view({ kind: "failed" }, undefined), hint: `Estimated once you choose ${a.need}.` };
+    return {
+      ...view({ kind: "failed" }, undefined),
+      hint: `Estimated once you choose ${a.need}.`,
+    };
   }
   if (job === undefined) return timeGap(a.gap ?? "loading");
   const counted = a.uncounted === undefined && a.work !== undefined;
@@ -83,7 +90,7 @@ export function builderTime(a: {
         : a.uncounted === "over"
           ? "Estimated once the run holds 100,000 starts or fewer."
           : undefined,
-    topology: "—",
+    pace: "—",
   };
 }
 
@@ -133,7 +140,14 @@ export function useBuilderTime(a: {
   const timing: Timing =
     checked === undefined
       ? { kind: live ? "reading" : "offline" }
-      : timingOf({ timings, numStates, cpus: job?.cpus_per_start ?? 1, host, live });
+      : timingOf({
+          timings,
+          numStates,
+          cpus: job?.cpus_per_start ?? 1,
+          slurm: job?.type === "slurm",
+          host,
+          live,
+        });
   const overheadS = job === undefined ? 0 : startOverheadS(job);
-  return builderTime({ ...a, job, gap, timing, overheadS });
+  return builderTime({ ...a, job, gap, timing, overheadS, numStates });
 }

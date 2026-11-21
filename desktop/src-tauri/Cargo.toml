@@ -1,6 +1,6 @@
 [package]
 name = "icmm-desktop"
-version = "1.0.0-rc.3"
+version = "1.0.0-rc.4"
 description = "ICMM desktop app"
 authors = ["Max Schoening <meschoening@wustl.edu>"]
 license = "BSD-3-Clause"
@@ -43,6 +43,9 @@ hmac = "0.13"
 rand = "0.10"
 # 0.x minors break: pin the minor, and take its security patches (docs/research/rust-ssh.md).
 russh = "0.63"
+# Report a problem… copies the whole report to the clipboard from here (#552): the page's own
+# clipboard needs the press it came from, and the save outlasts it. Text only.
+arboard = { version = "3", default-features = false }
 # Unpacks an engine bundle's .tar.zst on This computer, in pure Rust.
 ruzstd = "0.9"
 serde = { version = "1", features = ["derive"] }

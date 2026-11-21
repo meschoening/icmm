@@ -991,6 +991,7 @@ function ProgressSection({
               <path className="sp-grid" d={chart.grid} />
               <path className="sp-vgrid" d={chart.vgrid} />
               <path className="sp-median" d={chart.median} />
+              <path className="sp-others" d={chart.others} />
               <path className="sp-best" d={chart.best} />
               <path className="sp-now" d={chart.now} />
               <path className="sp-base" d={chart.base} />
@@ -1018,17 +1019,23 @@ function ProgressSection({
                 start {bestStart} · best start
               </span>
             )}
-            {drawn > 0 && (
-              <>
-                <span>
-                  <span className="sp-sw median" />
-                  median of the {whole(drawn)} finished
-                </span>
-                <span>
-                  <span className="sp-sw middle" />
-                  middle 80 % of the {whole(drawn)} finished
-                </span>
-              </>
+            {chart.median !== "" && (
+              <span>
+                <span className="sp-sw median" />
+                median of the {whole(drawn)} finished
+              </span>
+            )}
+            {chart.otherCount > 0 && (
+              <span>
+                <span className="sp-sw median" />
+                the other {whole(chart.otherCount)} finished
+              </span>
+            )}
+            {chart.band !== "" && (
+              <span>
+                <span className="sp-sw middle" />
+                middle 80 % of the {whole(drawn)} finished
+              </span>
             )}
           </div>
         </>

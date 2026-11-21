@@ -120,6 +120,7 @@ def read_dataset(params: ReadDatasetParams, *, db: RunsDb, data_folder: Path) ->
         modified_at=current.modified_at,
         content=_content(current.dataset),
         templates=[Template(template_of(p)) for p in current.dataset.protocols],
+        copied_from=current.copied_from,
     )
 
 
@@ -137,8 +138,9 @@ def read_dataset_revision(
         raise AgentError(_revision_not_found(params.id, params.revision)) from None
     except store.UnreadableError as e:
         raise AgentError(unreadable(_name(db, params.id), e.problem, e.details)) from None
-    (saved_at,) = conn.execute(
-        "SELECT saved_at FROM dataset_revisions WHERE dataset_id = ? AND revision = ?",
+    saved_at, copied_from = conn.execute(
+        "SELECT r.saved_at, d.copied_from FROM dataset_revisions r "
+        "JOIN datasets d ON d.id = r.dataset_id WHERE r.dataset_id = ? AND r.revision = ?",
         (params.id, params.revision),
     ).fetchone()
     return SavedDataset(
@@ -147,6 +149,7 @@ def read_dataset_revision(
         modified_at=saved_at,
         content=_content(dataset),
         templates=[Template(template_of(p)) for p in dataset.protocols],
+        copied_from=copied_from,
     )
 
 
@@ -236,6 +239,7 @@ def duplicate_dataset(
         written=written,
         method=method,
         live=True,
+        copy=True,
         name_for=store.copy_name,
         taken="Another dataset took this copy's name as it saved. Duplicate again.",
         result_of=lambda id, revision, name: DuplicatedDataset(id=id, revision=revision, name=name),
@@ -257,6 +261,7 @@ def save_as_new_dataset(
         written=written,
         method=method,
         live=False,
+        copy=False,
         name_for=store.again_name,
         taken="Another dataset took this name as it saved. Save as a new dataset again.",
         result_of=lambda id, revision, name: SavedAsNewDataset(id=id, revision=revision, name=name),
@@ -271,14 +276,16 @@ def _copied[R](
     written: str,
     method: Method,
     live: bool,
+    copy: bool,
     name_for: Callable[[Any, str], str],
     taken: str,
     result_of: Callable[[str, int, str], R],
 ) -> R:
     """Saves a copy of the dataset's revision `params.revision` as a new dataset, named by
     `name_for` as the save is recorded and kept in the new dataset's row, so a retry stages the
-    same files; with `live`, of a dataset that isn't deleted. A name taken as it publishes is a
-    `conflict` that says `taken`."""
+    same files; with `live`, of a dataset that isn't deleted. With `copy`, the new dataset's row
+    keeps the source's name as it is now, which it says it's a copy of for good (#530). A name
+    taken as it publishes is a `conflict` that says `taken`."""
     from icmm.dataset import store
 
     outcome = requests.recorded(db.connection(), method, params)
@@ -291,7 +298,8 @@ def _copied[R](
                 if live and not store.is_live(conn, params.id):
                     raise store.NotFoundError
                 content = store.copy_content(source, name_for(conn, source.name))
-                store.intend(conn, params.request_key, None, None, content)
+                copied_from = store.name_of(conn, params.id) if copy else None
+                store.intend(conn, params.request_key, None, None, content, copied_from=copied_from)
 
         with db.write() as conn:
             outcome = requests.recorded(conn, method, params)

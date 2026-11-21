@@ -423,7 +423,8 @@ class RunTiming(WireModel):
     num_states: WireInt
     cpus_per_start: WireInt
     runs: WireInt
-    """How many runs they're from."""
+    """How many runs they're from: only runs that have ended count (#542), so a running run's
+    finished starts wait for its end."""
     starts: WireInt
     evaluations: WireInt
     elapsed_s: float
@@ -476,6 +477,23 @@ class UserJobs(WireModel):
     """`null` on a platform without SLURM."""
 
 
+class RunPace(WireModel):
+    """A running run's own pace (#542), from what its coordinator read of its running starts'
+    **Start logs**: those past their first log point report it."""
+
+    starts: WireInt
+    """The running starts that report it: at least 1."""
+    seconds_per_evaluation: float
+    """Their times for an evaluation, averaged, each from its first log point to its latest, so
+    a worker's start-up isn't counted: one start's time on the computers they run on."""
+    mean_end: str
+    """When its running starts end, on average, in UTC (ISO 8601): each at its own pace from when
+    its latest point was read, or for one that doesn't report one yet, its whole budget at
+    `seconds_per_evaluation` from when it began running."""
+    last_end: str
+    """When the last of its running starts ends, so: its ETA is never before it."""
+
+
 class Run(RunSummary):
     """A run with what it fits, as it was pinned at submit, and when each stage began."""
 
@@ -508,6 +526,9 @@ class Run(RunSummary):
     """What its folder holds, as Delete run… says: the bytes of each try's result, Start log and
     job log, added up by its coordinator as it collects the try. `null` until any are counted,
     and for a run submitted before ICMM counted them."""
+    pace: RunPace | None
+    """Its running starts' own pace; `null` until one of them reports it, for a run with none
+    running, and for one whose settings this ICMM can't read."""
 
 
 class RunStretchesParams(WireModel):

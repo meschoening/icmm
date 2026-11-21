@@ -10,3 +10,11 @@ cp /tmp/icmm-icons/{32x32.png,128x128.png,128x128@2x.png,icon.icns,icon.ico,icon
 ```
 
 The command also writes Windows Store, Android and iOS sets; ICMM ships none of them. `icon.icns` comes out with its images in a different order each run, so an unchanged source can still show it as changed.
+
+## Installer artwork
+
+The Windows installer's welcome and finish pages show `sidebar.bmp` (164 × 314) and the pages between show `header.bmp` (150 × 57), set in `tauri.conf.json`'s `bundle.windows.nsis`. Both are `icon.png` on the app's light colors, written by a stdlib-only script; run it again after `icon.png` changes:
+
+```sh
+uv run python scripts/dev/installer_images.py
+```

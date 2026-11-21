@@ -93,10 +93,6 @@
 .home-grid.idle .hm-ecard {
   padding: 14px;
 }
-.home-grid.idle .hm-hi {
-  flex-wrap: wrap;
-  row-gap: 0;
-}
 .home-grid.idle .hm-efoot {
   row-gap: 4px;
 }
@@ -437,7 +433,7 @@
 .hm-plot:hover .hm-cap {
   color: var(--cobalt);
 }
-/* The chart's head: the protocol's name, then its RMSE pushed right and kept whole (#517). */
+/* The chart's head: the protocol's name only (#517, #539). */
 .hm-hi {
   display: flex;
   align-items: baseline;
@@ -448,19 +444,6 @@
 .hm-hiname {
   min-width: 0;
   overflow-wrap: anywhere;
-}
-.hm-hival {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 8px;
-  white-space: nowrap;
-}
-.hm-hiunit {
-  font-size: 12px;
-}
-.hm-hiv {
-  color: var(--ink);
 }
 /* Over Start's `.sp-plot` height. */
 .hm-plot .hm-chart {

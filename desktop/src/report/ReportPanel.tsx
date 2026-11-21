@@ -72,17 +72,11 @@ export function ReportPanel({
         <Heading id={`${id}-h`} ref={heading} tabIndex={-1}>
           {fromPage ? "Report a problem on ICMM’s issue page" : "Report this on ICMM’s issue page"}
         </Heading>
-        {fromPage ? (
-          <p>
-            ICMM saves a report in Downloads and opens its issue page on GitHub, filled in. Say
-            there what went wrong; the page is public, and nothing is posted until you submit it.
-          </p>
-        ) : (
-          <p>
-            ICMM saves a report in Downloads and opens its issue page on GitHub, filled in. The page
-            is public, and nothing is posted until you submit it there.
-          </p>
-        )}
+        <p>
+          ICMM opens a new issue on GitHub with the report filled in. There, signed in to GitHub,{" "}
+          {fromPage ? "say what went wrong" : "read it over"}. The page is public, and nothing is
+          posted until you submit it.
+        </p>
         <dl className="kv">
           {failure !== undefined && (
             <>
@@ -107,10 +101,14 @@ export function ReportPanel({
           <dt>Platform</dt>
           <dd>{preview?.platform ?? "…"}</dd>
           <dt>Logs</dt>
+          <dd>The newest warnings and errors</dd>
+          <dt>Whole report</dt>
           <dd>
-            Today’s app and agent logs
+            Copied to your clipboard and saved in Downloads, with today’s app and agent logs
+            {/* No-break spaces, so the line breaks only after the dot. */}
             {preview !== undefined &&
-              ` · ${preview.log_lines.toLocaleString("en-US")} ${preview.log_lines === 1 ? "line" : "lines"}`}
+              `\u00a0· ${preview.log_lines.toLocaleString("en-US")}\u00a0${preview.log_lines === 1 ? "line" : "lines"}`}
+            . Paste it into the issue if you like.
           </dd>
           <dt>Left out</dt>
           <dd>

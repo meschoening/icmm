@@ -3030,6 +3030,10 @@ pub struct Run {
     /**Where its starts' results and **Start logs** go: the Output folder when it was submitted,
     as a full path on the platform.*/
     pub output_folder: ::std::string::String,
+    /**Its running starts' own pace; `null` until one of them reports it, for a run with none
+    running, and for one whose settings this ICMM can't read.*/
+    #[serde(deserialize_with = "::std::option::Option::deserialize")]
+    pub pace: ::std::option::Option<RunPace>,
     pub progress: RunProgress,
     /**Its revision's protocols, in the order its starts' scores are stored: what names them
     where the revision can't be read (missing, damaged or saved by a newer ICMM).*/
@@ -3230,6 +3234,23 @@ pub struct RunMarks {
 #[serde(deny_unknown_fields)]
 pub struct RunMarksParams {
     pub platform_id: ::std::string::String,
+}
+/**A running run's own pace (#542), from what its coordinator read of its running starts'
+**Start logs**: those past their first log point report it.*/
+#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct RunPace {
+    ///When the last of its running starts ends, so: its ETA is never before it.
+    pub last_end: ::std::string::String,
+    /**When its running starts end, on average, in UTC (ISO 8601): each at its own pace from when
+    its latest point was read, or for one that doesn't report one yet, its whole budget at
+    `seconds_per_evaluation` from when it began running.*/
+    pub mean_end: ::std::string::String,
+    /**Their times for an evaluation, averaged, each from its first log point to its latest, so
+    a worker's start-up isn't counted: one start's time on the computers they run on.*/
+    pub seconds_per_evaluation: f64,
+    ///The running starts that report it: at least 1.
+    pub starts: i64,
 }
 ///`RunProgress`
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
@@ -3596,7 +3617,8 @@ pub struct RunTiming {
     pub elapsed_s: f64,
     pub evaluations: i64,
     pub num_states: i64,
-    ///How many runs they're from.
+    /**How many runs they're from: only runs that have ended count (#542), so a running run's
+    finished starts wait for its end.*/
     pub runs: i64,
     pub starts: i64,
 }
@@ -3737,6 +3759,10 @@ pub struct SavedConfig {
 pub struct SavedDataset {
     ///Each protocol's points in x order.
     pub content: DatasetContent,
+    /**The name of the dataset Duplicate copied it from, as that dataset was named then, never
+    updated since; `null` for a dataset that isn't a copy.*/
+    #[serde(deserialize_with = "::std::option::Option::deserialize")]
+    pub copied_from: ::std::option::Option<::std::string::String>,
     pub id: ::std::string::String,
     ///When this revision was saved, in UTC (ISO 8601).
     pub modified_at: ::std::string::String,

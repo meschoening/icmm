@@ -21,12 +21,13 @@ use crate::wire::types::{
     LaunchPlatformParams, LogsFolder, MarkRunsParams, MatchTopologyParams, NotificationParams,
     PlatformRef, Preferences, ProposeSplitParams, Protocol, ReadDatasetFileParams,
     ReadWorkbookParams, RecentlyOpened, RecentlyOpenedParams, RecordOpenedParams,
-    RegenerateDatasetParams, ReportPreview, ResetParams, RevealLogParams, RevealParams, RunMarks,
-    RunMarksParams, SaveReportParams, SavedPlatform, SavedPlatforms, SavedReport, Severity,
-    SimulateStartParams, SshConfigHost, SshConfigHostParams, SshConfigHosts, SshKeys,
-    StartSimulation, Theme, TimeEvaluationsParams, TimeFormat, TopologyMatch, TrustHostKeyParams,
-    UseSshKeyParams, WireError, Workbook, WriteDatasetFileParams, WriteExportFileParams,
-    WriteFiguresParams, WriteFitParams, WriteParametersParams, WrittenFile, WrittenFit,
+    RegenerateDatasetParams, ReportFailure, ReportPage, ReportPreview, ResetParams,
+    RevealLogParams, RevealParams, RunMarks, RunMarksParams, SaveReportParams, SavedPlatform,
+    SavedPlatforms, SavedReport, Severity, SimulateStartParams, SshConfigHost, SshConfigHostParams,
+    SshConfigHosts, SshKeys, StartSimulation, Theme, TimeEvaluationsParams, TimeFormat,
+    TopologyMatch, TrustHostKeyParams, UseSshKeyParams, WireError, Workbook,
+    WriteDatasetFileParams, WriteExportFileParams, WriteFiguresParams, WriteFitParams,
+    WriteParametersParams, WrittenFile, WrittenFit,
 };
 
 // A preference save includes applying its theme. Reset holds the same lock
@@ -194,13 +195,18 @@ pub async fn report_preview() -> ReportPreview {
     })
 }
 
-/// Saves the report in Downloads, then opens ICMM's issue page filled in.
+/// Saves the report in Downloads and copies it whole to the clipboard, then
+/// opens ICMM's issue page filled in.
 pub async fn save_report(params: SaveReportParams) -> Result<SavedReport, WireError> {
-    let saved = tokio::task::spawn_blocking(move || write_report(&params))
-        .await
-        .unwrap_or_else(|e| Err(internal(format!("Couldn't save the report: {e}."))))?;
+    let saved = tokio::task::spawn_blocking(move || {
+        let (report, link, whole) = write_report(&params)?;
+        copy(whole);
+        Ok((report, link))
+    })
+    .await
+    .unwrap_or_else(|e| Err(internal(format!("Couldn't save the report: {e}."))))?;
     let (report, link) = saved;
-    open_with_os(std::ffi::OsStr::new(&link)).map_err(|e| {
+    open_link(&link).map_err(|e| {
         let message = format!(
             "Saved {} in Downloads, but couldn't open ICMM's issue page: {e}.",
             report.file
@@ -269,31 +275,50 @@ fn platform_id(p: &SavedPlatform) -> &str {
     }
 }
 
-/// Writes the report in Downloads; answers it and the issue page's link.
-fn write_report(params: &SaveReportParams) -> Result<(SavedReport, String), WireError> {
+/// Writes the report in Downloads; answers it, the issue page's link and the
+/// whole report for the clipboard.
+fn write_report(params: &SaveReportParams) -> Result<(SavedReport, String, String), WireError> {
     let name = crate::report::file_name(&params.stamp)
         .ok_or_else(|| internal(format!("Couldn't name a report for {:?}.", params.stamp)))?;
     let facts = ReportFacts::now();
-    let logs = facts.logs();
-    let report = crate::report::Report {
-        failure: params.failure.as_ref(),
-        page: params.page.as_ref(),
-        versions: &facts.versions,
-        platform: facts.platform,
-        logs: &logs,
-    };
+    // Each part is redacted before the link is measured, so what fits is
+    // what's sent.
     let redact = |text: &str| {
         crate::report::redact(
             &crate::report::redact_hosts(text, &facts.hosts),
             &facts.names,
         )
     };
-    let text = redact(&crate::report::compose(&report));
-    let link = crate::report::issue_link(
-        &redact(&crate::report::title(params.failure.as_ref())),
-        &redact(&crate::report::what_happened(&report)),
-        &redact(&facts.versions),
-    );
+    let failure = params.failure.as_ref().map(|f| ReportFailure {
+        what: redact(&f.what),
+        next: f.next.as_deref().map(redact),
+        raw: f.raw.as_deref().map(redact),
+    });
+    let page = params.page.as_ref().map(|p| ReportPage {
+        kind: p.kind,
+        name: redact(&p.name),
+        job_log: p.job_log.as_deref().map(redact),
+        run: p.run.as_deref().map(redact),
+    });
+    let versions = redact(&facts.versions);
+    let logs: Vec<crate::report::Log> = facts
+        .logs()
+        .into_iter()
+        .map(|l| crate::report::Log {
+            text: redact(&l.text),
+            ..l
+        })
+        .collect();
+    let report = crate::report::Report {
+        failure: failure.as_ref(),
+        page: page.as_ref(),
+        versions: &versions,
+        platform: facts.platform,
+        logs: &logs,
+    };
+    let text = crate::report::compose(&report);
+    let link = crate::report::issue_link(&report);
+    let whole = crate::report::whole(&report);
     let folder = crate::active::app()
         .path()
         .download_dir()
@@ -316,7 +341,25 @@ fn write_report(params: &SaveReportParams) -> Result<(SavedReport, String), Wire
             file,
         },
         link,
+        whole,
     ))
+}
+
+/// Puts `text` on the clipboard; where it can't, the report is still in
+/// Downloads, so it's only logged. The clipboard is held for as long as ICMM
+/// runs: on Linux, what it holds goes when it does.
+fn copy(text: String) {
+    static CLIPBOARD: std::sync::Mutex<Option<arboard::Clipboard>> = std::sync::Mutex::new(None);
+    let mut held = CLIPBOARD.lock().unwrap_or_else(|e| e.into_inner());
+    if held.is_none() {
+        match arboard::Clipboard::new() {
+            Ok(clipboard) => *held = Some(clipboard),
+            Err(e) => return tracing::warn!("couldn't copy the report: {e}"),
+        }
+    }
+    if let Some(Err(e)) = held.as_mut().map(|c| c.set_text(text)) {
+        tracing::warn!("couldn't copy the report: {e}");
+    }
 }
 
 /// ICMM's releases page, where its newest version is: the one place it's
@@ -325,7 +368,7 @@ pub const RELEASES_URL: &str = "https://github.com/meschoening/icmm-dev/releases
 
 /// Opens the releases page in the OS's web browser.
 pub fn open_releases_page() -> Result<(), WireError> {
-    open_with_os(std::ffi::OsStr::new(RELEASES_URL)).map_err(|e| {
+    open_link(RELEASES_URL).map_err(|e| {
         let message = format!("Couldn't open {RELEASES_URL}: {e}.");
         tracing::error!("{message}");
         internal(message)
@@ -360,34 +403,59 @@ fn home_shown(home: Option<&std::path::Path>, windows: bool) -> HomeFolder {
 /// Shows `folder` in the OS's file manager.
 fn open_folder(folder: &std::path::Path) -> std::io::Result<()> {
     std::fs::create_dir_all(folder)?;
-    open_with_os(folder.as_os_str())
+    open_with_os(opener(folder.as_os_str(), Target::Folder))
 }
 
-/// Hands `target`, a folder or a web address, to the OS's opener: its file
-/// manager or its web browser.
-fn open_with_os(target: &std::ffi::OsStr) -> std::io::Result<()> {
+/// Opens `link` in the OS's web browser.
+fn open_link(link: &str) -> std::io::Result<()> {
+    open_with_os(opener(std::ffi::OsStr::new(link), Target::Link))
+}
+
+/// What the OS's opener is given.
+#[derive(Clone, Copy)]
+enum Target {
+    Folder,
+    Link,
+}
+
+/// Runs the OS's opener: its file manager or its web browser.
+fn open_with_os(mut command: std::process::Command) -> std::io::Result<()> {
     // Explorer exits with 1 even when it opened what it was given, so only
     // a spawn that fails is a failure. Its exit is collected off the main
     // thread, so no process is left behind.
-    let mut child = opener(target).spawn()?;
+    let mut child = command.spawn()?;
     std::thread::spawn(move || child.wait());
     Ok(())
 }
 
 /// The OS's opener, given `target`.
-fn opener(target: &std::ffi::OsStr) -> std::process::Command {
+#[cfg_attr(not(windows), allow(unused_variables))]
+fn opener(target: &std::ffi::OsStr, kind: Target) -> std::process::Command {
     #[cfg(target_os = "macos")]
     let command = {
         let mut c = std::process::Command::new("open");
         c.arg(target);
         c
     };
+    // Explorer keeps a link's first 259 characters and drops the rest, so a
+    // report's issue page came up empty (#550): a link goes to the browser
+    // through ShellExecute, which `url.dll`'s handler calls with it whole.
+    // A percent-encoded link has no space or quote, so it's passed as it is.
     #[cfg(windows)]
     let command = {
         use std::os::windows::process::CommandExt;
-        let mut c = std::process::Command::new("explorer");
-        c.raw_arg(quoted(target));
-        c
+        match kind {
+            Target::Folder => {
+                let mut c = std::process::Command::new("explorer");
+                c.raw_arg(quoted(target));
+                c
+            }
+            Target::Link => {
+                let mut c = std::process::Command::new("rundll32");
+                c.arg("url.dll,FileProtocolHandler").raw_arg(target);
+                c
+            }
+        }
     };
     #[cfg(all(unix, not(target_os = "macos")))]
     let command = {
@@ -398,10 +466,8 @@ fn opener(target: &std::ffi::OsStr) -> std::process::Command {
     command
 }
 
-/// `target` as Explorer's one argument, quoted whole: Explorer splits an
-/// unquoted one at `=` and `,`, so a link's `?template=` opened Documents
-/// instead of the browser (#505). Neither a Windows path nor a
-/// percent-encoded link holds a `"`.
+/// `folder` as Explorer's one argument, quoted whole: Explorer splits an
+/// unquoted one at `=` and `,` (#505). A Windows path holds no `"`.
 #[cfg(any(windows, test))]
 fn quoted(target: &std::ffi::OsStr) -> std::ffi::OsString {
     let mut arg = std::ffi::OsString::from("\"");
@@ -844,36 +910,49 @@ async fn choose(params: ChooseParams, open: impl FnOnce(FileDialogBuilder<Wry>, 
 
 #[cfg(test)]
 mod tests {
-    use super::{home_shown, opener, quoted};
+    use super::{Target, home_shown, opener, quoted};
     use std::ffi::OsStr;
     use std::path::Path;
 
     const LINK: &str = "https://github.com/meschoening/icmm/issues/new?template=report.yml&title=x";
 
     #[test]
-    fn explorer_gets_its_target_quoted_whole() {
-        assert_eq!(quoted(OsStr::new(LINK)), format!("\"{LINK}\"").as_str());
+    fn explorer_gets_its_folder_quoted_whole() {
         assert_eq!(
             quoted(OsStr::new(r"C:\Users\ada\AppData\Roaming\ICMM\logs")),
             r#""C:\Users\ada\AppData\Roaming\ICMM\logs""#
         );
     }
 
+    const FOLDER: &str = r"C:\Users\ada\AppData\Roaming\ICMM\logs";
+
+    // Explorer would keep the link's first 259 characters (#550).
     #[cfg(windows)]
     #[test]
-    fn explorer_opens_a_link_as_one_quoted_argument() {
-        let command = opener(OsStr::new(LINK));
+    fn windows_opens_a_link_through_url_dll_whole_and_a_folder_in_explorer() {
+        let long = format!("{LINK}{}", "a".repeat(7000));
+        let command = opener(OsStr::new(&long), Target::Link);
+        assert_eq!(command.get_program(), "rundll32");
+        let args: Vec<_> = command.get_args().collect();
+        assert_eq!(
+            args,
+            [OsStr::new("url.dll,FileProtocolHandler"), OsStr::new(&long)]
+        );
+
+        let command = opener(OsStr::new(FOLDER), Target::Folder);
         assert_eq!(command.get_program(), "explorer");
         let args: Vec<_> = command.get_args().collect();
-        assert_eq!(args, [OsStr::new(&format!("\"{LINK}\""))]);
+        assert_eq!(args, [OsStr::new(&format!("\"{FOLDER}\""))]);
     }
 
     #[cfg(not(windows))]
     #[test]
-    fn other_openers_get_the_link_as_it_is() {
-        let command = opener(OsStr::new(LINK));
-        let args: Vec<_> = command.get_args().collect();
-        assert_eq!(args, [OsStr::new(LINK)]);
+    fn other_openers_get_the_link_and_the_folder_as_they_are() {
+        for (target, kind) in [(LINK, Target::Link), (FOLDER, Target::Folder)] {
+            let command = opener(OsStr::new(target), kind);
+            let args: Vec<_> = command.get_args().collect();
+            assert_eq!(args, [OsStr::new(target)]);
+        }
     }
 
     #[test]

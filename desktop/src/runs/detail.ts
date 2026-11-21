@@ -12,9 +12,9 @@ import { memory, upTo } from "../setup/units";
 import {
   aboutWords,
   durationWords,
+  elapsedWords,
   estimate,
   evaluationsPerStart,
-  fromHost,
   fromRuns,
   paceWords,
   plural,
@@ -37,7 +37,15 @@ import type {
 } from "../wire/types.gen";
 import { endOf, fittingSeconds } from "./fitting";
 import { SPAN } from "./stretch";
-import { barOf, counted, queueAheadOf, refusalOf, rmse, topologyName } from "./words";
+import {
+  barOf,
+  counted,
+  queueAheadOf,
+  refusalOf,
+  rmse,
+  startingHere,
+  topologyName,
+} from "./words";
 
 type Platform = Pick<SavedPlatform, "type" | "name">;
 
@@ -153,10 +161,15 @@ export function paceOf(r: Run, now: number): number | undefined {
   return fit / done;
 }
 
-/** An ETA, and whether it's Submit's estimate rather than the run's own pace. */
+/**
+ * An ETA, and what it's from: Submit's estimate (`estimate`), else the run's
+ * own pace, its topologies' once one has ended, before that its running
+ * starts' (`from: "starts"`, #542), which the chart's caption names once.
+ */
 export interface Eta {
   at: number;
   estimate: boolean;
+  from?: "starts" | "topologies";
 }
 
 /** What a run's ETA comes from besides the run: the platform's finished starts and its settings now. */
@@ -169,44 +182,77 @@ export interface EtaAround {
   overheadS: number | undefined;
   /** When its numbers are from: now, or as of when the connection went (#326). */
   now: number;
-  /**
-   * This computer's time for an evaluation of the run, as its starts run here
-   * (`time_evaluations`, #508): Submit's estimate where no finished start here
-   * has timed its states and CPUs (#324).
-   */
-  host?: number;
 }
 
 /**
  * Submit's model of when a run's last start ends (#229): its starts left in
  * waves of `cap`, each as long as one of its starts at `cpus` CPUs, from the
- * platform's finished starts, or else this computer's timing (`host`, #324),
- * counting the time it has spent fitting (#507).
- * `undefined` for a run whose settings this ICMM can't read, or that neither
- * times.
+ * platform's ended runs' finished starts, counting the time it has spent
+ * fitting (#507). This computer's timing never stands in: it's Submit's rough
+ * guess, not a run's (#542). `undefined` for a run whose settings this ICMM
+ * can't read, or with no finished runs here at its states and CPUs.
  */
 function submitEtaOf(r: Run, a: EtaAround): number | undefined {
   const t = submitTimingOf(r, a);
   if (t === undefined) return undefined;
-  return forecastEta({ run: r, ...t, now: a.now, fittingS: fittingSeconds(r, a.now) });
+  return forecastEta({
+    run: r,
+    ...t,
+    now: a.now,
+    fittingS: fittingSeconds(r, a.now),
+  });
 }
 
 /** Submit's time for one of the run's starts, from what `submitEtaOf` reads; `undefined` where it can't. */
 function submitTimingOf(
   r: Run,
   a: EtaAround,
-): { evaluations: number; perEvaluationS: number; overheadS: number; cap: number } | undefined {
+):
+  | {
+      evaluations: number;
+      perEvaluationS: number;
+      overheadS: number;
+      cap: number;
+    }
+  | undefined {
   const search = r.settings?.search;
   const { cpus, cap, overheadS } = a;
   if (search === undefined || cpus === undefined || cap === undefined || overheadS === undefined)
     return undefined;
-  const per =
-    fromRuns(a.timings, r.num_states, cpus)?.seconds ??
-    (a.host !== undefined ? fromHost(a.host).seconds : undefined);
+  const per = fromRuns(a.timings, r.num_states, cpus)?.seconds;
   if (per === undefined || !(per > 0)) return undefined;
   const evaluations = evaluationsPerStart(search.evaluation_budget, search.population);
   if (evaluations <= 0) return undefined;
   return { evaluations, perEvaluationS: per, overheadS, cap };
+}
+
+/**
+ * When a running run's last start ends at its running starts' own pace
+ * (`Run.pace`, #542), before a topology has ended: those running end as they
+ * report, and the starts still to run follow in waves of the most that run at
+ * once, from when its slots free on average, each as long as a start at that
+ * pace. Never before its running starts' last end (L6). `undefined` before
+ * one of its starts reports its pace, or where its settings can't be read.
+ */
+function startsEtaOf(r: Run, a: EtaAround): number | undefined {
+  const pace = r.pace;
+  const search = r.settings?.search;
+  if (pace == null || search === undefined) return undefined;
+  const lastEnd = Date.parse(pace.last_end);
+  const meanEnd = Date.parse(pace.mean_end);
+  if (Number.isNaN(lastEnd) || Number.isNaN(meanEnd) || !(pace.seconds_per_evaluation > 0)) {
+    return undefined;
+  }
+  const p = r.progress;
+  const waiting = Math.max(0, p.starts - p.starts_finished - p.starts_failed - p.starts_running);
+  if (waiting === 0) return lastEnd;
+  const evaluations = evaluationsPerStart(search.evaluation_budget, search.population);
+  const perStartS = startSeconds(evaluations, pace.seconds_per_evaluation, a.overheadS ?? 0);
+  const slots = Math.max(1, a.cap ?? 1, p.starts_running);
+  const running = Math.min(p.starts_running, slots);
+  // Its free slots take a start now; the rest as its running starts end, on average.
+  const frees = (running * Math.max(meanEnd, a.now) + (slots - running) * a.now) / slots;
+  return Math.max(lastEnd, frees + Math.ceil(waiting / slots) * perStartS * 1000);
 }
 
 /**
@@ -234,27 +280,46 @@ export function firstDueOf(r: Run, a: EtaAround): number | undefined {
  */
 export function runEtaOf(r: Run, a: EtaAround): Eta | undefined {
   if (phaseOf(r) !== "running") return undefined;
+  // Never before the last of its running starts ends at their own pace (L6, #542).
+  const floor = r.pace == null ? Number.NaN : Date.parse(r.pace.last_end);
+  const floored = (at: number) => (Number.isNaN(floor) ? at : Math.max(at, floor));
   const pace = paceOf(r, a.now);
   if (pace !== undefined) {
     const left = Math.max(0, r.progress.topologies - progressed(r));
-    return { at: a.now + left * pace * 1000, estimate: false };
+    return {
+      at: floored(a.now + left * pace * 1000),
+      estimate: false,
+      from: "topologies",
+    };
   }
+  const starts = startsEtaOf(r, a);
+  if (starts !== undefined) return { at: starts, estimate: false, from: "starts" };
   const submit = submitEtaOf(r, a);
   return submit === undefined ? undefined : { at: submit, estimate: true };
 }
 
-/** Submit's estimate of a whole run, and what it's from: finished runs here, or this computer. */
+/** Each running run's ETA as Run detail shows it (`runEtaOf`), for Runs and Home (L6). */
+export function runEtasOf(runs: Run[], a: EtaAround): Map<number, Eta> {
+  const etas = new Map<number, Eta>();
+  for (const run of runs) {
+    const eta = runEtaOf(run, a);
+    if (eta !== undefined) etas.set(run.id, eta);
+  }
+  return etas;
+}
+
+/** Submit's estimate of a whole run, and how many finished runs here it's from. */
 export interface SubmitTotal {
   seconds: number;
-  from: { kind: "runs"; runs: number } | { kind: "host" };
+  runs: number;
   cap: number;
 }
 
 /**
  * Submit's estimate of a whole run, before it starts: from the platform's
- * finished runs, or, before any has timed its states and CPUs, this
- * computer's timing of an evaluation (`host`, as its starts run here, #324,
- * #508); `undefined` where neither can.
+ * ended runs' finished starts at its states and CPUs; `undefined` where
+ * there are none (#542: this computer's timing is Submit's rough guess, never
+ * a run's), or before they're read.
  */
 export function submitTotalOf(
   r: Run,
@@ -263,15 +328,12 @@ export function submitTotalOf(
     job: JobDefaults | undefined;
     /** What each start takes beside its evaluations: `startOverheadS`. */
     overheadS: number;
-    host?: number;
   },
 ): SubmitTotal | undefined {
   const search = r.settings?.search;
   if (search === undefined || a.timings === undefined || a.job === undefined) return undefined;
-  const per =
-    fromRuns(a.timings, r.num_states, a.job.cpus_per_start) ??
-    (a.host !== undefined && a.host > 0 ? fromHost(a.host) : undefined);
-  if (per === undefined || !(per.seconds > 0)) return undefined;
+  const per = fromRuns(a.timings, r.num_states, a.job.cpus_per_start);
+  if (per === undefined || per.from.kind !== "runs" || !(per.seconds > 0)) return undefined;
   const evaluations = evaluationsPerStart(search.evaluation_budget, search.population);
   if (evaluations <= 0) return undefined;
   const e = estimate({
@@ -282,13 +344,20 @@ export function submitTotalOf(
     overheadS: a.overheadS,
     cap: a.job.max_running_starts,
   });
-  return { seconds: e.totalS, from: per.from, cap: a.job.max_running_starts };
+  return {
+    seconds: e.totalS,
+    runs: per.from.runs,
+    cap: a.job.max_running_starts,
+  };
 }
 
 /** The day of an ETA: its time within a day (with its day past midnight), else its day. */
-function etaDay(eta: number, now: number): string {
+export function etaDay(eta: number, now: number): string {
   return eta - now < DAY ? clock(eta, now) : weekdayDate(eta, now);
 }
+
+/** Where a run with no estimate says its ETA comes from (#542). */
+const UNTIMED_ETA = "ETA once its first starts report their pace";
 
 /** An ETA as a stage says it: "ETA Fri, Aug 21, 6:40 AM", or "ETA about 11:48 PM, Submit's estimate". */
 function etaWords(eta: Eta, now: number): string {
@@ -312,7 +381,14 @@ export interface Part {
  */
 export function factsOf(
   r: Run,
-  a: { eta: Eta | undefined; total: number | undefined; now: number; asOf: number | undefined },
+  a: {
+    eta: Eta | undefined;
+    total: number | undefined;
+    /** No finished runs here at its states and CPUs: no estimate before its own pace (#542). */
+    untimed?: boolean;
+    now: number;
+    asOf: number | undefined;
+  },
 ): Part[] {
   const out: Part[] = [];
   const t = (s: string) => out.push({ t: s });
@@ -326,7 +402,7 @@ export function factsOf(
   const fitWords = () => {
     if (end === undefined) return;
     const fit = fittingSeconds(r, a.now);
-    t(fit === undefined ? ` · ${endWord(end)}` : ` · fit ${durationWords(fit)} · ${endWord(end)}`);
+    t(fit === undefined ? ` · ${endWord(end)}` : ` · fit ${elapsedWords(fit)} · ${endWord(end)}`);
   };
   n(p.topologies_complete);
   t(" / ");
@@ -341,7 +417,7 @@ export function factsOf(
     if (end !== undefined) t(` · ${endWord(end)}`);
     else if (a.total !== undefined) {
       t(` · ${aboutWords(a.total)} once it starts, Submit’s estimate`);
-    }
+    } else if (a.untimed) t(` · ${UNTIMED_ETA}`);
   } else if (p.starts_finished === 0 && end !== undefined) {
     t(" · ");
     n(0);
@@ -427,11 +503,15 @@ export function searchLines(r: Run): FactPart[][] {
       { t: `${unit === undefined ? "" : `\u00a0${unit}`} evaluations each` },
     ],
     [
-      { t: `${s.sobol_start_points ? "Sobol" : "random"} start points ·\u00a0` },
+      {
+        t: `${s.sobol_start_points ? "Sobol" : "random"} start points ·\u00a0`,
+      },
       ...seed,
       { t: " ·\u00a0log every " },
       n(whole(s.log_every_generations)),
-      { t: `\u00a0${s.log_every_generations === 1 ? "generation" : "generations"}` },
+      {
+        t: `\u00a0${s.log_every_generations === 1 ? "generation" : "generations"}`,
+      },
     ],
     [
       { t: "parameters " },
@@ -492,8 +572,14 @@ export interface StageAround {
   slurm: boolean;
   partition: string | null;
   inFlight: RunSummary[];
+  /** This computer's Running-starts cap; `undefined` unread. */
+  cap?: number;
+  /** `inFlight` once read, to say a queued run is starting (#538); `undefined` unread. */
+  allInFlight?: RunSummary[];
   eta: Eta | undefined;
   total: number | undefined;
+  /** No finished runs here at its states and CPUs: no estimate before its own pace (#542). */
+  untimed?: boolean;
   now: number;
 }
 
@@ -507,6 +593,7 @@ function waitsOn(r: Run, a: StageAround): string {
       : "held by the cluster";
   }
   if (!a.slurm) {
+    if (startingHere(r, a.allInFlight, a.cap)) return "starting";
     const ahead = queueAheadOf(r, a.inFlight);
     return ahead === undefined
       ? `waiting for a free slot ${onPlatform(a.platform)}`
@@ -602,7 +689,12 @@ export function stagesOf(r: Run, a: StageAround): StageView[] {
     line: "none",
     time: "",
     name: "Ended",
-    detail: a.eta === undefined ? "" : etaWords(a.eta, a.now),
+    detail:
+      a.eta !== undefined
+        ? etaWords(a.eta, a.now)
+        : a.untimed && phase === "running"
+          ? UNTIMED_ETA
+          : "",
     tone: "dim",
   };
   const canceling = (): StageView => ({
@@ -709,7 +801,12 @@ export function stagesOf(r: Run, a: StageAround): StageView[] {
         line: "none",
         time: "",
         name: "Ended",
-        detail: a.total === undefined ? "" : `ETA ${aboutWords(a.total)} after it starts`,
+        detail:
+          a.total !== undefined
+            ? `ETA ${aboutWords(a.total)} after it starts`
+            : a.untimed
+              ? UNTIMED_ETA
+              : "",
         tone: "dim",
       });
       return S;
@@ -737,7 +834,7 @@ export function stagesOf(r: Run, a: StageAround): StageView[] {
       name: "Fitting",
       detail: join(
         waitedFor(r, a, firstLeg.began),
-        `${durationWords(firstFit)}${so ? " so far" : ""}`,
+        `${elapsedWords(firstFit)}${so ? " so far" : ""}`,
         failedOut
           ? `${whole(p.starts_failed)} failed, none finished`
           : finishedOf(firstLeg.finished),
@@ -795,7 +892,7 @@ export function stagesOf(r: Run, a: StageAround): StageView[] {
       name: "Resumed",
       detail: join(
         "fitting again",
-        `${durationWords(fit(leg))}${so ? " so far" : ""}`,
+        `${elapsedWords(fit(leg))}${so ? " so far" : ""}`,
         finishedOf(leg.finished),
       ),
     });
@@ -819,10 +916,17 @@ export function stagesOf(r: Run, a: StageAround): StageView[] {
   return S;
 }
 
-/** The wait before its first start ran: "after waiting 7 m for general-cpu", or "began at once". */
+/** Under this many seconds from Submit to its first start running, a run began at once (#538). */
+const AT_ONCE_S = 10;
+
+/**
+ * The wait before its first start ran: "after waiting 7 m for general-cpu",
+ * "after waiting under a minute for a free slot here", or "began at once",
+ * which only a run that waited on nothing but its own start says (#538).
+ */
 function waitedFor(r: Run, a: StageAround, began: number): string {
   const waited = (began - at(r.submitted_at)) / 1000;
-  if (!(waited >= 60)) return "began at once";
+  if (!(waited >= AT_ONCE_S)) return "began at once";
   const place = a.slurm ? (a.partition ?? "the cluster") : `a free slot ${onPlatform(a.platform)}`;
   return `after waiting ${durationWords(waited)} for ${place}`;
 }
@@ -979,7 +1083,10 @@ export function earlierOf(sent: TopologySummary[], card: TopologySummary): Earli
     .slice(0, Math.max(0, sent.indexOf(card)))
     .filter((t) => t.state === "fitting" && t.starts_running > 0);
   if (before.length === 0) return undefined;
-  return { running: before.reduce((n, t) => n + t.starts_running, 0), topologies: before.length };
+  return {
+    running: before.reduce((n, t) => n + t.starts_running, 0),
+    topologies: before.length,
+  };
 }
 
 /** The card's words after that count: "running in 2 earlier arrays" ("topologies" without SLURM). */
@@ -1000,7 +1107,11 @@ export function factLine(...facts: string[]): string {
 function slotsOf(r: Run, a: BoxAround): { used: number; mine: number; others: RunSummary[] } {
   const others = a.inFlight.filter((o) => o.id !== r.id && o.progress.starts_running > 0);
   const mine = r.ended_at === null ? r.progress.starts_running : 0;
-  return { used: mine + others.reduce((n, o) => n + o.progress.starts_running, 0), mine, others };
+  return {
+    used: mine + others.reduce((n, o) => n + o.progress.starts_running, 0),
+    mine,
+    others,
+  };
 }
 
 /**
@@ -1243,7 +1354,13 @@ const UNCOUNTED: Record<FailedStarts["cause"], string> = {
 export function stopOf(
   r: Pick<Run, "state" | "progress" | "failure" | "ended_at">,
   a: Pick<BoxAround, "platform" | "job" | "partition" | "failedIn" | "now">,
-): { what: string; next?: string; raw?: string; since?: string; log?: boolean } {
+): {
+  what: string;
+  next?: string;
+  raw?: string;
+  since?: string;
+  log?: boolean;
+} {
   const p = r.progress;
   if (r.state === "canceled") {
     const ended = at(r.ended_at);
@@ -1286,7 +1403,11 @@ export function stopOf(
     }
     case "refused": {
       const account = a.job?.type === "slurm" ? a.job.account : null;
-      const said = refusalOf(f, { platform: a.platform, account, partition: a.partition });
+      const said = refusalOf(f, {
+        platform: a.platform,
+        account,
+        partition: a.partition,
+      });
       const ended = at(r.ended_at);
       return {
         what: said.what,
@@ -1466,7 +1587,10 @@ export function gridOf(r: Run, sent: TopologySummary[], rankOf: Map<string, numb
   if (n("complete")) legend.push({ kind: "complete", t: `${whole(n("complete"))} complete` });
   if (n("failed")) legend.push({ kind: "failed", t: `${whole(n("failed"))} failed` });
   if (n("fitting")) {
-    legend.push({ kind: "fitting", t: `${whole(n("fitting"))} fitting · fill = starts finished` });
+    legend.push({
+      kind: "fitting",
+      t: `${whole(n("fitting"))} fitting · fill = starts finished`,
+    });
   }
   if (n("unfinished")) {
     const u = sent.filter((t) => t.state === "fitting");
@@ -1481,10 +1605,16 @@ export function gridOf(r: Run, sent: TopologySummary[], rankOf: Map<string, numb
   }
   if (next !== undefined) legend.push({ kind: "next", t: `next (${topologyId(next)})` });
   if (n("waiting")) {
-    legend.push({ kind: "waiting", t: `${whole(n("waiting"))} waiting · not sent yet` });
+    legend.push({
+      kind: "waiting",
+      t: `${whole(n("waiting"))} waiting · not sent yet`,
+    });
   }
   if (n("not-fitted")) {
-    legend.push({ kind: "not-fitted", t: `${whole(n("not-fitted"))} not fitted` });
+    legend.push({
+      kind: "not-fitted",
+      t: `${whole(n("not-fitted"))} not fitted`,
+    });
   }
   if (cells.some((c) => c.best)) {
     legend.push({
@@ -1497,7 +1627,11 @@ export function gridOf(r: Run, sent: TopologySummary[], rankOf: Map<string, numb
     legend,
     shade:
       values.length > 0
-        ? { metric: byVal ? "Val RMSE" : "Train RMSE", lo: rmse(lo), hi: rmse(hi) }
+        ? {
+            metric: byVal ? "Val RMSE" : "Train RMSE",
+            lo: rmse(lo),
+            hi: rmse(hi),
+          }
         : undefined,
   };
 }
@@ -1549,7 +1683,10 @@ export function topologyBarOf(r: Run): StateBar {
     ended ? ["not-fitted", waiting, "not fitted"] : ["waiting", waiting, "waiting · not sent yet"],
   ];
   const held = parts.filter(([, n]) => n > 0);
-  const legend = held.map(([kind, n, words]) => ({ kind, t: `${whole(n)} ${words}` }));
+  const legend = held.map(([kind, n, words]) => ({
+    kind,
+    t: `${whole(n)} ${words}`,
+  }));
   return {
     segments: held.map(([kind, n]) => ({ kind, n })),
     legend,
@@ -1664,7 +1801,13 @@ export interface ChartDrawn {
    * plot's own units, 0 to `SPAN` (`stretch.ts`); else 456 px wide, its x in px.
    */
   wide: boolean;
-  topologies: { line: string; lastX: number; lastY: number; done: number; total: number };
+  topologies: {
+    line: string;
+    lastX: number;
+    lastY: number;
+    done: number;
+    total: number;
+  };
   /** The RMSE axis' three ticks, lowest first. */
   ticks: [number, number, number];
   /** Each complete topology's best; none at the page's width. */
@@ -1723,7 +1866,10 @@ function daysOf(from: number, to: number, x: (ms: number) => number): ChartDrawn
     const d = new Date(from);
     d.setHours(24, 0, 0, 0);
     while (d.getTime() <= to) {
-      out.push({ x: x(d.getTime()), label: `${WEEK[d.getDay()]} ${d.getDate()}` });
+      out.push({
+        x: x(d.getTime()),
+        label: `${WEEK[d.getDay()]} ${d.getDate()}`,
+      });
       d.setDate(d.getDate() + step);
     }
     return out;
@@ -1743,9 +1889,17 @@ interface ChartAround {
   eta: Eta | undefined;
   pace: number | undefined;
   total: SubmitTotal | undefined;
+  /** No finished runs here at its states and CPUs: no estimate before its own pace (#542). */
+  untimed?: boolean;
   slurm: boolean;
+  /** Where it runs, as a sentence says it: "on McKelvey HPC", "on this computer". */
+  on?: string;
   now: number;
 }
+
+/** "from 3 finished 11-state runs here" */
+const fromRunsWords = (runs: number, states: number) =>
+  `from ${plural(runs, `finished ${states}-state run`, `finished ${states}-state runs`)} here`;
 
 /** What the chart draws, whichever its source: when topologies completed, and the best line. */
 interface Course {
@@ -1769,7 +1923,11 @@ export function chartOf(r: Run, sent: TopologySummary[], a: ChartAround): Chart 
   const metric = (t: TopologySummary) =>
     (r.validation ? t.best?.val_rmse : t.best?.train_rmse) ?? null;
   const points = sent
-    .map((t) => ({ t: at(t.last_ended_at), v: metric(t), complete: t.state === "complete" }))
+    .map((t) => ({
+      t: at(t.last_ended_at),
+      v: metric(t),
+      complete: t.state === "complete",
+    }))
     .filter(
       (q): q is { t: number; v: number; complete: boolean } => !Number.isNaN(q.t) && q.v !== null,
     )
@@ -1784,7 +1942,12 @@ export function chartOf(r: Run, sent: TopologySummary[], a: ChartAround): Chart 
     .map((t) => ({ t, n: 1 }));
   return drawnOf(
     r,
-    { done, best, dots: points.filter((q) => q.complete), values: points.map((q) => q.v) },
+    {
+      done,
+      best,
+      dots: points.filter((q) => q.complete),
+      values: points.map((q) => q.v),
+    },
     a,
     [X0, X1],
   );
@@ -1833,11 +1996,16 @@ function captionOf(r: Run, a: ChartAround): string {
   const end = endOf(r);
   const pace = a.pace === undefined ? "" : ` · ≈ ${paceWords(a.pace)} per topology`;
   const fit = fittingSeconds(r, a.now);
-  if (end !== undefined) return `fit ${durationWords(fit ?? 0)}${pace}`;
-  if (r.stops.length > 0 && fit !== undefined) return `fit ${durationWords(fit)} so far${pace}`;
+  if (end !== undefined) return `fit ${elapsedWords(fit ?? 0)}${pace}`;
+  if (r.stops.length > 0 && fit !== undefined) return `fit ${elapsedWords(fit)} so far${pace}`;
   const since = clock(at(r.first_running_at ?? r.first_array_at), a.now);
-  return `fitting since ${since}${a.pace === undefined ? " · its own pace once a topology finishes" : pace}`;
+  // Its ETA's source, named once (#542): its topologies' pace says itself; its starts' is named.
+  const source = a.pace === undefined && a.eta?.from === "starts" ? STARTS_PACE : "";
+  return `fitting since ${since}${a.pace === undefined ? source : pace}`;
 }
+
+/** The caption's words for an ETA from the run's running starts (#542). */
+const STARTS_PACE = " · ETA from its starts’ pace";
 
 /** Where the chart stops: the run's end, or now. */
 const chartStop = (r: Run, now: number) => endOf(r)?.at ?? now;
@@ -1849,21 +2017,27 @@ function drawnOf(r: Run, course: Course, a: ChartAround, [x0, x1]: [number, numb
   const end = endOf(r);
   const began = at(r.first_array_at);
   if (Number.isNaN(began) || course.best.length === 0) {
-    const from =
-      a.total?.from.kind === "runs"
-        ? `from ${plural(a.total.from.runs, "finished run", "finished runs")} here`
-        : "timed on this computer";
-    const est =
-      end !== undefined || a.total === undefined
-        ? ""
-        : `Submit’s estimate: ${aboutWords(a.total.seconds)} at ${plural(a.total.cap, "running start", "running starts")}, ${from}. ${a.slurm ? "Not counting any wait for the cluster." : "Not counting the wait for runs ahead of it."}`;
+    const running = phase === "running" && r.first_running_at !== null;
+    let est = "";
+    if (end !== undefined) est = "";
+    else if (running && a.eta !== undefined && !a.eta.estimate)
+      est = `ETA ${clock(a.eta.at, a.now)}.`;
+    else if (running && a.eta !== undefined && a.total !== undefined) {
+      est = `ETA about ${etaDay(a.eta.at, a.now)}: Submit’s estimate, ${fromRunsWords(a.total.runs, r.num_states)}, until its first starts report their pace.`;
+    } else if (!running && a.total !== undefined) {
+      est = `Submit’s estimate: ${aboutWords(a.total.seconds)} at ${plural(a.total.cap, "running start", "running starts")}, ${fromRunsWords(a.total.runs, r.num_states)}. ${a.slurm ? "Not counting any wait for the cluster." : "Not counting the wait for runs ahead of it."}`;
+    } else if (a.untimed) {
+      est = running
+        ? `${UNTIMED_ETA}.`
+        : `No estimate yet: no finished ${r.num_states}-state runs ${a.on ?? "here"} to go by. Its ETA comes once its first starts report their pace.`;
+    }
     const failedOut = end !== undefined && p.starts_failed > 0 && r.first_array_at !== null;
     const fit = fittingSeconds(r, a.now);
     return {
       caption: failedOut
-        ? `fit ${durationWords(fit ?? 0)}`
+        ? `fit ${elapsedWords(fit ?? 0)}`
         : end === undefined && r.first_running_at !== null
-          ? `fitting since ${clock(at(r.first_running_at), a.now)}`
+          ? `fitting since ${clock(at(r.first_running_at), a.now)}${phase === "running" && a.eta?.from === "starts" ? STARTS_PACE : ""}`
           : "nothing fit yet",
       drawn: undefined,
       empty: {
@@ -1942,7 +2116,7 @@ function drawnOf(r: Run, course: Course, a: ChartAround, [x0, x1]: [number, numb
               etaX: x(last),
               eta: etaWord,
               word: a.eta.estimate
-                ? "Submit’s estimate, until a topology finishes"
+                ? "Submit’s estimate, until its first starts report their pace"
                 : "projection at its own pace",
             }
           : undefined,

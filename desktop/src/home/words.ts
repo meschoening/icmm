@@ -4,6 +4,7 @@
  * the run's **Stretches**.
  */
 import { whole } from "../configs/words";
+import { etaDay, type Eta } from "../runs/detail";
 import { inSentence } from "../setup/form";
 import { durationWords, plural } from "../submit/estimate";
 import { clock } from "../ui/clock";
@@ -84,22 +85,27 @@ export function runningLine(p: RunSummary["progress"], cap: number | undefined):
  * A running card's ETA, as Runs has it: "ETA Fri, Aug 21, 6:40 AM · 8 d 21 h
  * left"; while stale, the one read when the connection went (`asOf`), with
  * no "left", which would count from now: "ETA Fri, Aug 21, 6:40 AM · as of
- * 10:41 AM" (#399, HF11). Before its first topology ends and with no
- * estimate, "ETA once its first topology finishes"; `undefined` while it's read.
+ * 10:41 AM" (#399, HF11). Submit's estimate is marked, "ETA about Fri, Aug
+ * 21, Submit's estimate", until its first starts report their pace (#542); with
+ * neither, before a topology ends, "ETA once its first starts report their
+ * pace"; `undefined` while it's read.
  */
 export function etaLine(
-  eta: number | undefined,
+  eta: Eta | undefined,
   p: RunSummary["progress"],
   now: number,
   asOf?: number,
 ): string | undefined {
   if (eta !== undefined) {
+    const asOfWords = asOf === undefined ? "" : ` · as of ${clock(asOf, now)}`;
+    // Before its first starts report their pace, Submit's estimate, to the day (#542).
+    if (eta.estimate) return `ETA about ${etaDay(eta.at, now)}, Submit’s estimate${asOfWords}`;
     return asOf === undefined
-      ? `ETA ${clock(eta, now)} · ${durationWords(Math.max(0, (eta - now) / 1000))} left`
-      : `ETA ${clock(eta, now)} · as of ${clock(asOf, now)}`;
+      ? `ETA ${clock(eta.at, now)} · ${durationWords(Math.max(0, (eta.at - now) / 1000))} left`
+      : `ETA ${clock(eta.at, now)}${asOfWords}`;
   }
   return p.topologies_complete + p.topologies_failed === 0
-    ? "ETA once its first topology finishes"
+    ? "ETA once its first starts report their pace"
     : undefined;
 }
 
@@ -135,7 +141,10 @@ export function sparkOf(
   for (const x of s.stretches) {
     const v = a.validation ? x.best_val_rmse : x.best_train_rmse;
     if (v === null || (steps.length > 0 && steps[steps.length - 1].v === v)) continue;
-    steps.push({ t: Math.min(a.began + (x.stretch + 1) * length * 1000, a.stop), v });
+    steps.push({
+      t: Math.min(a.began + (x.stretch + 1) * length * 1000, a.stop),
+      v,
+    });
   }
   if (steps.length === 0) return undefined;
   const values = steps.map((q) => q.v);
@@ -149,5 +158,10 @@ export function sparkOf(
   let d = `M${X(steps[0].t)} ${Y(steps[0].v)}`;
   for (const q of steps.slice(1)) d += ` H${X(q.t)} V${Y(q.v)}`;
   const last = steps[steps.length - 1].v;
-  return { d: `${d} H${right}`, endY: Number(Y(last)), first: steps[0].v, values: steps.length };
+  return {
+    d: `${d} H${right}`,
+    endY: Number(Y(last)),
+    first: steps[0].v,
+    values: steps.length,
+  };
 }

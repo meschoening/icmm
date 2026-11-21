@@ -1,12 +1,12 @@
 //! The window's size and place: kept by the window-state plugin, which opens
 //! it where it was left, fitted to the monitor's work area, and forgotten by
-//! Reset.
+//! Reset. It opens hidden and shows once its page has loaded.
 
 use tauri::{LogicalSize, Manager, PhysicalPosition, PhysicalSize};
 use tauri_plugin_window_state::{AppHandleExt, StateFlags};
 
-/// What the plugin keeps. Not whether the window is shown: ICMM always opens
-/// it.
+/// What the plugin keeps. Not whether the window is shown: ICMM always shows
+/// it, once its page has loaded (`show`).
 pub fn kept() -> StateFlags {
     StateFlags::SIZE | StateFlags::POSITION | StateFlags::MAXIMIZED | StateFlags::FULLSCREEN
 }
@@ -15,6 +15,31 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     tauri_plugin_window_state::Builder::new()
         .with_state_flags(kept())
         .build()
+}
+
+/// How long the window waits for its page before it shows anyway.
+const SHOW_ANYWAY: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// Shows the window. It opens hidden, so a cold WebView never shows it blank
+/// white (2.4 s on Windows, #538): it shows once its page has loaded, painted
+/// in the app's own background.
+pub fn show(app: &tauri::AppHandle) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+    if let Err(e) = window.show() {
+        tracing::warn!("couldn't show the window: {e}");
+    }
+}
+
+/// Shows the window after `SHOW_ANYWAY` should its page never say it loaded,
+/// so ICMM never runs without one.
+pub fn show_anyway_later(app: &tauri::AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(SHOW_ANYWAY);
+        show(&app);
+    });
 }
 
 /// A rectangle in physical pixels.

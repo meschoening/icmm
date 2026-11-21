@@ -7,7 +7,7 @@
  */
 import { whole } from "../configs/words";
 import { inSentence, onPlatform } from "../setup/form";
-import { durationWords, plural, sizeWords } from "../submit/estimate";
+import { durationWords, elapsedWords, plural, sizeWords } from "../submit/estimate";
 import { clock, clockInSentence, longDay, weekdayDate } from "../ui/clock";
 import { fittingSeconds, type Times } from "./fitting";
 import type {
@@ -151,6 +151,8 @@ export interface Around {
   jobs?: number;
   /** Every run in flight, newest first, to say whose jobs or slots it waits behind. */
   inFlight: RunSummary[];
+  /** `inFlight`, where it holds all of them, as read: unfiltered (#538). */
+  allInFlight?: RunSummary[];
   /** How the platform's paths are shown (`useShownPath`, #326); as they're written by default. */
   shownPath?: (path: string) => string;
   /** The running runs' ETAs, by run, for when a queued run on This computer starts (#399, HF10). */
@@ -202,6 +204,26 @@ export function queueAheadOf<R extends Pick<RunSummary, "id" | "state">>(
     .sort((x, y) => y.id - x.id)[0];
 }
 
+/**
+ * Whether a queued run on This computer is only starting: no run is ahead of
+ * it and a slot is free, so it waits on nothing but its own start, a few
+ * seconds (#538). It needs every run in flight on the platform, as read: a
+ * filtered or unread list (`undefined`) can't say a slot is free. Before the
+ * cap is read, a slot is free while none is in use.
+ */
+export function startingHere(
+  r: Pick<RunSummary, "id" | "state" | "canceling">,
+  inFlight: Pick<RunSummary, "id" | "state" | "progress">[] | undefined,
+  cap: number | undefined,
+): boolean {
+  if (inFlight === undefined || r.state !== "queued" || r.canceling !== null) return false;
+  if (queueAheadOf(r, inFlight) !== undefined) return false;
+  const used = inFlight
+    .filter((o) => o.id !== r.id)
+    .reduce((n, o) => n + o.progress.starts_running, 0);
+  return cap === undefined ? used === 0 : used < cap;
+}
+
 /** Why a run in flight that isn't running waits, as its row says it. */
 export function waitingOf(r: RunSummary, a: Around, now: number): Waiting {
   const local = !a.slurm;
@@ -247,8 +269,9 @@ export function waitingOf(r: RunSummary, a: Around, now: number): Waiting {
         : undefined;
     const around = eta === undefined ? "" : `, around ${clockInSentence(eta, now)}`;
     return {
-      say:
-        ahead === undefined
+      say: startingHere(r, a.allInFlight, a.cap)
+        ? `Starting now: a slot is free.${cap}`
+        : ahead === undefined
           ? `Starts as soon as a start’s slot is free.${cap}`
           : `Starts as #${ahead.id}’s starts end${around}.${cap}`,
       raw: undefined,
@@ -475,11 +498,12 @@ function percentHigher(x: number, best: number): string {
 
 /**
  * How long a run fit, its wait to begin and any time stopped left out (#324,
- * SR04): "5 d 5 h", "under a minute"; `undefined` for one that never ran a start.
+ * SR04): "5 d 5 h", "4 m 35 s" (#538), "under a minute"; `undefined` for one that never
+ * ran a start.
  */
 export function fitFor(r: Times, now: number): string | undefined {
   const s = fittingSeconds(r, now);
-  return s === undefined ? undefined : durationWords(s);
+  return s === undefined ? undefined : elapsedWords(s);
 }
 
 /** How long a run waited before its first start ran, in seconds; `undefined` before one did. */

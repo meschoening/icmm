@@ -49,14 +49,13 @@ import {
 import {
   useFailedCauses,
   useRevision,
-  useRunHostTiming,
   useRunStretches,
   useTopologies,
   useTopology,
   type Revision,
   type Topologies,
 } from "../runs/detailQueries";
-import { useEtas, useMinute } from "../runs/queries";
+import { useEtas, useTick } from "../runs/queries";
 import { useResume, useRunWrite } from "../runs/resume";
 import { RunMenu } from "../runs/RunMenu";
 import { configJson } from "../runs/configFile";
@@ -88,7 +87,7 @@ import { canAsk, usePlatformSettings, useReadAgain, useSchedulerLookup } from ".
 import { heardAtOf, useConnection } from "../shell/connection";
 import { aboutWords, startOverheadS } from "../submit/estimate";
 import { useKept } from "../submit/kept";
-import { needsHostTiming, slurmOf } from "../submit/plan";
+import { slurmOf } from "../submit/plan";
 import { useInFlightRuns, useRun, useRunTimings, useUserJobs } from "../submit/queries";
 import { runGlyph } from "../submit/words";
 import { useStateGraphs } from "../topology/queries";
@@ -142,8 +141,6 @@ interface Reads {
   jobs: number | undefined;
   inFlight: RunSummary[] | undefined;
   timings: RunTiming[] | undefined;
-  /** This computer's time for one of its evaluations, where no finished start here times it. */
-  host: number | undefined;
   revision: Revision;
   graphs: ReadonlyMap<number, StateGraph> | undefined;
   causes: Map<string, FailedStarts[]>;
@@ -164,6 +161,9 @@ function useSameBy<T>(value: T, key: (v: T) => string): T {
   return kept.value;
 }
 
+/** How often a going run's page reads the time. */
+const GOING_TICK_MS = 5_000;
+
 /** How many ranked topologies' state graphs are read, for the table's Params as a filter moves. */
 const GRAPHS_READ = 40;
 
@@ -172,7 +172,6 @@ export function RunPage() {
   const id = numberOf(param);
   const c = useConnection();
   const platform = useActivePlatform();
-  const now = useMinute();
   const live = c.status === "connected" || c.status === "reconnecting";
 
   const runQ = useRun(id);
@@ -192,15 +191,8 @@ export function RunPage() {
   const fittingListQ = useTopologies(many ? id : undefined, "sent", "fitting");
   const failedListQ = useTopologies(many ? id : undefined, "sent", "failed");
   const going = run !== undefined && !stopped(phaseOf(run));
-  // Before its first topology ends, Submit's estimate; timed on this computer where no finished
-  // start here has timed its states and CPUs (#324, SR05).
-  const host = useRunHostTiming(
-    run,
-    job,
-    going &&
-      run.progress.topologies_complete + run.progress.topologies_failed === 0 &&
-      needsHostTiming(timingsQ.data?.timings, run.num_states, job),
-  );
+  // Every few seconds while it goes, so pace and ETA don't jump a minute at a time (#538).
+  const now = useTick(going ? GOING_TICK_MS : 60_000);
   const nextListQ = useTopologies(many && going ? id : undefined, "sent", "next", 1);
   const stretchesQ = useRunStretches(many ? id : undefined);
   const listed = useMemo((): Topologies | undefined => {
@@ -267,7 +259,6 @@ export function RunPage() {
           jobs: jobsQ.data?.jobs?.running,
           inFlight: inFlightQ.data,
           timings: timingsQ.data?.timings,
-          host,
           revision,
           graphs,
           causes,
@@ -457,14 +448,18 @@ function Detail({
     cap: reads.job?.max_running_starts,
     overheadS,
     now: asOf ?? now,
-    host: reads.host,
   });
   const total = submitTotalOf(r, {
     timings: reads.timings,
     job: reads.job,
     overheadS: overheadS ?? 0,
-    host: reads.host,
   });
+  // No finished runs here at its states and CPUs: its ETA waits for its own pace (#542).
+  const untimed =
+    reads.timings !== undefined &&
+    reads.job !== undefined &&
+    r.settings !== null &&
+    total === undefined;
 
   const fitting = sent.filter((t) => t.state === "fitting").at(-1);
   const rest =
@@ -497,6 +492,7 @@ function Detail({
     cap: reads.job?.max_running_starts,
     jobs: reads.jobs,
     inFlight,
+    allInFlight: reads.inFlight,
     shownPath,
     etas,
   };
@@ -524,6 +520,7 @@ function Detail({
     box?.live && fitting !== undefined
       ? {
           run: r.id,
+          firstRunningAt: r.first_running_at,
           fitting,
           detail: reads.fitting,
           next: waiting[0],
@@ -539,8 +536,11 @@ function Detail({
     slurm,
     partition: reads.partition,
     inFlight,
+    cap: reads.job?.max_running_starts,
+    allInFlight: reads.inFlight,
     eta,
     total: total?.seconds,
+    untimed,
     now,
   });
   const rankOf = useMemo(
@@ -553,7 +553,7 @@ function Detail({
     [reads.ranked],
   );
   const grid = useMemo(() => (many ? undefined : gridOf(r, sent, rankOf)), [many, r, sent, rankOf]);
-  const chartAround = { eta, pace, total, slurm, now };
+  const chartAround = { eta, pace, total, untimed, slurm, on: `on ${inSentence(platform)}`, now };
   const chart =
     many && reads.stretches !== undefined
       ? wideChartOf(r, reads.stretches, chartAround)
@@ -562,7 +562,7 @@ function Detail({
     () => spreadOf(r, reads.ranked.topologies, reads.ranked.ranked),
     [r, reads.ranked],
   );
-  const facts = factsOf(r, { eta, total: total?.seconds, now, asOf });
+  const facts = factsOf(r, { eta, total: total?.seconds, untimed, now, asOf });
   const marking = usePreferences().data?.mark_still_improving === true;
   const improving = marking ? improvingNote(r, phase) : undefined;
 

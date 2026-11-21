@@ -23,7 +23,7 @@
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouterState, useSearch } from "@tanstack/react-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { FailureBox } from "../../setup/FailureBox";
 import { Reading } from "../../setup/PlatformSetup";
 import { inSentence } from "../../setup/form";
@@ -590,6 +590,8 @@ function Shown({
         revision: done.value.revision,
         modified_at: new Date().toISOString(),
         content: { ...content, name: done.value.name },
+        // Saved again, it's no copy (#530).
+        copied_from: null,
       } satisfies SavedDataset);
       guard.pass();
       await navigate({
@@ -828,7 +830,9 @@ function Shown({
           {content.protocols.length === 1 ? "protocol" : "protocols"} ·{" "}
           <PointsFacts counts={counts} />
           <ConfigsFact configs={configs} />
-          <RunsFact runs={dsRuns} /> · modified {modifiedWords(dataset.modified_at, now)}
+          <RunsFact runs={dsRuns} />
+          {dataset.copied_from !== null && <> · a copy of {dataset.copied_from}</>} · modified{" "}
+          {modifiedWords(dataset.modified_at, now)}
         </>
       }
     >
@@ -921,22 +925,26 @@ function Shown({
       )}
       <nav aria-label="Protocols in this dataset" className="dd-jumps">
         <span className="label">Jump to</span>
-        {content.protocols.map((p, i) => (
-          <a
-            key={p.name}
-            href={`#${sectionId(p)}`}
-            className="dd-jump"
-            onClick={(e) => {
-              e.preventDefault();
-              const target = document.getElementById(sectionId(p));
-              target?.scrollIntoView({ block: "start" });
-              target?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
-            }}
-          >
-            <span className="mono dd-jump-name">{p.name}</span>
-            <span>{templateWords(templates[i], p.steps.length)}</span>
-          </a>
-        ))}
+        <div className="dd-jump-list">
+          {content.protocols.map((p, i) => (
+            <a
+              key={p.name}
+              href={`#${sectionId(p)}`}
+              className="dd-jump"
+              onClick={(e) => {
+                e.preventDefault();
+                const target = document.getElementById(sectionId(p));
+                target?.scrollIntoView({ block: "start" });
+                target?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
+              }}
+            >
+              <span className="mono dd-jump-name">
+                <BreakingName name={p.name} />
+              </span>
+              <span>{templateWords(templates[i], p.steps.length)}</span>
+            </a>
+          ))}
+        </div>
       </nav>
       <div className="dd-protocols">
         <Legend
@@ -1185,9 +1193,12 @@ function ProtocolSection({
             tabIndex={-1}
             {...(landing ? { [PAGE_HEADING_ATTR]: "" } : {})}
           >
-            {p.name}
+            <BreakingName name={p.name} />
           </h2>
-          <span className="dd-proto-acts">
+        </div>
+        <div className="dd-proto-body">
+          <div className="dd-proto-shape">{shape}</div>
+          <div className="dd-proto-acts">
             <Link
               to="/datasets/$id/protocols/$protocol"
               params={{ id: a.datasetId, protocol: p.name }}
@@ -1221,10 +1232,7 @@ function ProtocolSection({
               </button>
             )}
             {remove.bubble}
-          </span>
-        </div>
-        <div className="dd-proto-body">
-          <div className="dd-proto-shape">{shape}</div>
+          </div>
           {a.only && a.blocked === undefined && (
             <p id={`${id}-only`} className="hint dd-proto-why">
               {onlyWhy}
@@ -1308,6 +1316,29 @@ function ProtocolSection({
         </div>
       </figure>
     </section>
+  );
+}
+
+/**
+ * A protocol's name, which breaks only after `_` or `-` (a hyphen breaks on its own); a name
+ * with neither that's still wider than its column breaks where it must (#528). `<wbr>` adds no
+ * text, so copying the name gives it as it is.
+ */
+export function BreakingName({ name }: { name: string }) {
+  const parts = name.split("_");
+  return (
+    <>
+      {parts.map((part, i) =>
+        i === parts.length - 1 ? (
+          part
+        ) : (
+          <Fragment key={i}>
+            {`${part}_`}
+            <wbr />
+          </Fragment>
+        ),
+      )}
+    </>
   );
 }
 

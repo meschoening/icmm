@@ -118,6 +118,8 @@
 .prm-after {
   justify-self: end;
   white-space: nowrap;
+  /* Holds a hidden head's `.sr-only` text, which would otherwise grow the document (#538). */
+  position: relative;
 }
 
 /* The open state: the reference every other state is read against. */

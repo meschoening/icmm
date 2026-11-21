@@ -7,10 +7,9 @@
  */
 import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { cancelingWhat, firstDueOf } from "../runs/detail";
+import { cancelingWhat, firstDueOf, runEtasOf, type Eta } from "../runs/detail";
 import { useRunStretches } from "../runs/detailQueries";
 import { barOf, againLine, rmse, topologiesLine, topologyName, waitingOf } from "../runs/words";
-import { etasOf } from "../submit/plan";
 import { runGlyph } from "../submit/words";
 import { plural, startOverheadS } from "../submit/estimate";
 import { useShownPath } from "../ui/paths";
@@ -54,9 +53,9 @@ export function Live({
   );
   const cap = reads.job?.max_running_starts;
   const at = asOf ?? now;
-  const { etas, dues } = useMemo(() => {
+  const { shown, dues } = useMemo(() => {
     if (reads.job === undefined || reads.details === undefined) {
-      return { etas: new Map<number, number | undefined>(), dues: new Map<number, number>() };
+      return { shown: new Map<number, Eta>(), dues: new Map<number, number>() };
     }
     const around = {
       timings: reads.timings ?? [],
@@ -71,8 +70,13 @@ export function Live({
       const due = firstDueOf(d, around);
       if (due !== undefined) dues.set(d.id, due);
     }
-    return { etas: etasOf(reads.details, around), dues };
+    // The run page's ETA, Submit's estimate marked (L6, #542).
+    return { shown: runEtasOf(reads.details, around), dues };
   }, [reads.details, reads.timings, reads.job, at]);
+  const etas = useMemo(
+    () => new Map<number, number | undefined>([...shown].map(([id, e]) => [id, e.at])),
+    [shown],
+  );
   const began = new Map((reads.details ?? []).map((r) => [r.id, r.first_array_at]));
   const shownPath = useShownPath(platform);
   const around = {
@@ -82,6 +86,7 @@ export function Live({
     cap,
     jobs: reads.jobs,
     inFlight,
+    allInFlight: inFlight,
     shownPath,
     etas,
   };
@@ -115,7 +120,7 @@ export function Live({
             key={r.id}
             run={r}
             cap={cap}
-            eta={etas.get(r.id)}
+            eta={shown.get(r.id)}
             due={dues.get(r.id)}
             began={began.get(r.id) ?? null}
             again={againLine(r, platform, now)}
@@ -217,7 +222,7 @@ function RunningCard({
 }: {
   run: RunSummary;
   cap: number | undefined;
-  eta: number | undefined;
+  eta: Eta | undefined;
   /** When its first topology is due, before one ends. */
   due: number | undefined;
   began: string | null;

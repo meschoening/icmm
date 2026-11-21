@@ -311,12 +311,16 @@
   stroke-width: 2.2;
   stroke-linejoin: round;
 }
-/* The topology's finished starts beside it: their middle 80 %, median and best start. */
+/*
+ * The topology's finished starts beside it: their middle 80 % and median, or
+ * under 10 of them each one's own thin line (#539), and the best start.
+ */
 .sp-page path.sp-band {
   fill: var(--ink-3);
   fill-opacity: 0.14;
 }
-.sp-median {
+.sp-median,
+.sp-others {
   stroke: var(--ink-3);
   stroke-width: 1;
 }

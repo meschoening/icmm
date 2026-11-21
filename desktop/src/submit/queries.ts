@@ -13,7 +13,7 @@ import { datasetKey } from "../datasets/detail/read";
 import { agentKey, canAsk, platformOf } from "../setup/queries";
 import { useConnection } from "../shell/connection";
 import { commands } from "../wire/api.gen";
-import type { Bounds, DatasetContent, Run, RunSummary } from "../wire/types.gen";
+import type { Bounds, DatasetContent, EvaluationTime, Run, RunSummary } from "../wire/types.gen";
 
 /**
  * The finished starts' time per evaluation by number of states and CPUs per
@@ -82,7 +82,12 @@ async function runsInFlight(): Promise<RunSummary[]> {
   const found: RunSummary[] = [];
   let after: string | null = null;
   do {
-    const page = await commands.list_runs({ filter: null, dataset: null, config: null, after });
+    const page = await commands.list_runs({
+      filter: null,
+      dataset: null,
+      config: null,
+      after,
+    });
     found.push(...page.runs.filter((r) => r.ended_at === null));
     if (page.runs.some((r) => r.ended_at !== null)) break;
     after = page.next;
@@ -163,13 +168,36 @@ export interface EvaluationInput {
 }
 
 /**
- * The time of one of a start's evaluations on this computer's engine, for a
- * platform whose finished starts can't say (#229). It follows from its input
- * alone, so it's kept as long as the page lives; a timing that failed isn't
- * tried again on its own, since its issues say what to change. `undefined`
- * times nothing.
+ * The last timing of each input made with no run fitting on this computer, so
+ * that a timing asked for while one is fitting reuses it rather than timing
+ * under the run's load (#542, E1).
  */
-export function useEvaluationTime(input: EvaluationInput | undefined) {
+const idleTimings = new Map<string, EvaluationTime>();
+
+/** Forgets the idle timings: for tests, which each start from none. */
+export function forgetIdleTimings(): void {
+  idleTimings.clear();
+}
+
+/** What a page reads of a timing. */
+export interface EvaluationTimeRead {
+  data: EvaluationTime | undefined;
+  isError: boolean;
+}
+
+/**
+ * The time of one of a start's evaluations on this computer's engine, for a
+ * platform whose finished runs can't say (#229). It's kept while the page that
+ * asked lives, and made again when a page opens again, so a timing made while
+ * the computer was busy isn't kept for good (#542, E1). While runs fit on this
+ * computer (`busy`), the last timing made with none fitting stands in, and it
+ * times only when there is none. A timing that failed isn't tried again on its
+ * own, since its issues say what to change. `undefined` times nothing.
+ */
+export function useEvaluationTime(
+  input: EvaluationInput | undefined,
+  busy = false,
+): EvaluationTimeRead {
   const params =
     input === undefined
       ? undefined
@@ -182,11 +210,19 @@ export function useEvaluationTime(input: EvaluationInput | undefined) {
           running_starts: input.runningStarts,
         };
   const body = params === undefined ? null : JSON.stringify(params);
-  return useQuery({
+  const idle = body === null ? undefined : idleTimings.get(body);
+  const reuse = busy && idle !== undefined;
+  const q = useQuery({
     queryKey: ["host", "time_evaluations", body],
-    queryFn: () => commands.time_evaluations(params!),
-    enabled: params !== undefined,
+    queryFn: async () => {
+      const timed = await commands.time_evaluations(params!);
+      if (!busy && body !== null) idleTimings.set(body, timed);
+      return timed;
+    },
+    enabled: params !== undefined && !reuse,
     staleTime: Infinity,
+    gcTime: 0,
     retry: false,
   });
+  return reuse ? { data: idle, isError: false } : { data: q.data, isError: q.isError };
 }

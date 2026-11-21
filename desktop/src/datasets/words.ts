@@ -332,10 +332,12 @@ export function normalizeHint(
       ? `Your values are fractions of the largest ${what} time. The model’s are divided by its largest train sweep to match.`
       : `Your values are ${what} times in ms, compared as they are.`;
   }
+  if (!normalized) return "Your values are open probability, 0 to 1, compared as they are.";
+  // Recovery's values are I₂/I₁ per sweep, not fractions of the largest (#539 U6).
+  if (template === "recovery")
+    return "Your values are I₂/I₁, each sweep’s second peak over its first. The model’s second peaks are divided by their largest: the same once recovery is complete at the longest gap.";
   const unit = NORMALIZED_Y[template];
-  return normalized
-    ? `Your values are fractions of the largest${unit ? ` (${unit})` : ""}. The model’s peaks are divided by its largest train sweep to match.`
-    : "Your values are open probability, 0 to 1, compared as they are.";
+  return `Your values are fractions of the largest${unit ? ` (${unit})` : ""}. The model’s peaks are divided by its largest train sweep to match.`;
 }
 
 /** The one-line hint under Peak and Time to peak (#50). */

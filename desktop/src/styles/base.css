@@ -4,6 +4,11 @@ body,
 #root {
   height: 100%;
 }
+/* Only `.app-main` scrolls: the root never does, or the header would scroll away with it (#538). */
+html,
+body {
+  overflow: hidden;
+}
 body {
   margin: 0;
   font-family: var(--font-sans);

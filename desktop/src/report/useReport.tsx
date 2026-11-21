@@ -7,8 +7,9 @@
  * the report holds, what it leaves out and that the page is public. Report a
  * problem… hides while it's open, so focus goes to the panel's heading, and
  * back to Report a problem… on Cancel. Save and open issue page saves the
- * report in Downloads and opens ICMM's issue page filled in; then the failure
- * says so, and Show in Finder takes the button's place, with focus.
+ * report in Downloads, copies it whole to the clipboard and opens ICMM's issue
+ * page with a trimmed report filled in (#552); then the failure says so, and
+ * Show in Finder takes the button's place, with focus.
  *
  * `useReport` gives the three parts each place puts where its own layout has
  * them: the button among its actions, the sentence under its words and the
@@ -79,7 +80,10 @@ type Step = { at: "closed" } | { at: "review" } | { at: "saved"; saved: SavedRep
 export function useReport(about: ReportAbout): Report {
   // A new failure starts closed.
   const key = about.key ?? JSON.stringify(about.failure ?? null);
-  const [step, setStep] = useState<Step & { key: string }>({ at: "closed", key });
+  const [step, setStep] = useState<Step & { key: string }>({
+    at: "closed",
+    key,
+  });
   const now: Step = step.key === key ? step : { at: "closed" };
   /** Where focus goes once the step it's for has drawn. */
   const focus = useRef<"report" | "heading" | "reveal" | "back">(undefined);
@@ -103,8 +107,11 @@ export function useReport(about: ReportAbout): Report {
     setStep({ ...next, key });
   };
 
-  const os = useQuery({ queryKey: ["webview_info"], queryFn: webviewInfo, staleTime: Infinity })
-    .data?.os;
+  const os = useQuery({
+    queryKey: ["webview_info"],
+    queryFn: webviewInfo,
+    staleTime: Infinity,
+  }).data?.os;
   const [revealFailed, setRevealFailed] = useState<string>();
 
   const page = about.look === "page";
@@ -136,13 +143,21 @@ export function useReport(about: ReportAbout): Report {
     </button>
   ) : null;
 
+  /** What was saved and opened: from the page, the user says what went wrong; elsewhere reads it. */
+  const savedWords = (saved: SavedReport) => (
+    <>
+      Opened a new issue on GitHub with the report filled in. Signed in there,{" "}
+      {page ? "say what went wrong" : "read it over"}, then submit. The whole report is on your
+      clipboard, and in Downloads as <span className="mono rsent-file">{saved.file}</span>.
+    </>
+  );
+
   const sentence =
     !page && now.at === "saved" ? (
       <p className="rsent" role="status">
         <span className="g g-completed" aria-hidden="true" />
         <span>
-          Saved <span className="mono rsent-file">{now.saved.file}</span> in Downloads and opened
-          ICMM’s issue page in your browser. Drag the file onto the page, read it over, then submit.
+          {savedWords(now.saved)}
           {revealFailed !== undefined && <span className="field-issue">{revealFailed}</span>}
         </span>
       </p>
@@ -161,9 +176,7 @@ export function useReport(about: ReportAbout): Report {
         <p className="rsent" role="status">
           <span className="g g-completed" aria-hidden="true" />
           <span>
-            Saved <span className="mono rsent-file">{now.saved.file}</span> in Downloads and opened
-            ICMM’s issue page in your browser. Drag the file onto the page, say what went wrong,
-            then submit.
+            {savedWords(now.saved)}
             {revealFailed !== undefined && <span className="field-issue">{revealFailed}</span>}
           </span>
         </p>

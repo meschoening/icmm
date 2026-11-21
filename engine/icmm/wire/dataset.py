@@ -164,6 +164,9 @@ class SavedDataset(WireModel):
     """Each protocol's points in x order."""
     templates: list[Template]
     """Each protocol's template, in the order of `content.protocols`."""
+    copied_from: str | None
+    """The name of the dataset Duplicate copied it from, as that dataset was named then, never
+    updated since; `null` for a dataset that isn't a copy."""
 
 
 class ValidateDatasetParams(WireModel):

@@ -56,7 +56,10 @@ export function fromRuns(
       Number.isFinite(t.elapsed_s),
   );
   if (row === undefined) return undefined;
-  return { seconds: row.elapsed_s / row.evaluations, from: { kind: "runs", runs: row.runs } };
+  return {
+    seconds: row.elapsed_s / row.evaluations,
+    from: { kind: "runs", runs: row.runs },
+  };
 }
 
 /**
@@ -128,7 +131,11 @@ export function estimate(a: {
   const perStartS = startSeconds(a.evaluations, a.perEvaluationS, a.overheadS);
   const waves = Math.ceil(a.starts / Math.max(1, a.cap));
   const totalS = waves * perStartS;
-  return { perStartS, totalS, perTopologyS: a.topologies > 0 ? totalS / a.topologies : 0 };
+  return {
+    perStartS,
+    totalS,
+    perTopologyS: a.topologies > 0 ? totalS / a.topologies : 0,
+  };
 }
 
 /**
@@ -152,6 +159,19 @@ export function durationWords(seconds: number): string {
   return `${Math.floor(hours / 24)}\u00a0d` + (hours % 24 ? `\u00a0${hours % 24}\u00a0h` : "");
 }
 
+/**
+ * How long something took, measured, as the clock times beside it read
+ * (#538): from a minute to 10 in minutes and seconds, "4 m 35 s", so a run
+ * fit from 3:27 to 3:31 never says a rounded "5 m"; otherwise as
+ * `durationWords` says it, "under a minute" among them.
+ */
+export function elapsedWords(seconds: number): string {
+  if (!(seconds >= 60) || seconds >= 600) return durationWords(seconds);
+  const s = Math.floor(seconds);
+  const m = Math.floor(s / 60);
+  return s % 60 === 0 ? `${m}\u00a0m` : `${m}\u00a0m\u00a0${s % 60}\u00a0s`;
+}
+
 /** "about 9 m", or "under a minute", which needs no "about". */
 export const aboutWords = (seconds: number) =>
   seconds < 60 ? "under a minute" : `about ${durationWords(seconds)}`;
@@ -160,9 +180,42 @@ export const aboutWords = (seconds: number) =>
 export const nearWords = (seconds: number) =>
   seconds < 60 ? "under a minute" : `≈ ${durationWords(seconds)}`;
 
+/**
+ * A duration in the one unit a rough guess needs (#542, LaptopSubmitRun's
+ * `coarse`): under a minute in 5 s, to 10 m in minutes, to 90 m in 5 m, to
+ * 36 h in hours, then in days.
+ */
+function coarse(seconds: number): [number, string] {
+  const m = seconds / 60;
+  if (m < 1) {
+    const s = Math.max(5, Math.round(m * 12) * 5);
+    return s >= 60 ? [1, "m"] : [s, "s"];
+  }
+  if (m < 10) return [Math.round(m), "m"];
+  if (m < 90) return [Math.round(m / 5) * 5, "m"];
+  if (m < 2160) return [Math.round(m / 60), "h"];
+  return [Math.round(m / 1440), "d"];
+}
+
+/**
+ * This computer's rough guess as a range, its timing ×0.6 to ×1.8 (#542):
+ * "2–6 d" in one unit, else "40 m – 2 h"; "5 s" where both ends round alike.
+ */
+export function rangeWords(seconds: number): string {
+  const [lo, loUnit] = coarse(seconds * 0.6);
+  const [hi, hiUnit] = coarse(seconds * 1.8);
+  // Ends that round to the same say it once: "5 s", not "5–5 s".
+  if (lo === hi && loUnit === hiUnit) return `${lo}\u00a0${loUnit}`;
+  return loUnit === hiUnit
+    ? `${lo}–${hi}\u00a0${loUnit}`
+    : `${lo}\u00a0${loUnit} – ${hi}\u00a0${hiUnit}`;
+}
+
 /** A pace a topology: "2 h 36 m", or under a minute its seconds, "23 s". */
 export const paceWords = (seconds: number) =>
-  seconds < 59.5 ? `${Math.max(1, Math.round(seconds))} s` : durationWords(Math.max(60, seconds));
+  seconds < 59.5
+    ? `${Math.max(1, Math.round(seconds))}\u00a0s`
+    : durationWords(Math.max(60, seconds));
 
 /** Whether a start runs longer than the time limit (minutes), so SLURM would end it. */
 export function overLimit(perStartS: number, limitMin: number): boolean {

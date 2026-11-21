@@ -3,7 +3,7 @@
  * the run goes to and the Job defaults it would use, a forecast of when it
  * would begin (the user's SLURM jobs against the cluster's job limit, or this
  * computer's slots, as blocks of the runs holding them), how long each start
- * and each topology take, and the stages after a submit.
+ * takes and its pace per topology, and the stages after a submit.
  */
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
@@ -21,7 +21,10 @@ import { Stages } from "./Stages";
 import type { JobsRetry, Plan } from "./usePlan";
 
 /** The platform as far as it's known: an SSH platform's saved entry says its user and host. */
-type Platform = Pick<SavedPlatform, "type" | "name"> & { user?: string; host?: string };
+type Platform = Pick<SavedPlatform, "type" | "name"> & {
+  user?: string;
+  host?: string;
+};
 
 /** The most cells a track draws: past it the text carries the count, and the track is a bar. */
 const MAX_CELLS = 120;
@@ -336,7 +339,7 @@ function BlockView({
 
 // ── the rows ─────────────────────────────────────────────────────────────────────────────────
 
-/** Each start and Each topology, with the time limit a start runs against. */
+/** Each start and Pace, with the time limit a start runs against. */
 function Rows({ time }: { time: TimeView }) {
   return (
     <dl className="sub-rows">
@@ -353,9 +356,7 @@ function Rows({ time }: { time: TimeView }) {
           </span>
         )}
       </Kv>
-      <Kv k="Each topology">
-        {time.topology} <span className="sub-dim">· one after another</span>
-      </Kv>
+      <Kv k="Pace">{time.pace}</Kv>
     </dl>
   );
 }

@@ -6,9 +6,14 @@
 //! start's the end of its job log and its run, a topology's or a run's its
 //! run, another page its name. User names on this computer and its platforms are written
 //! `user`, and this computer's own host name `this computer`; a cluster's
-//! host names stay, since they show which cluster failed. A new-issue
-//! link can't carry a file, so the logs go only in the file, which the user
-//! drags onto the page.
+//! host names stay, since they show which cluster failed.
+//!
+//! A new-issue link carries at most `MAX_LINK` bytes, so the issue gets a
+//! trimmed report (#546, #552): What happened holds the failure, the page and
+//! the platform, and The report its raw line, its run, the end of its job log
+//! and the newest warnings and errors, cut from the lowest part up to fit. The
+//! whole report, its agent log's `ok` requests counted by method, goes on the
+//! clipboard to paste at the end, within what an issue holds.
 
 use std::path::{Path, PathBuf};
 
@@ -21,8 +26,20 @@ pub const TEMPLATE: &str = "report.yml";
 /// The form's fields the link fills, by their ids.
 pub const WHAT_HAPPENED: &str = "what-happened";
 pub const VERSIONS: &str = "versions";
-/// What a new-issue link may come to: browsers and GitHub take about 8 KB.
-pub const MAX_LINK: usize = 8000;
+pub const REPORT: &str = "report";
+/// What a new-issue link may come to, encoded: GitHub takes 8,191 bytes from
+/// a signed-in browser (#550), less 1,000 for a heavier cookie jar.
+pub const MAX_LINK: usize = 7_191;
+/// The most of a start's job log The report holds, from its end.
+pub const JOB_LOG_LINES: usize = 20;
+/// The most warning and error lines The report holds, the newest, each cut to
+/// `LINE_CHARS` characters.
+pub const LOG_LINES: usize = 16;
+pub const LINE_CHARS: usize = 160;
+/// The most characters the whole report on the clipboard comes to: an issue
+/// holds 65,536 in all, with room left for the form's fields and the user's
+/// words.
+pub const MAX_WHOLE: usize = 55_000;
 /// The most of each log a report holds, from its end.
 pub const MAX_LOG_LINES: usize = 10_000;
 /// What a user name is written as.
@@ -216,12 +233,30 @@ fn page_title(kind: ReportPageKind) -> &'static str {
     }
 }
 
-/// The report's text, before user names are written `user`.
+/// The report's text, as it's saved in Downloads.
 pub fn compose(r: &Report) -> String {
+    let logs: Vec<(String, String)> = r
+        .logs
+        .iter()
+        .map(|l| (held(&l.name, l.lines, l.of), l.text.clone()))
+        .collect();
+    compose_logs(r, &logs)
+}
+
+/// A log's section title: its name and the lines it holds.
+fn held(name: &str, lines: usize, of: usize) -> String {
+    if lines == of {
+        format!("{name}, {lines} lines")
+    } else {
+        format!("{name}, its last {lines} of {of} lines")
+    }
+}
+
+/// The report's text, with each log as its title and its body.
+fn compose_logs(r: &Report, logs: &[(String, String)]) -> String {
     let mut out = String::from(
         "ICMM problem report\n\
-         Drag this file onto ICMM's issue page. User names are written `user`; keys, passwords \
-         and dataset contents are left out.\n",
+         User names are written `user`; keys, passwords and dataset contents are left out.\n",
     );
     // A section with nothing in it says so, where a blank one read as lost (an
     // ended start's job log that it wrote nothing to, WB5-2).
@@ -251,53 +286,44 @@ pub fn compose(r: &Report) -> String {
             section("The run, as submitted", run);
         }
     }
-    for log in r.logs {
-        let held = if log.lines == log.of {
-            format!("{}, {} lines", log.name, log.lines)
-        } else {
-            format!("{}, its last {} of {} lines", log.name, log.lines, log.of)
-        };
-        section(&held, &log.text);
+    for (title, body) in logs {
+        section(title, body);
     }
-    if r.logs.is_empty() {
+    if logs.is_empty() {
         section("Logs", "None were found.");
     }
     out
 }
 
-/// The issue page's link with its form filled in: the title, What happened
-/// and Versions. What happened is cut short, ending `…`, to keep the link
-/// within `MAX_LINK`.
-pub fn issue_link(title: &str, what_happened: &str, versions: &str) -> String {
-    let head = format!(
+/// The issue page's link with its form filled in: the title, Versions,
+/// What happened and The report, within `MAX_LINK` encoded. The report's
+/// parts go in in order while they fit, so the lowest is cut first; What
+/// happened is cut short, ending `…`, only where it alone won't fit.
+pub fn issue_link(r: &Report) -> String {
+    let mut link = format!(
         "{ISSUE_PAGE}?template={TEMPLATE}&title={}&{VERSIONS}={}&{WHAT_HAPPENED}=",
-        encode(title),
-        encode(versions)
+        encode(&title(r.failure)),
+        encode(r.versions)
     );
-    let mut link = head;
     let room = MAX_LINK.saturating_sub(link.len());
-    let whole = encode(what_happened);
-    if whole.len() <= room {
-        link.push_str(&whole);
+    let what = what_happened(r);
+    let key = format!("&{REPORT}=");
+    let whole = encode(&what);
+    if whole.len() + key.len() > room {
+        link.push_str(&encode(&cut(&what, room)));
         return link;
     }
-    let ellipsis = encode("…");
-    let mut used = 0;
-    for c in what_happened.chars() {
-        let mut buf = [0; 4];
-        let e = encode(c.encode_utf8(&mut buf));
-        if used + e.len() + ellipsis.len() > room {
-            break;
-        }
-        used += e.len();
-        link.push_str(&e);
+    link.push_str(&whole);
+    let report = fill(&report_parts(r), room - whole.len() - key.len());
+    if !report.is_empty() {
+        link.push_str(&key);
+        link.push_str(&encode(&report));
     }
-    link.push_str(&ellipsis);
     link
 }
 
-/// What happened, as the link fills it: the failure's lines, the raw one as
-/// code, and the platform's kind. The logs stay in the file.
+/// What happened, as the link fills it: the failure's words, the page and
+/// the platform's kind. Its raw line goes in The report.
 pub fn what_happened(r: &Report) -> String {
     let mut parts = Vec::new();
     if let Some(f) = r.failure {
@@ -305,15 +331,360 @@ pub fn what_happened(r: &Report) -> String {
         if let Some(next) = &f.next {
             parts.push(next.clone());
         }
-        if let Some(raw) = &f.raw {
-            parts.push(format!("```\n{raw}\n```"));
-        }
     }
     if let Some(p) = r.page {
         parts.push(format!("On {}.", p.name));
     }
     parts.push(format!("Platform: {}.", r.platform));
     parts.join("\n\n")
+}
+
+/// A part of The report: its title and what it holds.
+struct Part {
+    title: &'static str,
+    body: Body,
+}
+
+enum Body {
+    /// Cut short from its end, ending `…`.
+    Text(String),
+    /// Cut by its oldest lines.
+    Lines(Vec<String>),
+}
+
+/// The report's parts, highest first: the raw line, the run, the end of the
+/// job log and the newest warnings and errors.
+fn report_parts(r: &Report) -> Vec<Part> {
+    let mut parts = Vec::new();
+    if let Some(raw) = r.failure.and_then(|f| f.raw.as_deref()) {
+        let raw = raw.trim_end();
+        if !raw.is_empty() {
+            parts.push(Part {
+                title: "The raw line",
+                body: Body::Text(unfenced(raw)),
+            });
+        }
+    }
+    if let Some(p) = r.page {
+        if let Some(run) = &p.run {
+            parts.push(Part {
+                title: "The run, as submitted",
+                body: Body::Text(unfenced(&compact(run))),
+            });
+        }
+        if let Some(log) = &p.job_log {
+            let lines: Vec<&str> = log.trim_end().lines().collect();
+            let lines = match &lines[lines.len().saturating_sub(JOB_LOG_LINES)..] {
+                [] => vec!["(empty)".to_owned()],
+                lines => lines.iter().map(|l| unfenced(l)).collect(),
+            };
+            parts.push(Part {
+                title: "The end of its job log",
+                body: Body::Lines(lines),
+            });
+        }
+    }
+    let warnings = warnings(r.logs);
+    if !warnings.is_empty() {
+        parts.push(Part {
+            title: "The newest warnings and errors",
+            body: Body::Lines(warnings.iter().map(|l| unfenced(l)).collect()),
+        });
+    }
+    parts
+}
+
+/// The report's parts, in order, while they fit in `room` bytes encoded:
+/// the part that doesn't fit is cut, its text short or its oldest lines left
+/// out, and none below it goes in.
+fn fill(parts: &[Part], room: usize) -> String {
+    let mut out = String::new();
+    let mut used = 0;
+    for part in parts {
+        let head = format!(
+            "{}== {}\n",
+            if out.is_empty() { "" } else { "\n\n" },
+            part.title
+        );
+        let head_len = encode(&head).len();
+        // A part's head with nothing under it says nothing.
+        let Some(left) = room.checked_sub(used + head_len).filter(|&n| n > 0) else {
+            break;
+        };
+        let (body, whole) = match &part.body {
+            Body::Text(text) if encode(text).len() <= left => (text.clone(), true),
+            Body::Text(text) => (cut(text, left), false),
+            Body::Lines(lines) => {
+                // The newest lines that fit, each with its newline but the last.
+                let mut cost = 0;
+                let kept = lines
+                    .iter()
+                    .rev()
+                    .enumerate()
+                    .take_while(|(i, l)| {
+                        cost += encode(l).len() + if *i == 0 { 0 } else { 3 };
+                        cost <= left
+                    })
+                    .count();
+                let from = lines.len() - kept;
+                (lines[from..].join("\n"), from == 0)
+            }
+        };
+        if body.is_empty() || body == "…" {
+            break;
+        }
+        used += head_len + encode(&body).len();
+        out.push_str(&head);
+        out.push_str(&body);
+        if !whole {
+            break;
+        }
+    }
+    out
+}
+
+/// `text`'s first characters, ending `…`, that come to `room` bytes or fewer
+/// encoded.
+fn cut(text: &str, room: usize) -> String {
+    let ellipsis = encode("…").len();
+    let mut used = 0;
+    let mut out = String::new();
+    for c in text.chars() {
+        let mut buf = [0; 4];
+        let e = encode(c.encode_utf8(&mut buf)).len();
+        if used + e + ellipsis > room {
+            break;
+        }
+        used += e;
+        out.push(c);
+    }
+    out.push('…');
+    out
+}
+
+/// `text` with each line that would end the form's code block (three
+/// backticks after at most three spaces) kept from doing so by a zero-width
+/// space before its backticks.
+fn unfenced(text: &str) -> String {
+    text.split('\n')
+        .map(|line| {
+            let indent = line.len() - line.trim_start_matches(' ').len();
+            if indent <= 3 && line[indent..].starts_with("```") {
+                format!("{}\u{200B}{}", &line[..indent], &line[indent..])
+            } else {
+                line.to_owned()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// JSON with the white space between its tokens taken out, its keys in their
+/// order.
+fn compact(json: &str) -> String {
+    let mut out = String::with_capacity(json.len());
+    let (mut quoted, mut escaped) = (false, false);
+    for c in json.trim().chars() {
+        if quoted {
+            out.push(c);
+            if escaped {
+                escaped = false;
+            } else if c == '\\' {
+                escaped = true;
+            } else if c == '"' {
+                quoted = false;
+            }
+        } else if !c.is_whitespace() {
+            quoted = c == '"';
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// A log's lines grouped by entry: a line with a timestamp starts one, and
+/// the lines after it without one (a traceback) go with it.
+fn entries(text: &str) -> Vec<(&str, Vec<&str>)> {
+    let mut out: Vec<(&str, Vec<&str>)> = Vec::new();
+    for line in text.lines().filter(|l| !l.trim().is_empty()) {
+        match stamp_of(line) {
+            Some(stamp) => out.push((stamp, vec![line])),
+            None => match out.last_mut() {
+                Some((_, lines)) => lines.push(line),
+                None => out.push(("", vec![line])),
+            },
+        }
+    }
+    out
+}
+
+/// The timestamp a log line starts with, as both logs write it:
+/// `2026-11-20T09:00:07.123Z`.
+fn stamp_of(line: &str) -> Option<&str> {
+    let stamp = line.split(' ').next()?;
+    let b = stamp.as_bytes();
+    (b.len() >= 20 && b[4] == b'-' && b[10] == b'T' && b[0].is_ascii_digit()).then_some(stamp)
+}
+
+/// An agent log's request that answered `ok`: `<when> <method> id=<id> <n> ms ok`.
+fn ok_request<'a>(entry: &[&'a str]) -> Option<&'a str> {
+    let [line] = entry else {
+        return None;
+    };
+    line.trim_end()
+        .ends_with(" ms ok")
+        .then(|| line.split(' ').nth(1))
+        .flatten()
+}
+
+fn agent_log(log: &Log) -> bool {
+    log.name.starts_with("agent.")
+}
+
+/// The newest `LOG_LINES` warning and error lines across the logs, oldest
+/// first, each cut to `LINE_CHARS`: the app log's `WARN` and `ERROR`
+/// entries, and every agent log entry but a request that answered `ok`.
+fn warnings(logs: &[Log]) -> Vec<String> {
+    let mut kept: Vec<(&str, Vec<&str>)> = Vec::new();
+    for log in logs {
+        let agent = agent_log(log);
+        kept.extend(entries(&log.text).into_iter().filter(|(_, lines)| {
+            if agent {
+                ok_request(lines).is_none()
+            } else {
+                matches!(lines[0].split_whitespace().nth(1), Some("WARN" | "ERROR"))
+            }
+        }));
+    }
+    // Both logs write UTC to the millisecond, so their stamps sort as text.
+    kept.sort_by(|a, b| a.0.cmp(b.0));
+    let lines: Vec<&str> = kept.into_iter().flat_map(|(_, lines)| lines).collect();
+    lines[lines.len().saturating_sub(LOG_LINES)..]
+        .iter()
+        .map(|l| short(l, LINE_CHARS))
+        .collect()
+}
+
+/// `line` in at most `chars` characters, ending `…` where it's cut.
+fn short(line: &str, chars: usize) -> String {
+    if line.chars().count() <= chars {
+        return line.to_owned();
+    }
+    let mut out: String = line.chars().take(chars - 1).collect();
+    out.push('…');
+    out
+}
+
+/// The whole report, for the clipboard: as it's saved, but with the agent
+/// log's `ok` requests counted by method, and within `MAX_WHOLE` characters
+/// by taking the app log from its end, then the agent log's other lines from
+/// theirs, then cutting it short.
+pub fn whole(r: &Report) -> String {
+    struct Squeezed<'a> {
+        log: &'a Log,
+        lines: Vec<&'a str>,
+        /// An agent log's `ok` requests, counted by method, most first.
+        ok: Option<(usize, String)>,
+    }
+    let squeezed: Vec<Squeezed> = r
+        .logs
+        .iter()
+        .map(|log| {
+            if !agent_log(log) {
+                return Squeezed {
+                    log,
+                    lines: log.text.lines().collect(),
+                    ok: None,
+                };
+            }
+            let mut counts: Vec<(&str, usize)> = Vec::new();
+            let mut lines = Vec::new();
+            for (_, entry) in entries(&log.text) {
+                match ok_request(&entry) {
+                    Some(method) => match counts.iter_mut().find(|(m, _)| *m == method) {
+                        Some((_, n)) => *n += 1,
+                        None => counts.push((method, 1)),
+                    },
+                    None => lines.extend(entry),
+                }
+            }
+            counts.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(b.0)));
+            let ok = (!counts.is_empty()).then(|| {
+                let total = counts.iter().map(|(_, n)| n).sum();
+                let each: Vec<String> = counts.iter().map(|(m, n)| format!("{m} {n}")).collect();
+                (total, format!("ok requests: {}", each.join(" · ")))
+            });
+            Squeezed { log, lines, ok }
+        })
+        .collect();
+    let build = |app_cut: usize, agent_cut: usize| {
+        let logs: Vec<(String, String)> = squeezed
+            .iter()
+            .map(|s| {
+                let Some((total, counted)) = &s.ok else {
+                    let from = app_cut.min(s.lines.len());
+                    return (
+                        held(&s.log.name, s.log.lines - from, s.log.of),
+                        s.lines[from..].join("\n"),
+                    );
+                };
+                let from = agent_cut.min(s.lines.len());
+                let mut title = format!(
+                    "{}, its {total} ok requests counted by method",
+                    held(&s.log.name, s.log.lines, s.log.of)
+                );
+                if from > 0 {
+                    title.push_str(&format!(", its oldest {from} other lines left out"));
+                }
+                let mut body = s.lines[from..].join("\n");
+                if !body.is_empty() {
+                    body.push('\n');
+                }
+                body.push_str(counted);
+                (title, body)
+            })
+            .collect();
+        unfenced(&compose_logs(r, &logs))
+    };
+    let fits = |text: &String| text.chars().count() <= MAX_WHOLE;
+    let most = |of: fn(&Squeezed) -> bool| {
+        squeezed
+            .iter()
+            .filter(|s| of(s))
+            .map(|s| s.lines.len())
+            .max()
+            .unwrap_or(0)
+    };
+    let app_most = most(|s| s.ok.is_none());
+    let agent_most = most(|s| s.ok.is_some());
+    least(app_most, |n| build(n, 0), fits)
+        .or_else(|| least(agent_most, |n| build(app_most, n), fits))
+        .unwrap_or_else(|| short(&build(app_most, agent_most), MAX_WHOLE))
+}
+
+/// What `build` makes of the fewest `n` in `0..=most` that `fits`, where
+/// every `n` past one that fits fits too; none where `most` doesn't.
+fn least(
+    most: usize,
+    build: impl Fn(usize) -> String,
+    fits: impl Fn(&String) -> bool,
+) -> Option<String> {
+    let last = build(most);
+    if !fits(&last) {
+        return None;
+    }
+    let (mut lo, mut hi, mut best) = (0, most, last);
+    while lo < hi {
+        let mid = (lo + hi) / 2;
+        let text = build(mid);
+        if fits(&text) {
+            hi = mid;
+            best = text;
+        } else {
+            lo = mid + 1;
+        }
+    }
+    Some(best)
 }
 
 /// Percent-encodes `s` for a query value: all but `A–Z a–z 0–9 - _ . ~`.
@@ -773,33 +1144,331 @@ mod tests {
         assert!(!text.contains("as submitted"));
     }
 
+    /// The link's `key` field, decoded.
+    fn field(link: &str, key: &str) -> Option<String> {
+        let query = link.split_once('?')?.1;
+        let value = query
+            .split('&')
+            .find_map(|kv| kv.strip_prefix(&format!("{key}=")))?;
+        let bytes = value.as_bytes();
+        let mut out = Vec::new();
+        let mut i = 0;
+        while i < bytes.len() {
+            if bytes[i] == b'%' {
+                out.push(u8::from_str_radix(&value[i + 1..i + 3], 16).unwrap());
+                i += 3;
+            } else {
+                out.push(bytes[i]);
+                i += 1;
+            }
+        }
+        Some(String::from_utf8(out).unwrap())
+    }
+
+    fn log(name: &str, text: &str) -> Log {
+        tail(name, text, MAX_LOG_LINES)
+    }
+
+    const APP: &str = "2026-11-20T09:00:01.000000Z  INFO icmm_desktop::active: connected\n\
+                       2026-11-20T09:00:03.000000Z  WARN icmm_desktop::active: slow\n\
+                       2026-11-20T09:00:05.000000Z ERROR icmm_desktop::engine: the engine failed\n";
+    const AGENT: &str = "2026-11-20T09:00:02.000Z list_runs id=1 3 ms ok\n\
+                         2026-11-20T09:00:04.000Z get_run id=2 5 ms internal\n\
+                         log_ref=abc\n\
+                         Traceback (most recent call last):\n\
+                         2026-11-20T09:00:06.000Z list_runs id=3 2 ms ok\n\
+                         2026-11-20T09:00:07.000Z get_run id=4 2 ms ok\n";
+
+    fn start() -> ReportPage {
+        ReportPage {
+            kind: ReportPageKind::Start,
+            name: "start 37 of #214/T12.3".into(),
+            job_log: Some("line 1\nTraceback\nRuntimeError: the core returned 4\n".into()),
+            run: Some("{\n  \"run\": 214,\n  \"settings\": { \"name\": \"a b\" },\n  \"search_seed\": 7\n}".into()),
+        }
+    }
+
     #[test]
     fn the_link_fills_the_forms_fields() {
         let f = failure();
+        let p = start();
+        let logs = [
+            log("app.2026-11-20.log", APP),
+            log("agent.2026-11-20.log", AGENT),
+        ];
         let r = Report {
             failure: Some(&f),
-            page: None,
+            page: Some(&p),
             versions: "ICMM 0.1.0 · macOS 15.1 on arm64",
             platform: "SSH to a SLURM cluster",
-            logs: &[],
+            logs: &logs,
         };
-        let link = issue_link(&title(Some(&f)), &what_happened(&r), r.versions);
+        let link = issue_link(&r);
         assert!(link.starts_with(
             "https://github.com/meschoening/icmm/issues/new?template=report.yml&title=ICMM%E2%80%99s%20engine%20didn%E2%80%99t%20pass"
         ));
-        assert!(link.contains(
-            "&versions=ICMM%200.1.0%20%C2%B7%20macOS%2015.1%20on%20arm64&what-happened="
-        ));
-        assert!(link.contains("%60%60%60%0Aself-check%3A%20libicmm%20returned%204%0A%60%60%60"));
-        assert!(link.ends_with("Platform%3A%20SSH%20to%20a%20SLURM%20cluster."));
+        assert_eq!(
+            field(&link, VERSIONS).unwrap(),
+            "ICMM 0.1.0 · macOS 15.1 on arm64"
+        );
+        assert_eq!(
+            field(&link, WHAT_HAPPENED).unwrap(),
+            "ICMM’s engine didn’t pass its self-check on McKelvey HPC.\n\n\
+             That’s a problem in ICMM, not something you did. Retry once; if it fails again, report it.\n\n\
+             On start 37 of #214/T12.3.\n\n\
+             Platform: SSH to a SLURM cluster."
+        );
+        assert_eq!(
+            field(&link, REPORT).unwrap(),
+            "== The raw line\n\
+             self-check: libicmm returned 4\n\n\
+             == The run, as submitted\n\
+             {\"run\":214,\"settings\":{\"name\":\"a b\"},\"search_seed\":7}\n\n\
+             == The end of its job log\n\
+             line 1\nTraceback\nRuntimeError: the core returned 4\n\n\
+             == The newest warnings and errors\n\
+             2026-11-20T09:00:03.000000Z  WARN icmm_desktop::active: slow\n\
+             2026-11-20T09:00:04.000Z get_run id=2 5 ms internal\n\
+             log_ref=abc\n\
+             Traceback (most recent call last):\n\
+             2026-11-20T09:00:05.000000Z ERROR icmm_desktop::engine: the engine failed"
+        );
+    }
+
+    #[test]
+    fn a_report_about_no_failure_fills_no_raw_line() {
+        let r = Report {
+            failure: None,
+            page: None,
+            versions: "v",
+            platform: "This computer",
+            logs: &[],
+        };
+        let link = issue_link(&r);
+        assert_eq!(
+            field(&link, WHAT_HAPPENED).unwrap(),
+            "Platform: This computer."
+        );
+        assert_eq!(field(&link, REPORT), None);
+    }
+
+    #[test]
+    fn a_job_log_and_the_warnings_keep_their_newest_lines() {
+        let job: String = (1..=30).map(|n| format!("job {n}\n")).collect();
+        let app: String = (1..=30)
+            .map(|n| {
+                format!(
+                    "2026-11-20T09:00:{n:02}.000000Z  WARN icmm_desktop::x: w{n} {}\n",
+                    "x".repeat(200)
+                )
+            })
+            .collect();
+        let p = ReportPage {
+            job_log: Some(job),
+            run: None,
+            ..start()
+        };
+        let logs = [log("app.2026-11-20.log", &app)];
+        let link = issue_link(&Report {
+            failure: None,
+            page: Some(&p),
+            versions: "v",
+            platform: "p",
+            logs: &logs,
+        });
+        let report = field(&link, REPORT).unwrap();
+        let (job, warnings) = report
+            .split_once("\n\n== The newest warnings and errors\n")
+            .unwrap();
+        let job: Vec<&str> = job.lines().skip(1).collect();
+        assert_eq!(job.len(), JOB_LOG_LINES);
+        assert_eq!((job[0], *job.last().unwrap()), ("job 11", "job 30"));
+        let warnings: Vec<&str> = warnings.lines().collect();
+        assert_eq!(warnings.len(), LOG_LINES);
+        assert!(warnings[0].contains(" w15 "), "{}", warnings[0]);
+        assert!(warnings.last().unwrap().contains(" w30 "));
+        assert!(
+            warnings
+                .iter()
+                .all(|w| w.chars().count() == LINE_CHARS && w.ends_with('…'))
+        );
+    }
+
+    #[test]
+    fn a_link_over_its_room_cuts_the_lowest_part_first() {
+        let f = failure();
+        let p = ReportPage {
+            job_log: Some("é\n".repeat(JOB_LOG_LINES)),
+            ..start()
+        };
+        let app: String = (0..200)
+            .map(|n| {
+                format!(
+                    "2026-11-20T09:{:02}:{:02}.000000Z ERROR icmm_desktop::x: {}\n",
+                    n / 60,
+                    n % 60,
+                    "é".repeat(150)
+                )
+            })
+            .collect();
+        let logs = [log("app.2026-11-20.log", &app)];
+        let link = issue_link(&Report {
+            failure: Some(&f),
+            page: Some(&p),
+            versions: "v",
+            platform: "p",
+            logs: &logs,
+        });
+        assert!(link.len() <= MAX_LINK, "{}", link.len());
+        assert!(link.len() > MAX_LINK - 1500, "{}", link.len());
+        let report = field(&link, REPORT).unwrap();
+        // Every part above the warnings is whole; the warnings keep what fits, the newest.
+        assert!(report.contains("{\"run\":214,"));
+        assert!(report.contains(&"é\n".repeat(JOB_LOG_LINES - 1)));
+        let warnings: Vec<&str> = report
+            .split_once("== The newest warnings and errors\n")
+            .unwrap()
+            .1
+            .lines()
+            .collect();
+        assert!(
+            !warnings.is_empty() && warnings.len() < LOG_LINES,
+            "{}",
+            warnings.len()
+        );
+        assert!(warnings.last().unwrap().starts_with("2026-11-20T09:03:19"));
+
+        // A raw line too long for the room is cut, ending `…`, and nothing below it goes in.
+        let f = ReportFailure {
+            raw: Some("x".repeat(9000)),
+            ..failure()
+        };
+        let link = issue_link(&Report {
+            failure: Some(&f),
+            page: Some(&p),
+            versions: "v",
+            platform: "p",
+            logs: &logs,
+        });
+        assert!(link.len() <= MAX_LINK, "{}", link.len());
+        let report = field(&link, REPORT).unwrap();
+        assert!(report.starts_with("== The raw line\nxxx"));
+        assert!(report.ends_with("x…"));
+        assert!(!report.contains("== The run"));
     }
 
     #[test]
     fn a_long_what_happened_is_cut_to_keep_the_link_short() {
-        let long = "é".repeat(5000);
-        let link = issue_link("t", &long, "v");
+        let f = ReportFailure {
+            what: "é".repeat(5000),
+            next: None,
+            raw: Some("raw".into()),
+        };
+        let link = issue_link(&Report {
+            failure: Some(&f),
+            page: None,
+            versions: "v",
+            platform: "p",
+            logs: &[],
+        });
         assert!(link.len() <= MAX_LINK, "{}", link.len());
         assert!(link.ends_with("%C3%A9%E2%80%A6"));
+        assert_eq!(field(&link, REPORT), None);
+    }
+
+    #[test]
+    fn a_line_of_three_backticks_cant_end_the_reports_code_block() {
+        let f = ReportFailure {
+            raw: Some("before\n```\n  ```` x\n    ```\nin `a ``` b`".into()),
+            ..failure()
+        };
+        let r = Report {
+            failure: Some(&f),
+            page: None,
+            versions: "v",
+            platform: "p",
+            logs: &[],
+        };
+        let escaped = "before\n\u{200B}```\n  \u{200B}```` x\n    ```\nin `a ``` b`";
+        assert_eq!(
+            field(&issue_link(&r), REPORT).unwrap(),
+            format!("== The raw line\n{escaped}")
+        );
+        assert!(whole(&r).contains(escaped));
+    }
+
+    #[test]
+    fn the_whole_report_counts_the_agents_ok_requests_by_method() {
+        let f = failure();
+        let logs = [
+            log("app.2026-11-20.log", APP),
+            log("agent.2026-11-20.log", AGENT),
+        ];
+        let text = whole(&Report {
+            failure: Some(&f),
+            page: None,
+            versions: "v",
+            platform: "p",
+            logs: &logs,
+        });
+        assert!(text.starts_with("ICMM problem report\n"));
+        assert!(text.contains("\n== The failure\nICMM’s engine didn’t pass"));
+        assert!(text.contains(&format!("\n== app.2026-11-20.log, 3 lines\n{APP}")));
+        assert!(
+            text.ends_with(
+                "\n== agent.2026-11-20.log, 6 lines, its 3 ok requests counted by method\n\
+             2026-11-20T09:00:04.000Z get_run id=2 5 ms internal\n\
+             log_ref=abc\n\
+             Traceback (most recent call last):\n\
+             ok requests: list_runs 2 · get_run 1\n"
+            ),
+            "{text}"
+        );
+    }
+
+    #[test]
+    fn the_whole_report_takes_the_app_log_from_its_end_to_fit() {
+        let app: String = (0..1000)
+            .map(|n| {
+                format!(
+                    "2026-11-20T09:00:00.000000Z  INFO icmm_desktop::x: line {n} {}\n",
+                    "x".repeat(90)
+                )
+            })
+            .collect();
+        let logs = [
+            log("app.2026-11-20.log", &app),
+            log("agent.2026-11-20.log", AGENT),
+        ];
+        let text = whole(&Report {
+            failure: None,
+            page: None,
+            versions: "v",
+            platform: "p",
+            logs: &logs,
+        });
+        let chars = text.chars().count();
+        assert!(chars <= MAX_WHOLE && chars > MAX_WHOLE - 200, "{chars}");
+        assert!(text.contains(" line 999 "));
+        assert!(!text.contains(" line 0 "));
+        assert!(text.contains("== app.2026-11-20.log, its last "));
+        assert!(text.contains(" of 1000 lines\n"));
+        assert!(text.contains("get_run id=2 5 ms internal\n"));
+
+        // However long, it's cut to fit.
+        let f = ReportFailure {
+            raw: Some("é".repeat(80_000)),
+            ..failure()
+        };
+        let text = whole(&Report {
+            failure: Some(&f),
+            page: None,
+            versions: "v",
+            platform: "p",
+            logs: &logs,
+        });
+        assert_eq!(text.chars().count(), MAX_WHOLE);
+        assert!(text.ends_with('…'));
     }
 
     #[test]
@@ -817,7 +1486,7 @@ mod tests {
     #[test]
     fn the_issue_form_has_the_fields_the_link_fills() {
         let form = include_str!("../../../docs/issue-page/report.yml");
-        for id in [WHAT_HAPPENED, VERSIONS] {
+        for id in [WHAT_HAPPENED, VERSIONS, REPORT] {
             assert!(form.contains(&format!("id: {id}\n")), "{id}");
         }
         assert!(form.contains("id: doing\n"));

@@ -219,7 +219,7 @@ def time_evaluations(
     ]
     at_once = max(1, min(params.running_starts, os.cpu_count() or 1))
     batch = min(params.population, BATCH_MOST)
-    scoring_s, scored = _scoring(
+    scoring_per, scored = _scoring(
         partial(Session, library, protocols=arrays),
         [(t, bounds.box(t)) for t in topologies],
         population=batch,
@@ -238,7 +238,7 @@ def time_evaluations(
             seconds=SEARCHED_FOR_S,
             clock=clock,
         )
-    per_evaluation = scoring_s / scored + searched["searching_s"] / searched["evaluations"]
+    per_evaluation = scoring_per + searched["searching_s"] / searched["evaluations"]
     return EvaluationTime(
         seconds_per_evaluation=per_evaluation, evaluations=scored + searched["evaluations"]
     )
@@ -258,12 +258,14 @@ def _scoring(
     they've all warmed up, timed for `TIMED_FOR_S`, each ending the round it's in. The core lets go
     of Python's lock while it scores, so they contend for the computer much as that many starts'
     processes do; only the Python around each batch takes turns, which separate processes
-    wouldn't. Their seconds scoring, summed, and the evaluations they scored."""
+    wouldn't. The time an evaluation took in their median round (a batch on each graph), and the
+    evaluations they scored: a round that stalled, as the first call on a just-woken computer
+    can, no longer moves the answer as a sum of every batch did (#542)."""
     import numpy as np  # Not at import: the host engine starts without it.
 
     ready = threading.Barrier(at_once)
 
-    def scorer(seed: int) -> tuple[float, int]:
+    def scorer(seed: int) -> tuple[list[float], int]:
         try:
             rng = np.random.default_rng(seed)
             with ExitStack() as stack:
@@ -281,12 +283,11 @@ def _scoring(
                         batch(s, low, high)
                     warm = True
                 ready.wait()
-                began, seconds, evaluations = clock(), 0.0, 0
+                began, rounds, evaluations = clock(), list[float](), 0
                 while evaluations == 0 or clock() - began < TIMED_FOR_S:
-                    for s, (low, high) in sessions:
-                        seconds += batch(s, low, high)
-                        evaluations += population
-                return seconds, evaluations
+                    rounds.append(sum(batch(s, low, high) for s, (low, high) in sessions))
+                    evaluations += population * len(sessions)
+                return rounds, evaluations
         except BaseException:
             ready.abort()  # the others wait for it no longer
             raise
@@ -300,7 +301,15 @@ def _scoring(
             (e for e in errors if not isinstance(e, threading.BrokenBarrierError)), errors[0]
         )
     results = [f.result() for f in done]
-    return sum(s for s, _ in results), sum(n for _, n in results)
+    rounds = [r for scored, _ in results for r in scored]
+    return median_round(rounds) / (population * len(graphs)), sum(n for _, n in results)
+
+
+def median_round(rounds: list[float]) -> float:
+    """The median of the rounds' times: the middle one, or the mean of the middle two."""
+    ordered = sorted(rounds)
+    middle = len(ordered) // 2
+    return ordered[middle] if len(ordered) % 2 else (ordered[middle - 1] + ordered[middle]) / 2
 
 
 def simulate_start(

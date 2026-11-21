@@ -82,11 +82,20 @@ export function useRunMarks(id: string | undefined) {
 
 /** The time now, in Unix ms, read again each minute: ETAs and "left" move on with it. */
 export function useMinute(): number {
+  return useTick(60_000);
+}
+
+/**
+ * The time now, in Unix ms, read again every `everyMs`: a run's page reads it
+ * every few seconds while the run goes, so a minute-long run's pace and ETA
+ * don't divide by a time up to a minute old (#538).
+ */
+export function useTick(everyMs: number): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    const timer = setInterval(() => setNow(Date.now()), everyMs);
     return () => clearInterval(timer);
-  }, []);
+  }, [everyMs]);
   return now;
 }
 

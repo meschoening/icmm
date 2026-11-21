@@ -129,6 +129,21 @@ def last_log_point(task: StartTask) -> StartLogPoint | None:
         return None
 
 
+def first_log_point(task: StartTask) -> StartLogPoint | None:
+    """The first whole line of the task's Start log: its first generation's point."""
+    try:
+        with task.log.open("rb") as f:
+            line = f.readline(TAIL_BYTES)
+    except OSError:
+        return None
+    if not line.endswith(b"\n"):
+        return None
+    try:
+        return StartLogPoint.model_validate_json(line)
+    except ValidationError:
+        return None
+
+
 def log_curve(task: StartTask, per_start: int) -> Curve | None:
     """The try's **Progress curve**, thinned from its whole Start log as it is now, a line at a
     time; `None` if there's no log to read. A line it can't read is passed over, and one still

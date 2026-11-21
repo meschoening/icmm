@@ -12,11 +12,13 @@ import json
 import sqlite3
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
 from icmm import stretches
-from icmm.db import append_change, now
+from icmm.db import append_change, iso, now
+from icmm.wire.config import Config
 from icmm.wire.dataset import Template
 from icmm.wire.run import (
     DatasetBest,
@@ -28,6 +30,7 @@ from icmm.wire.run import (
     RunDataset,
     RunFailure,
     RunHold,
+    RunPace,
     RunProgress,
     RunProtocol,
     RunQueued,
@@ -471,8 +474,9 @@ def _running(running: str | None, stops: list[dict[str, Any]]) -> dict[str, Any]
 
 
 def read(conn: sqlite3.Connection, run_id: int, data_folder: Path) -> Run:
-    """The run `run_id`, in one query, and whether its engine is still installed, in one look at
-    the Data folder; `NotFoundError` for one deleted or never submitted."""
+    """The run `run_id`, in one query, its running starts' pace in a second over its tries out,
+    and whether its engine is still installed, in one look at the Data folder; `NotFoundError`
+    for one deleted or never submitted."""
     from icmm import bundle, config, engines, folders
     from icmm.coordinator import files
 
@@ -519,6 +523,40 @@ def read(conn: sqlite3.Connection, run_id: int, data_folder: Path) -> Run:
             for p in json.loads(protocols or "[]")
         ],
         folder_bytes=written or None,
+        pace=None if fits is None else _pace(conn, run_id, fits),
+    )
+
+
+def _pace(conn: sqlite3.Connection, run_id: int, settings: Config) -> RunPace | None:
+    """The run's running starts' pace (#542), from what its coordinator read of their tries' Start
+    logs, in a second query over the tries out (at most its Running-starts cap of them running)."""
+    search = settings.search
+    budget = -(-search.evaluation_budget // search.population) * search.population
+    rows = conn.execute(
+        "SELECT started_at, live_seconds_per_evaluation, live_end "
+        "FROM start_tries INDEXED BY start_tries_out WHERE run_id = ? AND ended_at IS NULL "
+        "AND started_at IS NOT NULL AND task_ended_at IS NULL",
+        (run_id,),
+    ).fetchall()
+    paced = [
+        (per, datetime.fromisoformat(end).timestamp())
+        for _, per, end in rows
+        if per is not None and per > 0 and end is not None
+    ]
+    if not paced or budget <= 0:
+        return None
+    mean = sum(per for per, _ in paced) / len(paced)
+    # A running start that hasn't reported its own pace yet runs its whole budget at theirs.
+    ends = [end for _, end in paced] + [
+        datetime.fromisoformat(started).timestamp() + budget * mean
+        for started, per, end in rows
+        if per is None or not per > 0 or end is None
+    ]
+    return RunPace(
+        starts=len(paced),
+        seconds_per_evaluation=mean,
+        mean_end=iso(datetime.fromtimestamp(sum(ends) / len(ends), UTC)),
+        last_end=iso(datetime.fromtimestamp(max(ends), UTC)),
     )
 
 
@@ -727,8 +765,8 @@ def ended_since(conn: sqlite3.Connection, seq: int) -> tuple[str, int, int, list
 
 
 def timings(conn: sqlite3.Connection) -> list[RunTiming]:
-    """The platform's finished starts summed by states and CPUs, in one query over a few rows
-    per run."""
+    """The platform's ended runs' finished starts summed by states and CPUs, in one query over a
+    few rows per run (#542: "From 3 finished 11-state runs here" counts runs that ended)."""
     return [
         RunTiming(
             num_states=states,
@@ -741,7 +779,7 @@ def timings(conn: sqlite3.Connection) -> list[RunTiming]:
         for states, cpus, runs, starts, evaluations, elapsed_s in conn.execute(
             "SELECT r.num_states, t.cpus, COUNT(*), SUM(t.starts), SUM(t.evaluations), "
             "SUM(t.elapsed_s) FROM run_timings t JOIN runs r ON r.id = t.run_id "
-            "WHERE r.deleted_at IS NULL AND t.starts > 0 "
+            "WHERE r.deleted_at IS NULL AND r.ended_at IS NOT NULL AND t.starts > 0 "
             "GROUP BY r.num_states, t.cpus ORDER BY r.num_states, t.cpus"
         )
     ]

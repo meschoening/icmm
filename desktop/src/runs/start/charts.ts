@@ -49,12 +49,19 @@ export interface Progress {
   base: string;
   me: string;
   now: string;
-  /** The finished starts' middle 80 % and median, and the best start's line; each empty undrawn. */
+  /**
+   * The finished starts' middle 80 % and median, from `SPREAD_FROM` of them;
+   * under that, each one's own thin line but the best's and this start's
+   * (#539 U3); and the best start's line. Each is empty undrawn.
+   */
   band: string;
   median: string;
+  others: string;
   best: string;
-  /** The finished starts the band and median are read from: 0 when they aren't drawn. */
+  /** The finished starts drawn beside this start's line, band or lines: 0 when none is. */
   finished: number;
+  /** How many of them `others` draws: "the other 2 finished". */
+  otherCount: number;
   /** The latest point, in the view box. */
   dot: { x: number; y: number };
   labels: Label[];
@@ -71,6 +78,13 @@ export interface Beside {
 
 /** Where the finished starts' median and middle 80 % are read, across the evaluations. */
 const SAMPLES = 120;
+
+/**
+ * From how many finished starts their median and middle 80 % are drawn:
+ * under it, the middle 80 % is most of their range, and one stuck start
+ * fills the chart, so each is a line of its own (#539 U3).
+ */
+export const SPREAD_FROM = 10;
 
 /** "64 finished starts", "1 finished start". */
 export const finishedWords = (n: number) => `${whole(n)} finished start${n === 1 ? "" : "s"}`;
@@ -107,8 +121,9 @@ function logEnds(lo: number, hi: number): [number, number] {
  * budget, on a log scale, with where it is now. `end` names that line:
  * "now", "time limit", "canceled" or "as of 10:44 AM". `beside` adds its
  * topology's finished starts: their median and middle 80 %, read in RMSE
- * from two of them on, and the best start's line. A `finished` start is
- * one of them, its line drawn to its end and named there, with no now.
+ * from `SPREAD_FROM` of them on, else each one's own thin line, and the
+ * best start's line. A `finished` start is one of them, its line drawn to
+ * its end and named there, with no now.
  */
 export function progressOf(
   points: StartLogPoint[],
@@ -138,7 +153,14 @@ export function progressOf(
     done?.best === true
       ? []
       : (lines.find((l) => best !== null && l.start === best.start)?.line ?? []);
-  const spread = lines.length >= 2;
+  const spread = lines.length >= SPREAD_FROM;
+  // Under SPREAD_FROM, every finished start but this one and the best is its own line: the
+  // best's only where its line is drawn, so a start the scan names best is never drawn nowhere.
+  const others = spread
+    ? []
+    : lines.filter(
+        (l) => l.start !== a.start && (bestLine.length === 0 || l.start !== best?.start),
+      );
   /** The finished starts' 10th, 50th and 90th percentiles at `e`; `undefined` before any begins. */
   const spreadAt = (e: number) => {
     const rs = lines
@@ -162,6 +184,7 @@ export function progressOf(
   let [low, high] = [Math.min(...trains), Math.max(...trains)];
   for (const v of [
     ...bestLine.map((p) => Math.exp(p.y)),
+    ...others.flatMap((l) => l.line.map((p) => Math.exp(p.y))),
     ...samples.flatMap((s) => [s.q[0], s.q[2]]),
   ]) {
     [low, high] = [Math.min(low, v), Math.max(high, v)];
@@ -229,10 +252,27 @@ export function progressOf(
         : latest.train_rmse! > q[2]
           ? "above"
           : "inside";
+  const drawnBeside = samples.length > 0 || others.length > 0 || bestLine.length > 0;
   const where =
-    side === undefined
+    side !== undefined
+      ? `, ${side} the middle 80 % of the ${finishedWords(lines.length)} at that point`
+      : !spread && drawnBeside
+        ? `, beside the ${finishedWords(lines.length)}`
+        : "";
+  const ends = others.map((l) => Math.exp(l.line[l.line.length - 1].y)).sort((p, q) => p - q);
+  const bestSaid = bestEnd !== undefined && best !== null;
+  // "the other 2 ended between 0.0466 and 0.5200", after the best start; one number when they round alike.
+  const [first, last] = [rmse(ends[0] ?? 0), rmse(ends[ends.length - 1] ?? 0)];
+  const who = bestSaid
+    ? `the other${ends.length === 1 ? "" : ` ${whole(ends.length)}`}`
+    : ends.length === 1
+      ? "it"
+      : "they";
+  const theOthers =
+    ends.length === 0
       ? ""
-      : `, ${side} the middle 80 % of the ${finishedWords(lines.length)} at that point`;
+      : `${bestSaid ? ", and " : "; "}${who} ended ` +
+        (first === last ? `at ${first}` : `between ${first} and ${last}`);
   return {
     grid: yt.map((v) => `M${X0} ${f1(ty(v))}H${X1}`).join(""),
     vgrid: xt.map((e) => `M${f1(tx(e))} ${Y1}V${Y0}`).join(""),
@@ -250,8 +290,12 @@ export function progressOf(
             .map((s) => at(s.e, s.q[0]))
             .join("L")}Z`,
     median: samples.map((s, i) => `${i ? "L" : "M"}${at(s.e, s.q[1])}`).join(""),
+    others: others
+      .map((l) => l.line.map((p, i) => `${i ? "L" : "M"}${at(p.x, Math.exp(p.y))}`).join(""))
+      .join(""),
     best: bestLine.map((p, i) => `${i ? "L" : "M"}${at(p.x, Math.exp(p.y))}`).join(""),
-    finished: samples.length === 0 ? 0 : lines.length,
+    finished: drawnBeside ? lines.length : 0,
+    otherCount: others.length,
     dot: { x: nx, y: ny },
     labels,
     aria:
@@ -266,9 +310,10 @@ export function progressOf(
         : `Best train RMSE so far against evaluations, on a log scale. Start ${a.start} is at ` +
           `${rmse(latest.train_rmse!)} after ${evaluationsWords(latest.evaluations)} of ` +
           `${evaluationsWords(budget)} evaluations${where}` +
-          (bestEnd !== undefined && best !== null
-            ? `; the best start, start ${best.start}, finished at ${rmse(best.train)}.`
-            : "."),
+          (bestSaid
+            ? `; the best start, start ${best.start}, finished at ${rmse(best.train)}`
+            : "") +
+          `${theOthers}.`,
   };
 }
 

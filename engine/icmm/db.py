@@ -685,6 +685,20 @@ MIGRATIONS: tuple[Migration, ...] = (
     # in its slot never takes the count past the cap (#469). A try an older engine coordinates
     # keeps `NULL`, counted running until it's collected, as that engine counts it.
     additive("ALTER TABLE start_tries ADD COLUMN task_ended_at TEXT"),
+    # 27: the name of the dataset a dataset was duplicated from, as it was when the copy was made
+    # (#530), which Dataset detail's facts say. Nothing updates it: the copy is independent. A
+    # dataset saved, imported or saved again as a new one keeps `NULL`, and so does a copy an
+    # older engine made.
+    additive("ALTER TABLE datasets ADD COLUMN copied_from TEXT"),
+    # 28: a running try's own pace (#542), as its coordinator last read its Start log: its time
+    # for an evaluation between its first log point and its latest, so the worker's start-up
+    # isn't counted, and when it ends at that pace, from when that point was read. `NULL` until
+    # it has logged past its first point, and for a try an older engine coordinates: its run's
+    # ETA then waits for a topology to end.
+    additive(
+        "ALTER TABLE start_tries ADD COLUMN live_seconds_per_evaluation REAL",
+        "ALTER TABLE start_tries ADD COLUMN live_end TEXT",
+    ),
 )
 """Each migration, in order. Append only: never edit a shipped one.
 

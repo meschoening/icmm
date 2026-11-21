@@ -127,7 +127,9 @@ export interface Plan {
  * This computer's own timing of a config, when no finished start has timed
  * this many states at this many CPUs (`needed`): its dataset, states, box and
  * population, its starts run as the Job defaults run them (#508), kept as long
- * as the page lives. Not connected, a dataset that was never read can't be.
+ * as the page lives. Beside a run fitting here it reuses the last timing made
+ * with none fitting, and times only when there is none (#542). Not connected,
+ * a dataset that was never read can't be.
  * Submit run's, and the Config builder's Time (#471).
  */
 export function useHostTiming(a: {
@@ -156,12 +158,24 @@ export function useHostTiming(a: {
       population !== undefined &&
       cpus !== undefined &&
       runningStarts !== undefined
-        ? { dataset: content, numStates, bounds, population, cpus, runningStarts }
+        ? {
+            dataset: content,
+            numStates,
+            bounds,
+            population,
+            cpus,
+            runningStarts,
+          }
         : undefined,
     [needed, content, numStates, bounds, population, cpus, runningStarts],
   );
-  const query = useEvaluationTime(input);
+  // Not timed under the load of a run fitting here: its starts would slow the timing (#542, E1).
+  const inFlight = useInFlightRuns(input !== undefined);
+  const busy = inFlight.data?.some((r) => r.progress.starts_running > 0) ?? false;
+  const known = inFlight.data !== undefined || inFlight.isError;
+  const query = useEvaluationTime(known ? input : undefined, busy);
   if (input !== undefined) {
+    if (!known) return { kind: "pending" };
     if (query.data !== undefined) {
       return { kind: "ready", seconds: query.data.seconds_per_evaluation };
     }
@@ -288,7 +302,15 @@ function useBegins(a: {
       kind: "forecast",
       forecast:
         slurm && jobs !== undefined && jobs !== null
-          ? slurmForecast({ jobs, limit, cap, partition, inFlight, etas, space })
+          ? slurmForecast({
+              jobs,
+              limit,
+              cap,
+              partition,
+              inFlight,
+              etas,
+              space,
+            })
           : localForecast({ platform, cap, inFlight, etas, space }),
     };
   }
@@ -297,7 +319,10 @@ function useBegins(a: {
     // The line of an ETA that can come is kept while its run is read; one that can't isn't.
     etaPending:
       reading && runs === undefined
-        ? etaDueOf(flying, { timings: a.timings, cpus: job?.cpus_per_start ?? 1 })
+        ? etaDueOf(flying, {
+            timings: a.timings,
+            cpus: job?.cpus_per_start ?? 1,
+          })
         : NONE_PENDING,
     partition,
     jobsRetry: { retry: jobsRead.retry, again: jobsRead.again },
@@ -318,7 +343,9 @@ export function usePlan(a: {
   ready: SavedConfig | undefined;
   /** Something blocks Submit run, which says what: Begins forecasts nothing (#326). */
   blocked: boolean;
-  reads: Pick<NumberReads, "settingsFailed" | "contentFailed"> & { countsFailed: boolean };
+  reads: Pick<NumberReads, "settingsFailed" | "contentFailed"> & {
+    countsFailed: boolean;
+  };
   dataFolder: string;
   /** When the reads are from: now, or as of when the connection went, which holds the ETAs (#326). */
   now: number;
@@ -357,7 +384,11 @@ export function usePlan(a: {
   const work =
     ready === undefined
       ? undefined
-      : workOf({ search: ready.config.search, saved: ready, counts: seen?.counts });
+      : workOf({
+          search: ready.config.search,
+          saved: ready,
+          counts: seen?.counts,
+        });
   // The folders as This computer's OS writes them, on Windows in full (#326); read as they're saved.
   const shownPath = useShownPath(platform);
   const output = outputView({
@@ -409,11 +440,12 @@ export function usePlan(a: {
       ? timeGap(gap ?? "loading")
       : timeView({
           work,
+          numStates,
           evaluations: evaluationsPerStart(search.evaluation_budget, search.population),
           cap: job.max_running_starts,
           overheadS: startOverheadS(job),
           limitMin: job.type === "slurm" ? job.time_limit_per_start_min : null,
-          timing: timingOf({ timings, numStates, cpus, host, live }),
+          timing: timingOf({ timings, numStates, cpus, slurm, host, live }),
         });
   const stages =
     job === undefined
