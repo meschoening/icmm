@@ -18,7 +18,7 @@ import type {
   Topology,
   TopologyBest,
 } from "../../wire/types.gen";
-import { counted, rmse } from "../words";
+import { counted, exitCode, rmse } from "../words";
 
 type Platform = Pick<SavedPlatform, "type" | "name">;
 
@@ -774,7 +774,7 @@ function whyOf(s: StartSummary): string {
     }
     case "error":
     case null:
-      return r?.exit_code == null ? "stopped with an error" : `exit code ${r.exit_code}`;
+      return r?.exit_code == null ? "stopped with an error" : `exit code ${exitCode(r.exit_code)}`;
   }
 }
 
@@ -844,31 +844,51 @@ export function emptyWords(
 
 // ── when it ends ──────────────────────────────────────────────────────────────────────────────
 
+/** The median of `xs`, the lower of the middle two; `undefined` for none. */
+function median(xs: number[]): number | undefined {
+  const sorted = [...xs].sort((x, y) => x - y);
+  return sorted[Math.floor((sorted.length - 1) / 2)];
+}
+
 /**
- * When the topology's last start ends: each start takes the median time of its
- * finished starts with what a start takes beside its evaluations (`overheadS`,
- * #508), or `perStartS`, the platform's, before one has finished; the running
- * ones counted from when they began, the rest taking the slots as they free;
- * as many slots as run now, or `slots` while none does. `undefined` with
- * nothing left to run, or no time per start to go by.
+ * When the topology's last start ends: each running one when it says it
+ * ends at its own pace (`so_far.ends_at`, #556, G3), else from when it began; the
+ * rest taking the slots as they free, each the median time of its finished
+ * starts with what a start takes beside its evaluations (`overheadS`, #508),
+ * else of its running ones from when they began to when they end, else
+ * `perStartS`, the platform's; as many slots as run now, or `slots` while
+ * none does. `undefined` with nothing left to run, or no time per start to
+ * go by.
  */
 export function etaOf(
   starts: StartSummary[],
   a: { now: number; slots: number; overheadS: number; perStartS?: number },
 ): number | undefined {
-  const times = starts
-    .flatMap((s) => (s.state === "finished" && s.elapsed_s !== null ? [s.elapsed_s] : []))
-    .sort((x, y) => x - y);
-  const per =
-    times.length > 0 ? times[Math.floor((times.length - 1) / 2)] + a.overheadS : a.perStartS;
   const running = starts.filter((s) => s.state === "running");
+  const began = (s: StartSummary) =>
+    s.ran_with?.started_at ? Date.parse(s.ran_with.started_at) : Number.NaN;
+  const ends = (s: StartSummary) => (s.so_far?.ends_at ? Date.parse(s.so_far.ends_at) : Number.NaN);
+  const finished = median(
+    starts.flatMap((s) => (s.state === "finished" && s.elapsed_s !== null ? [s.elapsed_s] : [])),
+  );
+  const own = median(
+    running.flatMap((s) => {
+      const seconds = (ends(s) - began(s)) / 1000;
+      return seconds > 0 ? [seconds] : [];
+    }),
+  );
+  const per = finished !== undefined ? finished + a.overheadS : (own ?? a.perStartS);
   const left = starts.filter((s) => s.state === "queued" || s.state === "waiting").length;
-  if (per === undefined || running.length + left === 0) return undefined;
-  const ms = per * 1000;
-  const free = running.map((s) => {
-    const began = s.ran_with?.started_at ? Date.parse(s.ran_with.started_at) : a.now;
-    return Math.max(a.now, began + ms);
-  });
+  if (running.length + left === 0) return undefined;
+  const free: number[] = [];
+  for (const s of running) {
+    const end = ends(s);
+    if (!Number.isNaN(end)) free.push(Math.max(a.now, end));
+    else if (per === undefined) return undefined;
+    else free.push(Math.max(a.now, (Number.isNaN(began(s)) ? a.now : began(s)) + per * 1000));
+  }
+  if (left > 0 && per === undefined) return undefined;
+  const ms = (per ?? 0) * 1000;
   while (free.length < (running.length > 0 ? running.length : Math.max(1, a.slots)))
     free.push(a.now);
   let last = Math.max(...free);

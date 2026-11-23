@@ -123,6 +123,9 @@ class StartProgress(WireModel):
     evaluations: WireInt
     train_rmse: float | None
     val_rmse: float | None
+    ends_at: str | None
+    """When it ends at its own pace, in UTC (ISO 8601), as its coordinator last read its Start
+    log: what its topology's ETA takes (#556). `null` until it has logged past its first point."""
 
 
 class RanWith(WireModel):

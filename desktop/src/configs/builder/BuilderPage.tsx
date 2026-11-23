@@ -620,10 +620,12 @@ function Builder({
   const needChecks: FieldIssue[] = tried
     ? wanted.map((n) => ({ field: n.field, message: n.check, severity: "error" }))
     : [];
-  // A check made while no dataset was chosen says so until the next answers: that's the need's.
+  // A check made while no name was written or no dataset was chosen says so until the next
+  // answers: that's the need's.
+  const unnamed = answered?.check.config.name === "";
   const noDataset = draft.dataset === "" || answered?.check.config.dataset_id === "";
   const engine = [
-    ...(answered?.check.issues ?? []),
+    ...(answered?.check.issues ?? []).filter((i) => !(unnamed && i.path[0] === "name")),
     ...(refused !== null && refused.body === body ? refused.issues : []),
   ].filter(
     (i) =>

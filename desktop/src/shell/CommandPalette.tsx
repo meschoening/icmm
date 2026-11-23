@@ -390,7 +390,7 @@ export function CommandPalette({
         : {
             what: (
               <>
-                <span className="mono">{gone}</span> was deleted since you opened it.
+                <span className="mono">{gone}</span> was deleted since you last opened it.
               </>
             ),
           };

@@ -482,7 +482,8 @@ class RunPace(WireModel):
     **Start logs**: those past their first log point report it."""
 
     starts: WireInt
-    """The running starts that report it: at least 1."""
+    """The running starts that report it. 0 while none does yet, as at a hand-off (#556): its pace
+    is then its collected starts'."""
     seconds_per_evaluation: float
     """Their times for an evaluation, averaged, each from its first log point to its latest, so
     a worker's start-up isn't counted: one start's time on the computers they run on."""

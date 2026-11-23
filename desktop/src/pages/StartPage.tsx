@@ -64,6 +64,7 @@ import {
   type StartRef,
 } from "../runs/start/queries";
 import {
+  againstOf,
   budgetOf,
   clusterOf,
   endedShort,
@@ -1691,6 +1692,8 @@ function ParametersSection({
     const tops = shown.shown.filter((s) => !s.item.me).map((s) => s.values);
     const open = new Set([2 * startRef.openState, 2 * startRef.openState + 1]);
     const parts = Array.from({ length: rows.count }, (_, i) => i).filter((i) => !open.has(i));
+    // This start's place in the Top 10, if it's there: under 10 finished, it isn't its own dot (#557).
+    const place = top.findIndex((s) => s.start === n);
     const bands = new Map(
       parts.map((i) => [
         i,
@@ -1698,12 +1701,17 @@ function ParametersSection({
           mine[i],
           tops.map((v) => v[i]),
           shown.ranges[i],
+          place,
         ),
       ]),
     );
     const outside = [...bands.values()].filter((b) => b.outside).length;
     // A start in the Top 10 is inside its range, so it isn't counted against it (#360, RF23).
-    const inTop = top.some((s) => s.start === n);
+    const inTop = place >= 0;
+    const against = againstOf(top, title, n);
+    // Under 10 finished starts, each other finished start is a dot of its own (#557).
+    const few = against.few !== undefined;
+    const others = few ? top.length - 1 - (place > 0 ? 1 : 0) : 0;
     sub = isBest ? (
       <>
         <span className="n">{rows.count}</span> · <span className="mono">ln</span> units and mV ·
@@ -1712,8 +1720,8 @@ function ParametersSection({
       </>
     ) : tops.length > 0 ? (
       <>
-        {whose}, against {title}’s top 10 by Train RMSE
-        {!inTop && (
+        {whose}, against {against.head}
+        {!inTop && !few && (
           <>
             {" "}
             · <span className="n">{outside}</span> of <span className="n">{parts.length}</span>{" "}
@@ -1764,17 +1772,25 @@ function ParametersSection({
                 <span className="sp-sw tick" />
                 start {bestStart} · best start
               </span>
-              <span>
-                <span className="sp-sw band" />
-                range of the top 10 by Train RMSE
-              </span>
+              {!few && (
+                <span>
+                  <span className="sp-sw band" />
+                  range of the top 10 by Train RMSE
+                </span>
+              )}
+              {others > 0 && (
+                <span>
+                  <span className="sp-od" />
+                  the other {others} finished
+                </span>
+              )}
             </>
           )}
         </div>
         <ParameterRows
           rows={rows}
           ranges={shown.ranges}
-          label={`Parameters of start ${n} against ${title}’s top 10`}
+          label={`Parameters of start ${n} against ${against.label}`}
           openNote={
             <>
               <b>Open state</b> · the reference: its favorability and voltage sensitivity are{" "}
@@ -1815,7 +1831,7 @@ function ParametersSection({
               <div role="cell" className="sp-ab">
                 {[rows.a, rows.b].map((p) => (
                   <div key={p.name} className="sp-abrow">
-                    <span className="pn">{p.name}</span>
+                    <span className="sp-pn">{p.name}</span>
                     {strip(p, shown.ranges[p.index], true)}
                   </div>
                 ))}
@@ -1823,20 +1839,26 @@ function ParametersSection({
             </div>
           }
         />
-        <p className="hint sp-pmhint">
-          {isBest ? (
-            <ReadingHint
-              favorability={shown.ranges[2 * (startRef.openState === 0 ? 1 : 0)].max}
-              b={shown.ranges[rows.b.index].max}
-            />
-          ) : done ? (
-            `Outside the top-10 range can mean start ${n} found a different optimum, or that the fit barely depends on that parameter.`
-          ) : short ? (
-            `Outside the top-10 range can mean start ${n} was heading for a different optimum, or hadn’t settled when it ended.`
-          ) : (
-            `Outside the top-10 range can mean start ${n} is heading for a different optimum, or that the fit barely depends on that parameter: the search keeps trying such a parameter across its range while the RMSE stays put.`
-          )}
-        </p>
+        {/* Until a start of its topology has finished, there's no top 10 to be outside of (#556, G6);
+            under 10, it says why none is (#557). */}
+        {(isBest || tops.length > 0) && (
+          <p className="hint sp-pmhint">
+            {isBest ? (
+              <ReadingHint
+                favorability={shown.ranges[2 * (startRef.openState === 0 ? 1 : 0)].max}
+                b={shown.ranges[rows.b.index].max}
+              />
+            ) : few ? (
+              against.few
+            ) : done ? (
+              `Outside the top-10 range can mean start ${n} found a different optimum, or that the fit barely depends on that parameter.`
+            ) : short ? (
+              `Outside the top-10 range can mean start ${n} was heading for a different optimum, or hadn’t settled when it ended.`
+            ) : (
+              `Outside the top-10 range can mean start ${n} is heading for a different optimum, or that the fit barely depends on that parameter: the search keeps trying such a parameter across its range while the RMSE stays put.`
+            )}
+          </p>
+        )}
       </>
     );
   }
@@ -1875,8 +1897,9 @@ function ReadingHint({ favorability, b }: { favorability: number; b: number }) {
 }
 
 /**
- * A part's strip: its range's ends and middle, the Top 10's band, the best
- * start's tick, and this start's dot, unless it's the best start, on its tick.
+ * A part's strip: its range's ends and middle, the Top 10's band (under 10
+ * finished starts, each other one's dot instead, #557), the best start's
+ * tick, and this start's dot, unless it's the best start, on its tick.
  */
 function Strip({
   band: b,
@@ -1899,6 +1922,9 @@ function Strip({
           style={{ left: `${b.band.left}%`, width: `max(3px, ${b.band.width}%)` }}
         />
       )}
+      {b.others.map((o, i) => (
+        <span key={i} className="sp-od" style={{ left: `calc(${o}% - 3.5px)` }} />
+      ))}
       {b.tick !== undefined && <span className="tk" style={{ left: `calc(${b.tick}% - 1px)` }} />}
       {me && <span className="sp-mdot" style={{ left: `calc(${b.me}% - 5px)` }} />}
     </span>

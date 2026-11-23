@@ -87,7 +87,8 @@ export function SourceStep(p: SourceStepProps) {
   if (p.reading !== null) [blocked, status] = ["Reading the workbook…", "Reading the workbook…"];
   else if (wb === undefined)
     [blocked, status] = ["Choose a workbook first", "Choose a workbook first"];
-  else if (bad) [blocked, status] = ["Choose a free name", "Choose a free name"];
+  else if (p.nameTaken) [blocked, status] = ["Choose a free name", "Choose a free name"];
+  else if (bad) [blocked, status] = ["Fix the name", "Fix the name"];
   else {
     blocked = undefined;
     status = `${count(wb.sheets.length, "sheet")} to check next`;
@@ -212,13 +213,14 @@ export function SourceStep(p: SourceStepProps) {
               autoComplete="off"
               onChange={(e) => p.setName(e.target.value)}
               aria-invalid={bad || undefined}
-              aria-describedby={`${id}-name-h`}
+              // A bad name's error takes the hint's place (#561 D9).
+              aria-describedby={bad ? `${id}-name-e` : `${id}-name-h`}
             />
             <NameCheck state={p.nameCheck} taken={bad} platform={p.platform} />
           </div>
           {p.nameTaken && free !== null && (
             <div className="taken">
-              <p className="err">
+              <p id={`${id}-name-e`} className="err">
                 {p.platform} already has a dataset named <span className="mono">{p.name}</span>.
                 Names are unique ignoring case.
               </p>
@@ -232,14 +234,20 @@ export function SourceStep(p: SourceStepProps) {
               </div>
             </div>
           )}
-          {ruleIssue !== undefined && <p className="err">{ruleIssue}</p>}
-          <span id={`${id}-name-h`} className="hint">
-            {p.proposed !== null
-              ? `From the file name; ${p.proposed} is taken, so ICMM added ${p.name.slice(p.proposed.length)}. Letters, digits, ., - and _, up to 64.`
-              : p.typed
-                ? "Letters, digits, ., - and _, up to 64."
-                : "From the file name. Letters, digits, ., - and _, up to 64."}
-          </span>
+          {ruleIssue !== undefined && (
+            <p id={`${id}-name-e`} className="err" role="alert">
+              {ruleIssue}
+            </p>
+          )}
+          {!bad && (
+            <span id={`${id}-name-h`} className="hint">
+              {p.proposed !== null
+                ? `From the file name; ${p.proposed} is taken, so ICMM added ${p.name.slice(p.proposed.length)}. Letters, digits, ., - and _, up to 64.`
+                : p.typed
+                  ? "Letters, digits, ., - and _, up to 64."
+                  : "From the file name. Letters, digits, ., - and _, up to 64."}
+            </span>
+          )}
         </section>
       )}
     </>

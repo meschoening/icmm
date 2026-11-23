@@ -65,7 +65,9 @@ export function TopologyGrid({
               · <span className="n">{whole(startsEach)}</span> starts each
             </>
           )}
-          {more > 0 && <> · the first {whole(grid.cells.length)} shown</>}
+          {more > 0 && grid.cells.length > 0 && (
+            <> · the first {whole(grid.cells.length)} shown</>
+          )}
         </span>
       </div>
       <div

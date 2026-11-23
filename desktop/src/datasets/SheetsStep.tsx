@@ -88,9 +88,22 @@ export function SheetsStep(p: SheetsStepProps) {
       </a>
     );
   } else if (nameIssues.size > 0) {
+    // A sheet's bad or empty name holds Next, as a missing template does (#561 D4).
     const [sheet] = nameIssues.keys();
-    blocked = `${count(nameIssues.size, "name")} to fix · ${sheet}`;
-    status = blocked;
+    const n = nameIssues.size;
+    blocked = `${n} ${n === 1 ? "sheet needs" : "sheets need"} a valid name — ${sheet}`;
+    status = (
+      <a
+        href={`#sheet-${sheet}`}
+        className="link"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById(`name-${sheet}`)?.focus();
+        }}
+      >
+        {blocked}
+      </a>
+    );
   } else if (p.forms.length === 0) {
     blocked = "Use at least one sheet";
     status = blocked;
@@ -116,6 +129,13 @@ export function SheetsStep(p: SheetsStepProps) {
                 {needWord}
               </>
             )}
+            {needs.length === 0 && nameIssues.size > 0 && (
+              <>
+                {" "}
+                · <span className="n">{nameIssues.size}</span>{" "}
+                {nameIssues.size === 1 ? "needs" : "need"} a valid name
+              </>
+            )}
             {p.status.leftOut > 0 && (
               <>
                 {" "}
@@ -126,7 +146,7 @@ export function SheetsStep(p: SheetsStepProps) {
         }
         lede="Each sheet you use becomes a protocol. Check its template and the ranges we read, units included. A protocol's name labels it on charts and in results: up to 32 letters, digits, - and _."
         status={status}
-        tone={needs.length > 0 ? "ink" : "plain"}
+        tone={needs.length > 0 || nameIssues.size > 0 ? "ink" : "plain"}
         discard={p.discard}
         back={p.back}
         primary="Next: Protocols"
@@ -138,8 +158,7 @@ export function SheetsStep(p: SheetsStepProps) {
           <span className="th">Use</span>
           <span className="th">Preview</span>
           <span className="th">Sheet · what we read</span>
-          <span className="th">Template</span>
-          <span className="th">Protocol name</span>
+          <span className="th">Template · protocol name</span>
         </div>
         {reads.map((read, i) => (
           <SheetRow
@@ -351,9 +370,8 @@ function SheetRow({
           ))}
           <option value="custom">Custom protocol…</option>
         </select>
-      </div>
-      <div className="sr-pname dim">
         <input
+          id={`name-${read.name}`}
           className={`input mono${nameIssue ? " bad" : ""}`}
           aria-label={`Protocol name for sheet ${read.name}`}
           value={!used || none || unbuilt ? "" : choice.name}

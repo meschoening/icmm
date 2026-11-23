@@ -16,8 +16,9 @@ import type {
   StartLogPoint,
   StartSummary,
 } from "../../wire/types.gen";
+import { TOP_TEN } from "./charts";
 import { evaluationsWords, memoryWords, ordinal, queuedWords, type Part } from "../topology/words";
-import { rmse } from "../words";
+import { exitCode, rmse } from "../words";
 
 export type { Part };
 
@@ -294,7 +295,7 @@ export function statusParts(phase: Phase, c: StartContext, bestOf?: string): Par
       break;
     case "error": {
       notCounted();
-      say(r?.exit_code == null ? " · stopped with an error" : ` · exit code ${r.exit_code}`);
+      say(r?.exit_code == null ? " · stopped with an error" : ` · exit code ${exitCode(r.exit_code)}`);
       say(` ${reached(c)}`);
       parts.push(...whereParts(c));
       if (ended !== undefined) say(` · ended ${clock(ended, c.now)}`);
@@ -686,7 +687,7 @@ export function whyOf(
       return {
         ...base,
         label: "Why it failed",
-        what: `Error${r?.exit_code == null ? "" : ` · exit code ${r.exit_code}`}${exception === undefined ? "" : ` · ${exception}`}${on}${counted}`,
+        what: `Error${r?.exit_code == null ? "" : ` · exit code ${exitCode(r.exit_code)}`}${exception === undefined ? "" : ` · ${exception}`}${on}${counted}`,
         next: "An error is a problem in ICMM, not in your settings. Report it, and its job log goes with the report.",
         report: true,
         hint: `Resume fits it again from its seed${once}; the same error may come back.`,
@@ -825,7 +826,7 @@ export function clusterOf(
     return { title, asOf, rows };
   }
   if (phase === "error" && r?.exit_code != null)
-    rows.push({ k: "Exit code", parts: [n(String(r.exit_code))] });
+    rows.push({ k: "Exit code", parts: [n(exitCode(r.exit_code))] });
   else if (r !== null) {
     const rounds =
       population === undefined
@@ -1012,3 +1013,36 @@ export const storedRmse = (
   val
     ? protocolRmse(s.val_sse?.[i], s.val_points?.[i] ?? 0, s.val_failed?.[i])
     : protocolRmse(s.train_sse?.[i], s.train_points?.[i] ?? 0, s.train_failed?.[i]);
+
+/** What a start's parameters are read against, in Parameters' head and its table's name. */
+export interface Against {
+  head: string;
+  label: string;
+  /** Under 10 finished starts, why no range shows: Parameters' hint, for a start not the best (#557). */
+  few?: string;
+}
+
+/**
+ * What start `n`'s parameters are read against in `title`: its topology's
+ * Top 10 (`top`, the best start's first), or under 10 finished starts, which
+ * the Top 10 holds every one of, those starts themselves (#557).
+ */
+export function againstOf(top: readonly { start: number }[], title: string, n: number): Against {
+  if (top.length === 0 || top.length >= TOP_TEN) {
+    return { head: `${title}’s top 10 by Train RMSE`, label: `${title}’s top 10` };
+  }
+  if (top.length === 1) {
+    const only = `start ${top[0].start}, ${title}’s only finished start`;
+    return {
+      head: only,
+      label: only,
+      few: `Only start ${top[0].start} has finished, so start ${n} is read against it alone: under 10 finished starts there’s no top 10 to draw a range from.`,
+    };
+  }
+  const these = `${title}’s ${top.length} finished starts`;
+  return {
+    head: these,
+    label: these,
+    few: "Under 10 finished starts there’s no top 10 to draw a range from, so each finished start shows on its own, and none is marked outside.",
+  };
+}

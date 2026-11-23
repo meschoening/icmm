@@ -916,10 +916,15 @@ export function sweepsOf(
 
 // ── a part's strip against the Top 10 ─────────────────────────────────────────────────────────
 
+/** Under this many finished starts, the Top 10 holds every one of them: no range to draw (#557). */
+export const TOP_TEN = 10;
+
 export interface Band {
   /** In % of the strip: the Top 10's range, the best start's tick and this start's dot. */
   band?: { left: number; width: number };
   tick?: number;
+  /** Under 10 finished starts, each other finished start's value, in % of the strip (#557). */
+  others: number[];
   me: number;
   /** Whether this start's value sits outside the Top 10's range. */
   outside: boolean;
@@ -933,17 +938,29 @@ function along(v: number, { min, max }: ParameterRange): number {
 
 /**
  * A part's strip: the start's value `me` against the Top 10's `top` values,
- * the best start's first. A value outside the Top 10's range by more than
- * its rounding is outside.
+ * the best start's first, with `mine` this start's place among them, if it's
+ * there. A value outside the Top 10's range by more than its rounding is
+ * outside. Under 10 finished starts there's no top 10 to draw a range from:
+ * each finished start but the best and this one is a dot of its own, and
+ * none is outside (#557).
  */
-export function bandOf(me: number, top: readonly number[], range: ParameterRange): Band {
-  if (top.length === 0) return { me: along(me, range), outside: false };
+export function bandOf(me: number, top: readonly number[], range: ParameterRange, mine = -1): Band {
+  if (top.length === 0) return { me: along(me, range), others: [], outside: false };
+  if (top.length < TOP_TEN) {
+    return {
+      tick: along(top[0], range),
+      others: top.flatMap((v, i) => (i === 0 || i === mine ? [] : [along(v, range)])),
+      me: along(me, range),
+      outside: false,
+    };
+  }
   const lo = Math.min(...top);
   const hi = Math.max(...top);
   const slack = (range.max - range.min) * 1e-6;
   return {
     band: { left: along(lo, range), width: along(hi, range) - along(lo, range) },
     tick: along(top[0], range),
+    others: [],
     me: along(me, range),
     outside: me < lo - slack || me > hi + slack,
   };

@@ -59,6 +59,7 @@ _SUMMARY = (
     "t.live_evaluations",
     "t.live_train_rmse",
     "t.live_val_rmse",
+    "t.live_end",
     "t.evaluations",
     "t.elapsed_s",
     "t.still_improving",
@@ -337,6 +338,7 @@ def _summary(row: tuple[Any, ...]) -> StartSummary:
         live_evaluations,
         live_train_rmse,
         live_val_rmse,
+        live_end,
         evaluations,
         elapsed_s,
         still_improving,
@@ -357,6 +359,7 @@ def _summary(row: tuple[Any, ...]) -> StartSummary:
             evaluations=live_evaluations,
             train_rmse=live_train_rmse,
             val_rmse=live_val_rmse,
+            ends_at=live_end,
         )
         if state == "running" and live_generation is not None
         else None,

@@ -9,6 +9,7 @@ export function TextField({
   value,
   issue,
   mark,
+  hint = false,
   width = "b-num",
   onChange,
 }: {
@@ -17,10 +18,15 @@ export function TextField({
   issue: string | undefined;
   /** You or another computer changed it: `MarkWords` says so beside it. */
   mark?: FieldMark;
+  /** A hint under it, `${id}-h`, that its issue takes the place of. */
+  hint?: boolean;
   width?: "b-num" | "b-pname";
   onChange: (value: string) => void;
 }) {
-  const described = [issue ? `${id}-issue` : null, mark ? `${id}-was` : null].filter(Boolean);
+  const described = [
+    issue ? `${id}-issue` : hint ? `${id}-h` : null,
+    mark ? `${id}-was` : null,
+  ].filter(Boolean);
   return (
     <input
       id={id}

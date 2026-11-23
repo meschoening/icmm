@@ -34,6 +34,18 @@ export function runNumberOf(param: string): number | undefined {
 /** An RMSE as the rows write it: four decimals. */
 export const rmse = (x: number) => x.toFixed(4);
 
+/**
+ * A process's exit code as its platform writes it (#556, G5): Windows keeps
+ * one as an unsigned 32-bit number, so −1 is 4294967295 and a crash
+ * 3221225477; from 2³¹ it reads in hex, as Windows tools write it,
+ * "0xFFFFFFFF", "0xC0000005". Every other code reads as a number.
+ */
+export function exitCode(code: number): string {
+  return code >= 2 ** 31 && code < 2 ** 32
+    ? `0x${code.toString(16).toUpperCase().padStart(8, "0")}`
+    : String(code);
+}
+
 /** A run in flight's best in a runs table, on hover (#373): its number is live. */
 export const RUNNING_TIP = "Still running: this changes as its topologies finish.";
 

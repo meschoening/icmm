@@ -76,6 +76,14 @@ summary::-webkit-details-marker {
 .mono {
   font-family: var(--font-mono);
 }
+/* A protocol's name (`ui/BreakingName.tsx`): after `_` or `-`, and mid-word only past its
+   column; a name with neither, anywhere. */
+.bname {
+  overflow-wrap: break-word;
+}
+.bname-any {
+  overflow-wrap: anywhere;
+}
 .n {
   font-family: var(--font-mono);
   font-size: 0.92em;

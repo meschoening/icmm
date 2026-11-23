@@ -10,6 +10,7 @@ import { clock } from "../../ui/clock";
 import type { CoordinatingJob, RunFailure, StartTry } from "../../wire/types.gen";
 import { logTable, logText, OVERFLOWED } from "../start/words";
 import { ordinal } from "../topology/words";
+import { exitCode } from "../words";
 
 export { logTable, logText };
 
@@ -83,7 +84,7 @@ export function tryEnd(
   }
   const ended = at(t.ended_at);
   const when = Number.isNaN(ended) ? "" : ` ${clock(ended, now)}`;
-  const exit = t.exit_code === null ? "" : `, exit code ${t.exit_code}`;
+  const exit = t.exit_code === null ? "" : `, exit code ${exitCode(t.exit_code)}`;
   switch (t.cause) {
     case "error":
       return `start ${start} ended${when}${gen}${exit}`;
@@ -131,7 +132,7 @@ export function generationWords(j: CoordinatingJob, now: number): string {
 
 /** How a generation ended, for the line that ends its log: "generation 9 ended 10:31 AM after 2 m, exit code 1". */
 export function generationEnd(j: CoordinatingJob, now: number): string {
-  const exit = j.exit_code === null ? "" : `, exit code ${j.exit_code}`;
+  const exit = j.exit_code === null ? "" : `, exit code ${exitCode(j.exit_code)}`;
   return `generation ${j.generation} ended ${clock(at(j.ended_at), now)}${ranFor(j)}${exit}`;
 }
 

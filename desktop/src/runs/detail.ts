@@ -142,10 +142,32 @@ export function resumeHint(r: Run, platform: Platform, engineNow: string | null)
 
 // ── pace and ETA ──────────────────────────────────────────────────────────────────────────────
 
-/** How far its topologies have got, as topologies: those ended, and the fitting ones' share. */
-function progressed(r: Run): number {
+/**
+ * How far its running starts have got, as starts: each the share of its
+ * evaluations done by its run's pace (`Run.pace`), from when they end on
+ * average. 0 without a pace, or where its settings can't be read.
+ */
+function runningShare(r: Run, now: number): number {
+  const pace = r.pace;
+  const search = r.settings?.search;
+  if (pace == null || search === undefined) return 0;
+  const meanEnd = Date.parse(pace.mean_end);
+  const perStartS =
+    evaluationsPerStart(search.evaluation_budget, search.population) * pace.seconds_per_evaluation;
+  if (Number.isNaN(meanEnd) || !(perStartS > 0)) return 0;
+  const left = Math.max(0, (meanEnd - now) / 1000);
+  return r.progress.starts_running * Math.max(0, Math.min(1, 1 - left / perStartS));
+}
+
+/**
+ * How far its topologies have got, as topologies: those ended, and the
+ * fitting ones' share, from the starts that ended and how far its running
+ * starts have got, so it grows between ends (#556, G1).
+ */
+function progressed(r: Run, now: number): number {
   const p = r.progress;
-  return p.topologies_complete + p.topologies_failed + barOf(p).fitting * p.topologies;
+  const credited = { ...p, starts_finished: p.starts_finished + runningShare(r, now) };
+  return p.topologies_complete + p.topologies_failed + barOf(credited).fitting * p.topologies;
 }
 
 /**
@@ -156,7 +178,7 @@ export function paceOf(r: Run, now: number): number | undefined {
   const p = r.progress;
   if (p.topologies_complete + p.topologies_failed === 0) return undefined;
   const fit = fittingSeconds(r, now);
-  const done = progressed(r);
+  const done = progressed(r, now);
   if (fit === undefined || !(fit > 0) || !(done > 0)) return undefined;
   return fit / done;
 }
@@ -244,7 +266,7 @@ function startsEtaOf(r: Run, a: EtaAround): number | undefined {
     return undefined;
   }
   const p = r.progress;
-  const waiting = Math.max(0, p.starts - p.starts_finished - p.starts_failed - p.starts_running);
+  const waiting = startsWaitingOf(r);
   if (waiting === 0) return lastEnd;
   const evaluations = evaluationsPerStart(search.evaluation_budget, search.population);
   const perStartS = startSeconds(evaluations, pace.seconds_per_evaluation, a.overheadS ?? 0);
@@ -272,20 +294,31 @@ export function firstDueOf(r: Run, a: EtaAround): number | undefined {
   return due > a.now ? due : undefined;
 }
 
+/** Its starts that haven't run yet: neither ended nor running. */
+function startsWaitingOf(r: Run): number {
+  const p = r.progress;
+  return Math.max(0, p.starts - p.starts_finished - p.starts_failed - p.starts_running);
+}
+
 /**
  * The one ETA of a running run, which Runs, Run detail and Submit's
- * forecast all show (#326): from its own pace over the time it spent
- * fitting once a topology has ended, else Submit's model. `undefined` for a
- * run that isn't running, or that neither can time.
+ * forecast all show (#326): with none of its starts waiting, when the last
+ * of its running ones ends at their own pace (#556, G1); else from its own pace
+ * over the time it spent fitting once a topology has ended, else its
+ * running starts', else Submit's model. `undefined` for a run that isn't
+ * running, or that none can time.
  */
 export function runEtaOf(r: Run, a: EtaAround): Eta | undefined {
   if (phaseOf(r) !== "running") return undefined;
   // Never before the last of its running starts ends at their own pace (L6, #542).
   const floor = r.pace == null ? Number.NaN : Date.parse(r.pace.last_end);
+  if (!Number.isNaN(floor) && startsWaitingOf(r) === 0) {
+    return { at: Math.max(floor, a.now), estimate: false, from: "starts" };
+  }
   const floored = (at: number) => (Number.isNaN(floor) ? at : Math.max(at, floor));
   const pace = paceOf(r, a.now);
   if (pace !== undefined) {
-    const left = Math.max(0, r.progress.topologies - progressed(r));
+    const left = Math.max(0, r.progress.topologies - progressed(r, a.now));
     return {
       at: floored(a.now + left * pace * 1000),
       estimate: false,

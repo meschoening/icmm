@@ -17,6 +17,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from icmm import names
 from icmm.parameters import MAX_RATE_BOUND, ParameterBounds
 from icmm.topology import NUM_STATES, Lists, TopologyError
 from icmm.wire.base import MAX_WIRE_INT
@@ -62,7 +63,6 @@ LINE_BYTES, PROTOCOL_LINE_BYTES = 270, 42
 """A Start log line's size late in a 1,000,000-evaluation start, as `StartLogPoint` writes it: 270
 bytes, and 42 more for each of the dataset's protocols."""
 
-NAME_RULE = "Config names use letters, digits, ., - and _ only, up to 64 characters."
 DATASET_ID_RULE = "The dataset id must be 10 lowercase letters or digits."
 STATES_RULE = "Choose a number of states from 3 to 16."
 BELOW = "The lower bound must be below the upper bound."
@@ -186,7 +186,7 @@ def check(config: Config, lists: Lists, *, protocols: int | None = None) -> Conf
     dataset's number of `protocols`, the note for large Start logs too."""
     found = _Issues()
     if not NAME.fullmatch(config.name):
-        found.error("name", message=NAME_RULE)
+        found.error("name", message=names.CONFIG.problem(config.name) or names.EMPTY)
     if not DATASET_ID.fullmatch(config.dataset_id):
         found.error("dataset_id", message=DATASET_ID_RULE)
     search = config.search

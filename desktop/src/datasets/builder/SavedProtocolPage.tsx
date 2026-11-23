@@ -290,10 +290,19 @@ function Builder({
           },
   });
 
-  /** Back to Dataset detail, landing on `land`'s element. */
+  /**
+   * Back to Dataset detail, landing on `land`'s element. A protocol's section scrolls to the
+   * top, as Jump to has it: focus alone doesn't move the page when the heading is already in
+   * view, low on the screen (#560). New protocol… stays where it was.
+   */
   const back = (land: string) => {
     guard.pass();
-    void navigate({ to: "/datasets/$id", params: { id: base.id }, state: { land } });
+    void navigate({
+      to: "/datasets/$id",
+      params: { id: base.id },
+      state: { land },
+      ...(land === "new-protocol" ? {} : { hash: land, hashScrollIntoView: { block: "start" } }),
+    });
   };
 
   /** The template the steps had at the press, else the protocol's as saved. */

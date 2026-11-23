@@ -5,6 +5,7 @@
  */
 import { useId } from "react";
 import { useNow } from "../connection/useNow";
+import { BreakingName } from "../ui/BreakingName";
 import { clock } from "../ui/clock";
 import type { Working } from "../ui/working";
 import { defaultsOf, formDirection, type Choice, type ProtocolForm } from "./draft";
@@ -134,7 +135,8 @@ export function ReviewStep(p: ReviewStepProps) {
               spellCheck={false}
               autoComplete="off"
               aria-invalid={p.nameTaken || undefined}
-              aria-describedby={`${id}-name-h`}
+              // A taken name's error takes the hint's place (#561 D9).
+              aria-describedby={p.nameTaken ? `${id}-name-e` : `${id}-name-h`}
               onChange={(e) => p.setName(e.target.value)}
             />
             {!p.nameTaken && (
@@ -147,16 +149,18 @@ export function ReviewStep(p: ReviewStepProps) {
             )}
           </div>
           {p.nameTaken && (
-            <p className="err">
+            <p id={`${id}-name-e`} className="err">
               {p.platform} already has a dataset named <span className="mono">{p.name}</span>. Names
               are unique ignoring case.
             </p>
           )}
-          <span id={`${id}-name-h`} className="hint">
-            {p.name === p.taken.proposed && p.name.startsWith(p.taken.name)
-              ? `ICMM added ${p.name.slice(p.taken.name.length)}. Letters, digits, ., - and _, up to 64.`
-              : "Letters, digits, ., - and _, up to 64."}
-          </span>
+          {!p.nameTaken && (
+            <span id={`${id}-name-h`} className="hint">
+              {p.name === p.taken.proposed && p.name.startsWith(p.taken.name)
+                ? `ICMM added ${p.name.slice(p.taken.name.length)}. Letters, digits, ., - and _, up to 64.`
+                : "Letters, digits, ., - and _, up to 64."}
+            </span>
+          )}
         </section>
       )}
       {p.taken === null && defaults > 0 && (
@@ -216,7 +220,7 @@ export function ReviewStep(p: ReviewStepProps) {
             return (
               <div role="row" className="rrow" key={f.sheet}>
                 <span role="cell" className="pn">
-                  {f.name}
+                  <BreakingName name={f.name} />
                 </span>
                 <span role="cell">
                   {templateLabel(f.template, f.steps.length, formDirection(f))}

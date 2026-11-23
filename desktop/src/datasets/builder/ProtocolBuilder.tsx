@@ -556,18 +556,20 @@ export function ProtocolBuilder(p: ProtocolBuilderProps) {
                     value={draft.name}
                     issue={byKey.get("name")}
                     mark={marks.name}
+                    hint
                     width="b-pname"
                     onChange={(name) => edit({ name })}
                   />
-                  {marks.name !== undefined ? (
-                    <MarkWords id={fid("name")} mark={marks.name} />
-                  ) : (
-                    <span className="hint">Up to 32 letters, digits, - and _</span>
-                  )}
+                  <MarkWords id={fid("name")} mark={marks.name} />
                 </span>
-                {byKey.has("name") && (
+                {/* Any name error takes the hint's place (#561 D9). */}
+                {byKey.has("name") ? (
                   <span id={`${fid("name")}-issue`} className="err">
                     {byKey.get("name")}
+                  </span>
+                ) : (
+                  <span id={`${fid("name")}-h`} className="hint">
+                    Letters, digits, - and _, up to 32.
                   </span>
                 )}
               </span>
@@ -806,6 +808,7 @@ export function ProtocolBuilder(p: ProtocolBuilderProps) {
             connected={p.connected}
             current={checked.current}
             dataset={p.dataset}
+            saved={sv?.editing ?? null}
             draft={draft}
             read={read}
             points={points}

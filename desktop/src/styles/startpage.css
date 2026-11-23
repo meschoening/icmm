@@ -672,7 +672,8 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.pn {
+/* A parameter's name beside its strip. */
+.sp-pn {
   font-family: var(--font-mono);
   font-size: 13px;
   color: var(--ink-2);
@@ -702,7 +703,8 @@
   color: var(--ink-3);
 }
 
-/* A part's strip: its range, the Top 10's band, the best start's tick, this start's dot. */
+/* A part's strip: its range, the Top 10's band or each other finished start's dot, the best
+   start's tick, this start's dot. */
 .sp-strip {
   position: relative;
   display: block;
@@ -761,6 +763,19 @@
 }
 .sp-strip > .sp-mdot {
   top: 5px;
+}
+/* Under 10 finished starts, each other finished start's value: the gray of the progress chart's
+   "the other N finished" lines (#557). */
+.sp-od {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  box-shadow: 0 0 0 1.5px var(--bg);
+}
+.sp-strip > .sp-od {
+  top: 6.5px;
 }
 
 /* The Voltage dependence curve beside a and b. */

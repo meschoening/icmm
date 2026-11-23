@@ -527,9 +527,17 @@ def read(conn: sqlite3.Connection, run_id: int, data_folder: Path) -> Run:
     )
 
 
+_HANDED = 64
+"""How many of a run's collected tries its pace reads while none running reports its own: a
+bound on the rows walked, so a run whose tries an older engine coordinated, which keep no pace
+(migration 28), costs no more than any other."""
+
+
 def _pace(conn: sqlite3.Connection, run_id: int, settings: Config) -> RunPace | None:
     """The run's running starts' pace (#542), from what its coordinator read of their tries' Start
-    logs, in a second query over the tries out (at most its Running-starts cap of them running)."""
+    logs, in a second query over the tries out (at most its Running-starts cap of them running).
+    While none of them has reported its own, as at a hand-off (#556), its pace is that of its
+    collected tries, from a third query that walks at most `_HANDED` of them."""
     search = settings.search
     budget = -(-search.evaluation_budget // search.population) * search.population
     rows = conn.execute(
@@ -538,14 +546,27 @@ def _pace(conn: sqlite3.Connection, run_id: int, settings: Config) -> RunPace | 
         "AND started_at IS NOT NULL AND task_ended_at IS NULL",
         (run_id,),
     ).fetchall()
+    if not rows or budget <= 0:
+        return None
     paced = [
         (per, datetime.fromisoformat(end).timestamp())
         for _, per, end in rows
         if per is not None and per > 0 and end is not None
     ]
-    if not paced or budget <= 0:
-        return None
-    mean = sum(per for per, _ in paced) / len(paced)
+    if paced:
+        mean = sum(per for per, _ in paced) / len(paced)
+    else:
+        handed = [
+            per
+            for (per,) in conn.execute(
+                "SELECT per FROM (SELECT live_seconds_per_evaluation AS per FROM start_tries "
+                "WHERE run_id = ? AND ended_at IS NOT NULL LIMIT ?) WHERE per > 0",
+                (run_id, _HANDED),
+            )
+        ]
+        if not handed:
+            return None
+        mean = sum(handed) / len(handed)
     # A running start that hasn't reported its own pace yet runs its whole budget at theirs.
     ends = [end for _, end in paced] + [
         datetime.fromisoformat(started).timestamp() + budget * mean

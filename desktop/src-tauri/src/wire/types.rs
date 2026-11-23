@@ -3249,7 +3249,8 @@ pub struct RunPace {
     /**Their times for an evaluation, averaged, each from its first log point to its latest, so
     a worker's start-up isn't counted: one start's time on the computers they run on.*/
     pub seconds_per_evaluation: f64,
-    ///The running starts that report it: at least 1.
+    /**The running starts that report it. 0 while none does yet, as at a hand-off (#556): its pace
+    is then its collected starts'.*/
     pub starts: i64,
 }
 ///`RunProgress`
@@ -4346,6 +4347,10 @@ far".*/
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct StartProgress {
+    /**When it ends at its own pace, in UTC (ISO 8601), as its coordinator last read its Start
+    log: what its topology's ETA takes (#556). `null` until it has logged past its first point.*/
+    #[serde(deserialize_with = "::std::option::Option::deserialize")]
+    pub ends_at: ::std::option::Option<::std::string::String>,
     pub evaluations: i64,
     pub generation: i64,
     #[serde(deserialize_with = "::std::option::Option::deserialize")]

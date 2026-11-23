@@ -152,11 +152,11 @@ export function defaultsWords(forms: ProtocolForm[]): string {
   return joinAnd(parts);
 }
 
-/** The decay window's presets, as the Window menu offers them (#50). */
+/** The decay window's presets, as the Window menu offers them (#50); a range never breaks (#560). */
 export const WINDOWS = {
-  tau: { label: "Time constant τ · 100 → 37\u00a0%", from: "100", to: "37" },
-  half: { label: "Half-decay · 100 → 50\u00a0%", from: "100", to: "50" },
-  rise: { label: "Rise · 10 → 90\u00a0%", from: "10", to: "90" },
+  tau: { label: "Time constant τ · 100\u00a0→\u00a037\u00a0%", from: "100", to: "37" },
+  half: { label: "Half-decay · 100\u00a0→\u00a050\u00a0%", from: "100", to: "50" },
+  rise: { label: "Rise · 10\u00a0→\u00a090\u00a0%", from: "10", to: "90" },
 } as const;
 
 /**

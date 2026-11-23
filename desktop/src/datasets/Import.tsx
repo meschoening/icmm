@@ -193,13 +193,14 @@ export function ImportBox({
             autoComplete="off"
             disabled={saving.shown}
             aria-invalid={bad || undefined}
-            aria-describedby={`${id}-name-h`}
+            // A bad name's error takes the hint's place (#561 D9).
+            aria-describedby={bad ? `${id}-name-e` : `${id}-name-h`}
             onChange={(e) => setTyped(e.target.value)}
           />
           <NameCheck state={nameCheck} bad={bad} name={name} platform={platform} />
           {taken && free !== null && (
             <div className="taken">
-              <p className="err">
+              <p id={`${id}-name-e`} className="err">
                 {platform} already has a dataset named <span className="mono">{name}</span>. Names
                 are unique ignoring case.
               </p>
@@ -213,14 +214,20 @@ export function ImportBox({
               </div>
             </div>
           )}
-          {ruleIssue !== undefined && !taken && <p className="err">{ruleIssue.message}</p>}
-          <span id={`${id}-name-h`} className="hint">
-            {typed !== null
-              ? NAME_RULE
-              : name !== base
-                ? `From the file; ${base} is taken, so ICMM added ${name.slice(base.length)}. ${NAME_RULE}`
-                : `From the file. ${NAME_RULE}`}
-          </span>
+          {ruleIssue !== undefined && !taken && (
+            <p id={`${id}-name-e`} className="err" role="alert">
+              {ruleIssue.message}
+            </p>
+          )}
+          {!bad && (
+            <span id={`${id}-name-h`} className="hint">
+              {typed !== null
+                ? NAME_RULE
+                : name !== base
+                  ? `From the file; ${base} is taken, so ICMM added ${name.slice(base.length)}. ${NAME_RULE}`
+                  : `From the file. ${NAME_RULE}`}
+            </span>
+          )}
           {twin !== undefined && (
             <p className="same">
               <InfoIcon />

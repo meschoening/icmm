@@ -13,6 +13,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from icmm import names
 from icmm.dataset.model import (
     MAX_DURATION_MS,
     MAX_VOLTAGE_MV,
@@ -112,8 +113,6 @@ _FIELD_SENTENCES = {
     "validation": "Each point is marked validation or not: true or false.",
     "interpolated": "Each point is marked interpolated or not: true or false.",
 }
-_DATASET_NAME_RULE = "Dataset names use letters, digits, ., - and _ only, up to 64 characters."
-_PROTOCOL_NAME_RULE = "Protocol names use letters, digits, - and _ only, up to 32 characters."
 
 
 def _field_issues(error: ValidationError) -> list[Issue]:
@@ -121,18 +120,28 @@ def _field_issues(error: ValidationError) -> list[Issue]:
     for detail in error.errors():
         path = tuple(key for key in detail["loc"] if key not in _UNION_TAGS)
         if path not in issues:
-            issues[path] = Issue(path=path, message=_sentence(path, detail["type"], detail["msg"]))
+            message = _sentence(path, detail["type"], detail["msg"], detail.get("input"))
+            issues[path] = Issue(path=path, message=message)
     return list(issues.values())
 
 
-def _sentence(path: IssuePath, kind: str, pydantic_message: str) -> str:
+def _sentence(path: IssuePath, kind: str, pydantic_message: str, value: Any) -> str:
     if kind == "missing":
         return "This is required."
     if kind == "extra_forbidden":
         return "This isn't part of the dataset format."
     field = path[-1] if path else ""
     if field == "name":
-        return _DATASET_NAME_RULE if len(path) == 1 else _PROTOCOL_NAME_RULE
+        rule = names.DATASET if len(path) == 1 else names.PROTOCOL
+        problem = (
+            names.EMPTY
+            if value is None
+            else rule.problem(value)
+            if isinstance(value, str)
+            else None
+        )
+        if problem is not None:
+            return problem
     if isinstance(field, str) and field in _FIELD_SENTENCES:
         return _FIELD_SENTENCES[field]
     return pydantic_message.rstrip(".") + "."

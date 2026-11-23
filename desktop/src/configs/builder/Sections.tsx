@@ -250,7 +250,7 @@ export function NameData({ nameRef, ...p }: NameDataProps) {
             p.taken !== undefined && `${id}-taken`,
             nameIssues !== undefined && `${id}-name-i`,
             p.marks.name !== undefined && `${id}-name-was`,
-            `${id}-name-h`,
+            !nameBad && `${id}-name-h`,
           )}
           {...(p.landing ? { [PAGE_HEADING_ATTR]: "" } : {})}
           onChange={(e) => p.set({ name: e.target.value })}
@@ -274,10 +274,13 @@ export function NameData({ nameRef, ...p }: NameDataProps) {
           <Issues id={`${id}-name-i`} issues={nameIssues} />
         </div>
         <MarkWords id={`${id}-name`} mark={p.marks.name} />
-        <p id={`${id}-name-h`} className="hint">
-          Letters, digits, <span className="mono">.</span>, <span className="mono">-</span> and{" "}
-          <span className="mono">_</span>. Runs from this config show its name.
-        </p>
+        {/* Any name error takes the hint's place (#561 D9). */}
+        {!nameBad && (
+          <p id={`${id}-name-h`} className="hint">
+            Letters, digits, <span className="mono">.</span>, <span className="mono">-</span> and{" "}
+            <span className="mono">_</span>. Runs from this config show its name.
+          </p>
+        )}
       </div>
       <div className="cb-field">
         <label className="flabel" htmlFor={`${id}-ds`}>

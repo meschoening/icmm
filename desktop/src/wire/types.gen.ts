@@ -2768,7 +2768,8 @@ export interface RunProtocol {
  */
 export interface RunPace {
   /**
-   * The running starts that report it: at least 1.
+   * The running starts that report it. 0 while none does yet, as at a hand-off (#556): its pace
+   * is then its collected starts'.
    */
   starts: number;
   /**
@@ -3427,6 +3428,11 @@ export interface StartProgress {
   evaluations: number;
   train_rmse: number | null;
   val_rmse: number | null;
+  /**
+   * When it ends at its own pace, in UTC (ISO 8601), as its coordinator last read its Start
+   * log: what its topology's ETA takes (#556). `null` until it has logged past its first point.
+   */
+  ends_at: string | null;
 }
 /**
  * One of a topology's **Top 10**: its finished starts with the lowest Train RMSE.

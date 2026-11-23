@@ -2,7 +2,7 @@
  * Rename on Dataset detail (#146; LaptopDatasetDetail views rename, taken,
  * stale and copy): the name becomes a field with Cancel and Save. Under it,
  * whether the name is free (the platform's names, ignoring case), the
- * agent's sentence for one it won't take, and the rules. Save saves a new
+ * agent's sentence for one it won't take, or else the rules. Save saves a new
  * revision under the new name, and stays grayed while the name is taken or
  * another computer's save waits for Reload.
  *
@@ -133,7 +133,8 @@ export function Rename({
           spellCheck={false}
           autoComplete="off"
           aria-invalid={bad || undefined}
-          aria-describedby="ds-rename-h"
+          // A bad name's error takes the hint's place (#561 D9).
+          aria-describedby={bad ? "ds-rename-e" : "ds-rename-h"}
           // A copy opens here on a page change, which focuses the page's heading: this field.
           {...(copyOf !== undefined ? { [PAGE_HEADING_ATTR]: "" } : {})}
           onFocus={(e) => {
@@ -188,13 +189,13 @@ export function Rename({
         </span>
       )}
       {taken !== undefined && (
-        <p className="err" role="alert">
+        <p id="ds-rename-e" className="err" role="alert">
           {platform} already has a dataset named <span className="mono">{taken.name}</span>. Names
           are unique ignoring case.
         </p>
       )}
       {ruleIssue !== undefined && (
-        <p className="err" role="alert">
+        <p id="ds-rename-e" className="err" role="alert">
           {ruleIssue}
         </p>
       )}
@@ -203,9 +204,11 @@ export function Rename({
           {write.message}
         </p>
       )}
-      <span id="ds-rename-h" className="hint">
-        {hint}
-      </span>
+      {!bad && (
+        <span id="ds-rename-h" className="hint">
+          {hint}
+        </span>
+      )}
     </div>
   );
 }

@@ -23,7 +23,7 @@
  */
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate, useParams, useRouterState, useSearch } from "@tanstack/react-router";
-import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FailureBox } from "../../setup/FailureBox";
 import { Reading } from "../../setup/PlatformSetup";
 import { inSentence } from "../../setup/form";
@@ -39,6 +39,7 @@ import { useWorking, type Working } from "../../ui/working";
 import type { Export } from "./exportFile";
 import { useExport } from "./useExport";
 import { clock } from "../../ui/clock";
+import { BreakingName } from "../../ui/BreakingName";
 import { PAGE_HEADING_ATTR } from "../../ui/pageChangeFocus";
 import { PageHeading } from "../../ui/PageHeading";
 import type {
@@ -1316,29 +1317,6 @@ function ProtocolSection({
         </div>
       </figure>
     </section>
-  );
-}
-
-/**
- * A protocol's name, which breaks only after `_` or `-` (a hyphen breaks on its own); a name
- * with neither that's still wider than its column breaks where it must (#528). `<wbr>` adds no
- * text, so copying the name gives it as it is.
- */
-export function BreakingName({ name }: { name: string }) {
-  const parts = name.split("_");
-  return (
-    <>
-      {parts.map((part, i) =>
-        i === parts.length - 1 ? (
-          part
-        ) : (
-          <Fragment key={i}>
-            {`${part}_`}
-            <wbr />
-          </Fragment>
-        ),
-      )}
-    </>
   );
 }
 

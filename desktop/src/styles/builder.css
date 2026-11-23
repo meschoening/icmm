@@ -281,9 +281,11 @@
   width: 92px;
   flex-shrink: 0;
 }
+/* A 32-character name in Plex Mono 13 px needs 280 px (#561 D4). */
 .bkv .input.b-pname {
-  width: 150px;
-  flex-shrink: 0;
+  width: 280px;
+  max-width: 100%;
+  flex-shrink: 1;
 }
 .bkv .ln {
   gap: 10px;

@@ -70,7 +70,7 @@ export function windowName(from: number, to: number): string {
   const f = Math.round(from * 1000) / 10;
   const t = Math.round(to * 1000) / 10;
   const preset = Object.values(WINDOWS).find((w) => Number(w.from) === f && Number(w.to) === t);
-  return preset?.label ?? `${f} → ${t}\u00a0%`;
+  return preset?.label ?? `${f}\u00a0→\u00a0${t}\u00a0%`;
 }
 
 /** The fractions a decay time runs between, as an axis says them: "100 → 37 %". */

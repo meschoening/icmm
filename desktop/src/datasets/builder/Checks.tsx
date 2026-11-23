@@ -19,6 +19,7 @@ export function Checks({
   connected,
   current,
   dataset,
+  saved,
   draft,
   read,
   points,
@@ -33,6 +34,8 @@ export function Checks({
   connected: boolean;
   current: boolean;
   dataset: string;
+  /** Edit protocol…: the protocol's name as saved; `null` for a new protocol. */
+  saved: string | null;
   draft: BuilderDraft;
   /** The sheet its data comes from; `null` until one is chosen. */
   read: SheetRead | null;
@@ -113,7 +116,13 @@ export function Checks({
           : `${count(rowsMeasured.length, "sweep")} match the ${rowsOf} (${column} ${range}).`,
     });
   }
-  if (current && !nameIssue && local.every((i) => i.path[2] !== "name")) {
+  // The protocol's own saved name isn't news, so only another name is said to be free (#560).
+  if (
+    current &&
+    draft.name !== saved &&
+    !nameIssue &&
+    local.every((i) => i.path[2] !== "name")
+  ) {
     answered.push({
       rank: rankOf("name"),
       ok: true,

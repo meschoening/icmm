@@ -30,6 +30,7 @@ import { inSentence } from "../setup/form";
 import { useReadAgain } from "../setup/queries";
 import { useAsked } from "../shell/asked";
 import { useConnection } from "../shell/connection";
+import { BreakingName } from "../ui/BreakingName";
 import { ListEmpty, ReadingFacts } from "../ui/HeadFacts";
 import { PageHeading } from "../ui/PageHeading";
 import type { DatasetSummary, RunsDataset, SavedPlatform, WireError } from "../wire/types.gen";
@@ -292,7 +293,9 @@ function Row({
             <dl className="ds-plist" aria-label={`Protocols in ${d.name}`}>
               {shown.map((p) => (
                 <div key={p.name} className="ds-plist-row">
-                  <dt>{p.name}</dt>
+                  <dt>
+                    <BreakingName name={p.name} />
+                  </dt>
                   <dd>{templateWords(p.template, p.steps)}</dd>
                 </div>
               ))}

@@ -6491,7 +6491,7 @@
       "description": "A running run's own pace (#542), from what its coordinator read of its running starts'\n**Start logs**: those past their first log point report it.",
       "properties": {
         "starts": {
-          "description": "The running starts that report it: at least 1.",
+          "description": "The running starts that report it. 0 while none does yet, as at a hand-off (#556): its pace\nis then its collected starts'.",
           "maximum": 9007199254740991,
           "minimum": -9007199254740991,
           "type": "integer"
@@ -9102,13 +9102,25 @@
               "type": "null"
             }
           ]
+        },
+        "ends_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "When it ends at its own pace, in UTC (ISO 8601), as its coordinator last read its Start\nlog: what its topology's ETA takes (#556). `null` until it has logged past its first point."
         }
       },
       "required": [
         "generation",
         "evaluations",
         "train_rmse",
-        "val_rmse"
+        "val_rmse",
+        "ends_at"
       ],
       "title": "StartProgress",
       "type": "object"

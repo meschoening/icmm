@@ -16,6 +16,7 @@
  */
 import { useId } from "react";
 import { flushSync } from "react-dom";
+import { BreakingName } from "../ui/BreakingName";
 import { KeptHint } from "../ui/KeptHint";
 import type { Working } from "../ui/working";
 import type { DatasetContent, Issue, Step } from "../wire/types.gen";
@@ -248,7 +249,9 @@ export function ProtocolsStep(p: ProtocolsStepProps) {
                 aria-current={i === p.selected ? "true" : undefined}
                 onClick={() => p.select(i)}
               >
-                <span className="pn">{form.name}</span>
+                <span className="pn">
+                  <BreakingName name={form.name} />
+                </span>
                 <span className="ps">
                   {templateLabel(form.template, form.steps.length, formDirection(form))}
                 </span>
@@ -476,7 +479,7 @@ function Protocol({
     <section aria-labelledby={`${idp}-h`} className="protocol">
       <header id={`${idp}-head`} className="protocol-head">
         <h2 id={`${idp}-h`} className="pn">
-          {f.name}
+          <BreakingName name={f.name} />
         </h2>
         <span className="ps">
           {templateLabel(f.template, f.steps.length, formDirection(f))} · from{" "}

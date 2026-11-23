@@ -526,15 +526,73 @@ fn stamp_of(line: &str) -> Option<&str> {
     (b.len() >= 20 && b[4] == b'-' && b[10] == b'T' && b[0].is_ascii_digit()).then_some(stamp)
 }
 
+/// An agent log's request line, `<when> <method> id=<id> <n> ms <outcome>`:
+/// its method and how it ended.
+fn request(line: &str) -> Option<(&str, &str)> {
+    let mut words = line.split_whitespace().skip(1);
+    let (method, id, _, ms, outcome) = (
+        words.next()?,
+        words.next()?,
+        words.next()?,
+        words.next()?,
+        words.next()?,
+    );
+    (id.starts_with("id=") && ms == "ms" && words.next().is_none()).then_some((method, outcome))
+}
+
 /// An agent log's request that answered `ok`: `<when> <method> id=<id> <n> ms ok`.
 fn ok_request<'a>(entry: &[&'a str]) -> Option<&'a str> {
     let [line] = entry else {
         return None;
     };
-    line.trim_end()
-        .ends_with(" ms ok")
-        .then(|| line.split(' ').nth(1))
-        .flatten()
+    request(line).and_then(|(method, outcome)| (outcome == "ok").then_some(method))
+}
+
+/// How many of an entry's lines are the agent's: its stamped line, an
+/// `internal` reply's `log_ref=`, and each Python traceback to its
+/// exception's line. Lines after those are another program's.
+fn agents_lines(stamp: &str, lines: &[&str]) -> usize {
+    let mut kept = usize::from(!stamp.is_empty());
+    let mut traceback = false;
+    for (i, line) in lines.iter().enumerate().skip(kept) {
+        if line.starts_with("Traceback (most recent call last):") {
+            traceback = true;
+        } else if traceback {
+            // A frame is indented; the exception's line, which ends it, isn't.
+            traceback = line.starts_with([' ', '\t']);
+        } else if !line.starts_with("log_ref=") {
+            continue;
+        }
+        kept = i + 1;
+    }
+    kept
+}
+
+/// An agent log's warnings and errors: every entry but a request that
+/// answered `ok`, or `not_found` (a page still open on what's gone, #556),
+/// whose lines after it stay. The lines without a timestamp just before an
+/// agent's `hello`, its first request, are its login shell's startup files'
+/// (`agents_lines`), not the agent's.
+fn agent_warnings(text: &str) -> Vec<(&str, Vec<&str>)> {
+    let mut all = entries(text);
+    for i in 1..all.len() {
+        if all[i]
+            .1
+            .first()
+            .and_then(|l| request(l))
+            .is_some_and(|(m, _)| m == "hello")
+        {
+            let (stamp, lines) = &mut all[i - 1];
+            lines.truncate(agents_lines(stamp, lines));
+        }
+    }
+    for (stamp, lines) in &mut all {
+        if !stamp.is_empty() && matches!(request(lines[0]), Some((_, "ok" | "not_found"))) {
+            lines.remove(0);
+        }
+    }
+    all.retain(|(_, lines)| !lines.is_empty());
+    all
 }
 
 fn agent_log(log: &Log) -> bool {
@@ -543,18 +601,17 @@ fn agent_log(log: &Log) -> bool {
 
 /// The newest `LOG_LINES` warning and error lines across the logs, oldest
 /// first, each cut to `LINE_CHARS`: the app log's `WARN` and `ERROR`
-/// entries, and every agent log entry but a request that answered `ok`.
+/// entries, and the agent log's warnings (`agent_warnings`).
 fn warnings(logs: &[Log]) -> Vec<String> {
     let mut kept: Vec<(&str, Vec<&str>)> = Vec::new();
     for log in logs {
-        let agent = agent_log(log);
-        kept.extend(entries(&log.text).into_iter().filter(|(_, lines)| {
-            if agent {
-                ok_request(lines).is_none()
-            } else {
+        if agent_log(log) {
+            kept.extend(agent_warnings(&log.text));
+        } else {
+            kept.extend(entries(&log.text).into_iter().filter(|(_, lines)| {
                 matches!(lines[0].split_whitespace().nth(1), Some("WARN" | "ERROR"))
-            }
-        }));
+            }));
+        }
     }
     // Both logs write UTC to the millisecond, so their stamps sort as text.
     kept.sort_by(|a, b| a.0.cmp(b.0));
@@ -1232,6 +1289,52 @@ mod tests {
              log_ref=abc\n\
              Traceback (most recent call last):\n\
              2026-11-20T09:00:05.000000Z ERROR icmm_desktop::engine: the engine failed"
+        );
+    }
+
+    #[test]
+    fn the_warnings_leave_out_not_found_replies_and_the_login_shells_lines() {
+        // #556, G4: on McKelvey the login shell's startup files write to the
+        // agent's stderr before it says hello; a deleted run's open page reads
+        // `not_found` until it closes. Neither is a warning.
+        let agent = "Loading /project/compute/modules/engrcompute\n\
+                     Loading requirement: slurm\n\
+                     2026-11-20T09:00:01.000Z hello id=1 40 ms ok\n\
+                     2026-11-20T09:00:02.000Z check_folders id=2 12 ms ok\n\
+                     Loading /project/compute/modules/engrcompute\n\
+                     Loading requirement: slurm\n\
+                     2026-11-20T09:00:03.000Z hello id=1 38 ms ok\n\
+                     2026-11-20T09:00:04.000Z read_run id=3 2 ms not_found\n\
+                     2026-11-20T09:00:05.000Z get_run id=4 5 ms internal\n\
+                     log_ref=abc\n\
+                     Traceback (most recent call last):\n\
+                     2026-11-20T09:00:06.000Z list_runs id=5 2 ms ok\n\
+                     Traceback (most recent call last):\n\
+                     RuntimeError: the reader died\n\
+                     2026-11-20T09:00:07.000Z event subscription=3 too large: 17000000 bytes\n\
+                     2026-11-20T09:00:08.000Z get_run id=6 5 ms internal\n\
+                     log_ref=def\n\
+                     Traceback (most recent call last):\n\
+                     \x20 File \"icmm/agent/serve.py\", line 9, in run\n\
+                     ValueError: bad\n\
+                     Loading /project/compute/modules/engrcompute\n\
+                     2026-11-20T09:00:09.000Z hello id=1 41 ms ok\n";
+        assert_eq!(
+            warnings(&[log("agent.2026-11-20.log", agent)]),
+            vec![
+                "2026-11-20T09:00:05.000Z get_run id=4 5 ms internal",
+                "log_ref=abc",
+                "Traceback (most recent call last):",
+                "Traceback (most recent call last):",
+                "RuntimeError: the reader died",
+                "2026-11-20T09:00:07.000Z event subscription=3 too large: 17000000 bytes",
+                // An error just before a reconnect keeps its traceback, not the shell's lines.
+                "2026-11-20T09:00:08.000Z get_run id=6 5 ms internal",
+                "log_ref=def",
+                "Traceback (most recent call last):",
+                "  File \"icmm/agent/serve.py\", line 9, in run",
+                "ValueError: bad",
+            ]
         );
     }
 
