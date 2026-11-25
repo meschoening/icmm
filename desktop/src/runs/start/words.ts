@@ -141,7 +141,16 @@ function reached(c: StartContext): string {
 }
 
 /** Why a start whose end reason is `overflow` ended early, yet finished (#468, #478). */
-export const OVERFLOWED = "CMA-ES’s step size overflowed";
+export const OVERFLOWED = "CMA-ES’s step size grew too large to compute";
+/** Why a start whose end reason is `underflow` ended early, yet finished. */
+export const UNDERFLOWED = "CMA-ES’s step size shrank too small to compute";
+
+/** Why a finished start ended before its budget, if CMA-ES could no longer sample. */
+export function endedEarly(start: Pick<Start, "end_reason">): string | undefined {
+  if (start.end_reason === "overflow") return OVERFLOWED;
+  if (start.end_reason === "underflow") return UNDERFLOWED;
+  return undefined;
+}
 
 /** Whether it has a best to show, which never counts once it stopped short. */
 const hasBest = (c: StartContext) => c.start.best !== null || c.points.length > 0;
@@ -228,8 +237,8 @@ export function statusParts(phase: Phase, c: StartContext, bestOf?: string): Par
     case "running":
     case "finished": {
       if (phase === "finished" && bestOf !== undefined) say(` · best start of ${bestOf}`);
-      if (phase === "finished" && c.start.end_reason === "overflow")
-        say(` · ended ${reached(c)}: ${OVERFLOWED}`);
+      const early = endedEarly(c.start);
+      if (phase === "finished" && early !== undefined) say(` · ended ${reached(c)}: ${early}`);
       parts.push(...tryParts(c.start), ...whereParts(c));
       if (started !== undefined) say(` · started ${clock(started, c.now)}`);
       if (phase === "finished" && ended !== undefined) {
@@ -295,7 +304,9 @@ export function statusParts(phase: Phase, c: StartContext, bestOf?: string): Par
       break;
     case "error": {
       notCounted();
-      say(r?.exit_code == null ? " · stopped with an error" : ` · exit code ${exitCode(r.exit_code)}`);
+      say(
+        r?.exit_code == null ? " · stopped with an error" : ` · exit code ${exitCode(r.exit_code)}`,
+      );
       say(` ${reached(c)}`);
       parts.push(...whereParts(c));
       if (ended !== undefined) say(` · ended ${clock(ended, c.now)}`);
@@ -329,8 +340,8 @@ export function signedPercent(x: number): string {
  * or before a tenth back, and names the span it covers where that's over half
  * again a tenth ("Last 10k of 20k", logged every 10k); before it has run a
  * tenth, it's "not yet". So does
- * one whose step size overflowed: its stored change is null, as it ended
- * before the budget's last tenth (#478).
+ * one whose step size overflowed or underflowed: its stored change is null, as
+ * it ended before the budget's last tenth (#478).
  */
 function lastTenth(phase: Phase, c: StartContext): Tile {
   const budget = budgetOf(c.run);
@@ -342,7 +353,7 @@ function lastTenth(phase: Phase, c: StartContext): Tile {
     { t: signedPercent(x), cls: "n" },
     { t: " train RMSE", cls: "tx" },
   ];
-  if (phase === "finished" && c.start.end_reason !== "overflow") {
+  if (phase === "finished" && endedEarly(c.start) === undefined) {
     const stored = c.start.still_improving_change;
     return { label, parts: stored === null ? dash : change(stored) };
   }

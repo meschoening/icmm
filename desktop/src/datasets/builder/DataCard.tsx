@@ -189,7 +189,7 @@ export function DataCard({
               </>
             )}
             <span className="dim">
-              · <span className="n">{read.rows}</span> rows
+              · <span className="n">{read.rows}</span> {read.rows === 1 ? "row" : "rows"}
             </span>
             {changeButton}
             {change.bubble}

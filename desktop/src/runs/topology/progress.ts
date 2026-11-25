@@ -98,7 +98,7 @@ function short(n: number): string {
   return String(n);
 }
 
-/** What each start runs, as the heading says it: "1" " M", or its whole number. */
+/** What each start runs, as the axis ends it: "1" " M", or its whole number. */
 export function budgetParts(perStart: number): { n: string; unit: string } {
   return perStart >= 1_000_000 && perStart % 100_000 === 0
     ? { n: String(perStart / 1_000_000), unit: " M" }

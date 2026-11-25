@@ -18,11 +18,11 @@ from typing import Literal
 from icmm.wire.base import WireInt, WireModel
 from icmm.wire.run import StartCause, TopStart
 
-type EndReason = Literal["budget", "overflow", "canceled", "time_limit"]
-"""Why a start stopped: it ran its **Evaluation budget**; CMA-ES's step size overflowed, so its
-search could no longer sample (a converged start with no stop test, #468); it was canceled (SIGTERM
-or SIGINT, or on This computer its stop file); or its job neared the scheduler's time limit
-(SIGUSR1). The first two end it **Finished**."""
+type EndReason = Literal["budget", "overflow", "underflow", "canceled", "time_limit"]
+"""Why a start stopped: it ran its **Evaluation budget**; CMA-ES's step size overflowed (#468) or
+underflowed to 0, so its search could no longer sample (a converged start with no stop test); it
+was canceled (SIGTERM or SIGINT, or on This computer its stop file); or its job neared the
+scheduler's time limit (SIGUSR1). The first three end it **Finished**."""
 
 
 class StartLogPoint(WireModel):
@@ -93,7 +93,8 @@ class StartResult(WireModel):
     end_reason: EndReason
     still_improving: bool | None
     """Whether the best's Train RMSE fell more than 1 % over the last 10 % of the evaluations;
-    `null` for a start that ended early, an overflow included, or ran fewer than 2 generations."""
+    `null` for a start that ended early, an overflow or underflow included, or ran fewer than 2
+    generations."""
     still_improving_change: float | None
     """How much the best's Train RMSE changed over those evaluations, as a fraction: −0.018 fell
     1.8 %. `null` where `still_improving` is, or a failed sweep leaves either end without one."""

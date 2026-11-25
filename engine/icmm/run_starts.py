@@ -43,9 +43,12 @@ _STATES: dict[str, StartState] = {
 }
 """The wire's word for each of the runs database's start states."""
 
-_END_REASON = "CASE WHEN {0}.overflowed THEN 'overflow' ELSE {0}.end_reason END"
-"""A try's end reason: the runs database keeps an overflowed one's as 'budget', for older engines
-(migration 25)."""
+_END_REASON = (
+    "CASE WHEN {0}.overflowed THEN 'overflow' WHEN {0}.underflowed THEN 'underflow' "
+    "ELSE {0}.end_reason END"
+)
+"""A try's end reason: the runs database keeps an overflowed or underflowed one's as 'budget', for
+older engines (migrations 25 and 29)."""
 
 _SUMMARY = (
     "s.start_index",

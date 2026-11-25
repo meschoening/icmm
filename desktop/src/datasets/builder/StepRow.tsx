@@ -119,7 +119,7 @@ export function StepRow({
                 aria-label={`Step ${n} ${kind} in ${unit}`}
                 aria-invalid={issue ? true : undefined}
                 aria-describedby={
-                  [issue ? `${fid(key)}-issue` : null, mark ? `${fid(key)}-was` : null]
+                  [mark ? `${fid(key)}-was` : null, issue ? `${fid(key)}-issue` : null]
                     .filter(Boolean)
                     .join(" ") || undefined
                 }

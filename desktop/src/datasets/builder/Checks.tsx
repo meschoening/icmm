@@ -113,7 +113,7 @@ export function Checks({
       text:
         added > 0
           ? `${rowsOf}, plus ${added} interpolated (${column} ${range}).`
-          : `${count(rowsMeasured.length, "sweep")} match the ${rowsOf} (${column} ${range}).`,
+          : `${count(rowsMeasured.length, "sweep")} ${rowsMeasured.length === 1 ? "matches" : "match"} the ${rowsOf} (${column} ${range}).`,
     });
   }
   // The protocol's own saved name isn't news, so only another name is said to be free (#560).

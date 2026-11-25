@@ -84,6 +84,8 @@ from icmm.wire.start import StartLogPoint, StartResult
 type Sweep = Literal["going", "ended", "superseded", "handed_over"]
 
 _COORDINATOR = FailureCause.COORDINATOR
+_FINISHED_REASONS = ("budget", "overflow", "underflow")
+"""The end reasons of a start that finished: its budget, or CMA-ES could no longer sample."""
 
 TOPIC = "runs"
 STOP_AFTER_FAILURES = 20
@@ -158,7 +160,11 @@ class _Out:
     task: int
     job_id: str | None
     running: bool
-    """Whether it counts running: it started, and the scheduler hasn't said its task ended."""
+    """Whether it counts running: it started, and kept its slot. One whose task ended counts
+    while its result is awaited, unless the scheduler ran another start in its slot (#573)."""
+    started: bool
+    """Whether a sweep saw it running. One that never was never counted running, so it doesn't
+    while its result is awaited either."""
     live_generation: int | None
     curve: str | None
     """Its **Progress curve** as its row keeps it; `None` before its log has been read."""
@@ -438,7 +444,7 @@ class Coordinator:
             .execute(
                 "SELECT t.graph, t.open_state, t.start_index, t.try, t.array, t.array_task, "
                 "a.job_id, t.started_at IS NOT NULL AND t.task_ended_at IS NULL, "
-                "t.live_generation, t.curve "
+                "t.started_at IS NOT NULL, t.live_generation, t.curve "
                 "FROM start_tries t INDEXED BY start_tries_out JOIN arrays a "
                 "ON a.run_id = t.run_id AND a.number = t.array "
                 "WHERE t.run_id = ? AND t.ended_at IS NULL ORDER BY t.array, t.array_task",
@@ -458,8 +464,10 @@ class Coordinator:
             tuple[_Out, StartLogPoint | None, str | None, Curve | None, StartLogPoint | None]
         ] = []
         withdrawn: list[_Out] = []
-        stopped: list[_Out] = []
-        """Tries whose task ended, their results awaited: no longer running."""
+        awaited: list[tuple[float, _Out]] = []
+        """Tries whose task ended, their results awaited for the grace, as first seen ended."""
+        holding = 0
+        """The tries counted running after this sweep, besides those awaited."""
         for out in self._out():
             task = files.start_task(self.run.folder, out.topology, out.start, out.attempt)
             result = files.read_result(task)
@@ -472,10 +480,12 @@ class Coordinator:
                 # A stop by hand fails the start, a restart's is fit again; on This computer only
                 # the scheduler's answer tells them apart (`LocalScheduler._settle`), so it's
                 # collected at a sweep the scheduler answers.
+                holding += out.running
                 continue
             if result is not None:
                 ended.append((out, result, state, files.log_curve(task, self.run.per_start)))
             elif state is None:
+                holding += out.running
                 continue
             elif state.status == "ended" and not state.ran:
                 withdrawn.append(out)
@@ -484,16 +494,20 @@ class Coordinator:
                 if self.clock() - seen >= self.scheduler.result_grace_s:
                     files.forget_snapshot(task)
                     ended.append((out, None, state, files.log_curve(task, self.run.per_start)))
-                elif out.running:
-                    stopped.append(out)
+                elif out.started:
+                    awaited.append((seen, out))
             elif state.status == "running":
+                holding += 1
                 self._ended_seen.pop(out.key, None)  # requeued: its next end waits afresh
                 point = files.last_log_point(task)
                 generation = None if point is None else point.generation
                 if not out.running or generation != out.live_generation:
                     first = None if point is None else files.first_log_point(task)
                     running.append((out, point, state.node, self._grown(task, out, point), first))
-        if not (ended or running or withdrawn or stopped):
+            else:
+                holding += out.running
+        stopped, kept = self._slots(awaited, holding)
+        if not (ended or running or withdrawn or stopped or kept):
             return
         wrote = sum(self._written(out) for out, *_ in ended)
         at = iso(self.wall_clock())
@@ -510,6 +524,8 @@ class Coordinator:
                 touched.add(out.topology)
             for out in stopped:
                 self._mark_stopped(conn, out)
+            for out in kept:
+                self._mark_kept(conn, out)
             for out, point, node, curve, first in running:
                 self._mark_running(conn, out, point, node, curve, self._paced(point, first))
             completed = self._settle_topologies(conn, touched, ended_in, finished, at)
@@ -577,7 +593,7 @@ class Coordinator:
             if canceling and state.cause is None:
                 # Stopped by its run's cancel before it could write its best so far.
                 outcome, cause = "canceled", None
-        elif result.end_reason in ("budget", "overflow"):
+        elif result.end_reason in _FINISHED_REASONS:
             outcome, cause = "finished", None
         elif result.end_reason == "time_limit":
             outcome, cause = "failed", StartCause.TIME_LIMIT
@@ -680,7 +696,7 @@ class Coordinator:
             "UPDATE start_tries SET best = ?, generations = ?, evaluations = ?, elapsed_s = ?, "
             "cost = ?, val_cost = ?, train_rmse = ?, val_rmse = ?, penalized = ?, "
             "train_sse = ?, train_points = ?, train_failed = ?, val_sse = ?, val_points = ?, "
-            "val_failed = ?, end_reason = ?, overflowed = ?, still_improving = ?, "
+            "val_failed = ?, end_reason = ?, overflowed = ?, underflowed = ?, still_improving = ?, "
             "still_improving_change = ?, node = COALESCE(node, ?) "
             "WHERE run_id = ? AND graph = ? AND open_state = ? AND start_index = ? AND try = ?",
             (
@@ -699,16 +715,18 @@ class Coordinator:
                 json.dumps(result.val_sse),
                 json.dumps(result.val_points),
                 json.dumps(result.val_failed),
-                # An overflowed start finished: 'budget' to an older engine (migration 25).
-                "budget" if result.end_reason == "overflow" else result.end_reason,
+                # A start whose step size overflowed or underflowed finished: 'budget' to an
+                # older engine (migrations 25 and 29).
+                "budget" if result.end_reason in _FINISHED_REASONS else result.end_reason,
                 1 if result.end_reason == "overflow" else None,
+                1 if result.end_reason == "underflow" else None,
                 None if result.still_improving is None else int(result.still_improving),
                 result.still_improving_change,
                 result.host,
                 *key,
             ),
         )
-        if result.end_reason in ("budget", "overflow"):
+        if result.end_reason in _FINISHED_REASONS:
             (cpus,) = conn.execute(
                 "SELECT cpus FROM start_tries WHERE run_id = ? AND graph = ? AND open_state = ? "
                 "AND start_index = ? AND try = ?",
@@ -736,16 +754,43 @@ class Coordinator:
         )
         self._count(conn, out.topology, running=-out.running)
 
+    def _slots(
+        self, awaited: list[tuple[float, _Out]], holding: int
+    ) -> tuple[list[_Out], list[_Out]]:
+        """Which tries whose results are awaited stop counting running, and which count again.
+        Each counts running until its result arrives or the grace ends (#573), as long as the run
+        stays within its cap: the start the scheduler runs in one's slot never takes the count
+        past it (#469 R06). Those counted already keep their slots first, then the first seen
+        ended."""
+        if not awaited:
+            return [], []
+        cap = self._job_defaults(self.db.connection()).max_running_starts
+        room = max(0, cap - holding)
+        order = sorted(awaited, key=lambda a: (not a[1].running, a[0], a[1].key))
+        counted = [out for _, out in order[:room]]
+        uncounted = [out for _, out in order[room:]]
+        return [o for o in uncounted if o.running], [o for o in counted if not o.running]
+
     def _mark_stopped(self, conn: sqlite3.Connection, out: _Out) -> None:
-        """A try whose task the scheduler says ended, its result awaited for the grace: no longer
-        running, so the start the scheduler runs in its slot keeps the count at what runs. It's
-        collected as it would be; `_end_try` takes nothing more off."""
+        """A try whose task the scheduler says ended, its result awaited for the grace, whose slot
+        the scheduler gave another start: no longer running, so the count stays within the cap.
+        It's collected as it would be; `_end_try` takes nothing more off."""
         conn.execute(
             "UPDATE start_tries SET task_ended_at = ? "
             "WHERE run_id = ? AND graph = ? AND open_state = ? AND start_index = ? AND try = ?",
             (now(), self.run.id, *out.key),
         )
         self._count(conn, out.topology, running=-1)
+
+    def _mark_kept(self, conn: sqlite3.Connection, out: _Out) -> None:
+        """A try that `_mark_stopped` took off, its result still awaited, with a slot free again:
+        it counts running again, as it does while its result is on its way (#573)."""
+        conn.execute(
+            "UPDATE start_tries SET task_ended_at = NULL "
+            "WHERE run_id = ? AND graph = ? AND open_state = ? AND start_index = ? AND try = ?",
+            (self.run.id, *out.key),
+        )
+        self._count(conn, out.topology, running=1)
 
     def _paced(
         self, point: StartLogPoint | None, first: StartLogPoint | None
@@ -1443,9 +1488,10 @@ class Coordinator:
         return "ended"
 
     def _settle(self, states: dict[str, dict[int, TaskState]] | None) -> Sweep:
-        """The run's state, judged per task: running while one runs, else held while one waits on
-        something other than resources or the run is held for space, else queued. It ends once
-        nothing it sent is out and nothing is left to send, or it's stopping."""
+        """The run's state, judged per task: running while one runs or a result is awaited, else
+        held while one waits on something other than resources or the run is held for space, else
+        queued. It ends once nothing it sent is out and nothing is left to send, or it's
+        stopping."""
         with self._write() as conn:
             (out,) = conn.execute(
                 "SELECT COUNT(*) FROM start_tries INDEXED BY start_tries_out "
@@ -1495,7 +1541,7 @@ class Coordinator:
             judged_hold, judged_reason = "scheduler", held
         else:
             judged_hold, judged_reason = None, None
-        if any(t.status == "running" for t in tasks):
+        if any(t.status == "running" for t in tasks) or self._awaiting(conn, states):
             judged = "running"
         else:
             judged = "queued" if judged_hold is None else "held"
@@ -1522,6 +1568,21 @@ class Coordinator:
                 ),
             )
             append_change(conn, TOPIC, str(self.run.id))
+
+    def _awaiting(self, conn: sqlite3.Connection, states: dict[str, dict[int, TaskState]]) -> bool:
+        """Whether a try that ran is out with its task ended: its result is awaited for the
+        grace, and it runs until then (#573)."""
+        rows = conn.execute(
+            "SELECT a.job_id, t.array_task FROM start_tries t INDEXED BY start_tries_out "
+            "JOIN arrays a ON a.run_id = t.run_id AND a.number = t.array "
+            "WHERE t.run_id = ? AND t.ended_at IS NULL AND t.started_at IS NOT NULL",
+            (self.run.id,),
+        ).fetchall()
+        for job_id, task in rows:
+            state = states.get(job_id, {}).get(task)
+            if state is not None and state.status == "ended" and state.ran:
+                return True
+        return False
 
     def _end(self, conn: sqlite3.Connection, stopping: RunFailure | None) -> None:
         end_run(conn, self.run.id, stopping)

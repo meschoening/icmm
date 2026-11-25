@@ -56,7 +56,7 @@ export type DatasetFileProblem = "not_dataset" | "damaged" | "invalid" | "newer"
  */
 export type Template =
   "gv_activation" | "steady_state_inactivation" | "recovery" | "decay_time" | "time_to_peak" | "custom";
-export type EndReason = "budget" | "overflow" | "canceled" | "time_limit";
+export type EndReason = "budget" | "overflow" | "underflow" | "canceled" | "time_limit";
 /**
  * A kind of file Export saves, which the save dialog offers by its extension.
  */

@@ -8,9 +8,9 @@ every stop test off, so a start ends only at its budget, rounded up to a whole *
 random choice comes from the start's own seed, drawn from the run's **Search seed**, its topology id
 and its start index, never from the clock or numpy's global state.
 
-With no stop test, a converged start's σ can grow until CMA-ES's state overflows and it can no
-longer sample (#468). The start ends there, finished with its best so far: the search is unchanged,
-only where it ends is reported.
+With no stop test, a converged start's step size can grow until CMA-ES's state overflows (#468), or
+shrink until it underflows to 0, and it can no longer sample. The start ends there, finished with
+its best so far: the search is unchanged, only where it ends is reported.
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ import time
 import warnings
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 import numpy as np
 
@@ -163,9 +163,9 @@ def run_start(
                 # through the bounds' inverse, changing the search.
                 asked = es.ask()
             except Exception:
-                if best_fit is None or not _overflowed(es):
+                if best_fit is None or (flowed := _out_of_range(es)) is None:
                     raise
-                end_reason = "overflow"  # it ends at the generation it last scored
+                end_reason = flowed  # it ends at the generation it last scored
             else:
                 generation += 1
                 candidates = [x.tolist() for x in asked]
@@ -177,11 +177,12 @@ def run_start(
                 try:
                     es.tell(asked, values)
                 except Exception:
-                    if not _overflowed(es):
+                    if (flowed := _out_of_range(es)) is None:
                         raise
-                    end_reason = "overflow"
-                if not _overflowed(es):
-                    steps = _steps(es, lower, upper)
+                    end_reason = flowed  # it logs the steps of the last tell that succeeded
+                else:
+                    if all(map(math.isfinite, measured := _steps(es, lower, upper))):
+                        steps = measured
                 assert best_fit is not None
                 if generation == window:
                     rmse_at_window = best_fit.train.rmse
@@ -230,10 +231,10 @@ def run_start(
                     pass  # Windows: a reader has it open; the next log point replaces it
             if end_reason != "budget":
                 break
-    if end_reason == "overflow":
+    if end_reason in ("overflow", "underflow"):
         print(
             f"ended at {generation * job.population:,} of {job.evaluation_budget:,} evaluations: "
-            "CMA-ES's step size overflowed",
+            f"CMA-ES's step size {end_reason}ed",
             file=sys.stderr,
             flush=True,
         )
@@ -326,16 +327,27 @@ def _steps(
     es: cma.CMAEvolutionStrategy, lower: np.ndarray, upper: np.ndarray
 ) -> tuple[float, float]:
     """CMA-ES's step size σ, and its largest σ·√Cᵢᵢ over its parameter's range."""
-    return float(es.sigma), float(np.max(es.stds / (upper - lower)))
-
-
-def _overflowed(es: cma.CMAEvolutionStrategy) -> bool:
-    """Whether CMA-ES's state is no longer finite: its step size, mean, evolution paths or
-    covariance overflowed, so it can't sample again."""
     with np.errstate(all="ignore"):
+        return float(es.sigma), float(np.max(es.stds / (upper - lower)))
+
+
+def _out_of_range(es: cma.CMAEvolutionStrategy) -> Literal["overflow", "underflow"] | None:
+    """Whether CMA-ES can no longer sample, and which way its state left the floating-point range.
+
+    "underflow" once a coordinate's step factor σ·scaling (pycma's `sigma_vec`) is below the
+    normal range, on its way to the 0 the tell then divides a 0 step by: in run #2's start 40 on
+    McKelvey a converged start's σ shrank 14 decades every 200 generations until σ times a
+    coordinate's scaling, each still normal, underflowed: 1.9e-287 · 1.2e-37 is 0 in the tell that
+    asserted. It's asked first, since what the tell then computes from that factor can overflow
+    too. "overflow" once the step size, mean, evolution paths or covariance aren't finite
+    (#468)."""
+    with np.errstate(all="ignore"):
+        factor = es.sigma * np.asarray(getattr(es.sigma_vec, "scaling", es.sigma_vec))
+        if np.all(np.isfinite(factor)) and not np.all(factor >= np.finfo(float).tiny):
+            return "underflow"
         state = [es.sigma, es.mean, es.pc, es.stds, getattr(es.adapt_sigma, "ps", 0.0)]
         state += [getattr(es.sm, "C", 0.0), getattr(es.sm, "D", 0.0)]  # the full sampler's
-        return not all(np.all(np.isfinite(part)) for part in state)
+        return None if all(np.all(np.isfinite(part)) for part in state) else "overflow"
 
 
 def _change(before: float | None, after: float | None) -> float | None:

@@ -9,7 +9,6 @@ import { useState } from "react";
 import { evaluationsPerStart } from "../../submit/estimate";
 import type { FailedStarts, Run, StartCurve, StartSummary, Topology } from "../../wire/types.gen";
 import {
-  budgetParts,
   PROGRESS_HEIGHT,
   PROGRESS_WIDTH,
   progressOf,
@@ -42,7 +41,6 @@ export function OptimizationProgress({
     search === undefined
       ? Math.max(1, ...curves.map((c) => c.evaluations[c.evaluations.length - 1] ?? 0))
       : evaluationsPerStart(search.evaluation_budget, search.population);
-  const budget = budgetParts(perStart);
   const words = progressWords(stage, {
     starts: t.starts,
     queued: t.starts_queued,
@@ -56,11 +54,7 @@ export function OptimizationProgress({
     <section className="topo-progress">
       <div className="topo-h topo-progress-h">
         <h2 className="label">Optimization progress</h2>
-        <span className="topo-hint">
-          best train RMSE so far against CMA-ES evaluations · every start runs its full{" "}
-          <span className="n">{budget.n}</span>
-          {budget.unit} evaluations unless its step size overflows
-        </span>
+        <span className="topo-hint">best train RMSE so far against CMA-ES evaluations</span>
         {toggles && (
           <div className="seg" role="group" aria-label="Progress view">
             <button type="button" aria-pressed={!band} onClick={() => setBand(false)}>

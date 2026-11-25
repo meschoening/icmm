@@ -330,7 +330,8 @@
   padding: 10px 0;
 }
 
-/* Runs from this config (#236): status, the run and how far it has got, its best Val RMSE. */
+/* Runs from this config (#236): the run, its status on its number's line (#572 S1), how far it
+   has got, and its best Val RMSE. */
 .cf-runs-head {
   display: flex;
   align-items: baseline;
@@ -349,7 +350,7 @@
 }
 .cf-run {
   display: grid;
-  grid-template-columns: 72px minmax(0, 1fr) 104px;
+  grid-template-columns: minmax(0, 1fr) 104px;
   gap: 10px;
   padding: 10px 0;
   border-top: 1px solid var(--line);
@@ -364,9 +365,17 @@
   padding: 0 0 6px;
   border-top: 0;
 }
+.cf-run-id {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
 .cf-run .st {
-  font-size: 14px;
+  align-items: baseline;
   color: var(--ink-2);
+}
+.cf-run .st > .g {
+  align-self: center;
 }
 .cf-run .st.st-failed {
   color: var(--red);

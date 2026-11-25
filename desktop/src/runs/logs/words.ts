@@ -8,7 +8,7 @@ import { whole } from "../../configs/words";
 import { durationWords } from "../../submit/estimate";
 import { clock } from "../../ui/clock";
 import type { CoordinatingJob, RunFailure, StartTry } from "../../wire/types.gen";
-import { logTable, logText, OVERFLOWED } from "../start/words";
+import { logTable, logText, OVERFLOWED, UNDERFLOWED } from "../start/words";
 import { ordinal } from "../topology/words";
 import { exitCode } from "../words";
 
@@ -100,6 +100,8 @@ export function tryEnd(
       return `start ${start} finished${when}${gen}`;
     case "overflow":
       return `start ${start} finished${when}${gen}: ${OVERFLOWED}`;
+    case "underflow":
+      return `start ${start} finished${when}${gen}: ${UNDERFLOWED}`;
   }
   // Stopped before it wrote its result: how isn't known.
   return `start ${start} ended${when}${gen}`;

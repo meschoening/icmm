@@ -683,7 +683,9 @@ MIGRATIONS: tuple[Migration, ...] = (
     # 26: when the scheduler first said a try's task ended, while its result may still be on its
     # way (`result_grace_s`): from then it no longer counts running, so a start the scheduler runs
     # in its slot never takes the count past the cap (#469). A try an older engine coordinates
-    # keeps `NULL`, counted running until it's collected, as that engine counts it.
+    # keeps `NULL`, counted running until it's collected, as that engine counts it. Since #573 a
+    # try awaiting its result counts running while the run has room for it, so this is set only
+    # while the scheduler has given its slot to another start, and cleared once one is free.
     additive("ALTER TABLE start_tries ADD COLUMN task_ended_at TEXT"),
     # 27: the name of the dataset a dataset was duplicated from, as it was when the copy was made
     # (#530), which Dataset detail's facts say. Nothing updates it: the copy is independent. A
@@ -699,6 +701,10 @@ MIGRATIONS: tuple[Migration, ...] = (
         "ALTER TABLE start_tries ADD COLUMN live_seconds_per_evaluation REAL",
         "ALTER TABLE start_tries ADD COLUMN live_end TEXT",
     ),
+    # 29: a try whose CMA-ES step size underflowed to 0 ended **Finished** with its best so far,
+    # as an overflowed one does (migration 25): it keeps `end_reason` 'budget' for older engines,
+    # and `underflowed` is 1, which the reads say as the end reason "underflow".
+    additive("ALTER TABLE start_tries ADD COLUMN underflowed INTEGER"),
 )
 """Each migration, in order. Append only: never edit a shipped one.
 

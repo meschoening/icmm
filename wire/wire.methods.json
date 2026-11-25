@@ -1,6 +1,6 @@
 {
-  "protocol": "1.70",
-  "schema_hash": "a5d2e7422329918c78445bcbdc6d0ced799cfc481e0a2ede3a856863cab19dd8",
+  "protocol": "1.71",
+  "schema_hash": "23f960c220dcf23ce511eca81206d259f98b985fbd6c8df359f0ee42d2240d28",
   "max_line_bytes": 16777216,
   "methods": [
     {

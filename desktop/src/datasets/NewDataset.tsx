@@ -37,6 +37,7 @@ import {
   choicesOf,
   contentOf,
   formsOf,
+  nameIssuesBySheet,
   sheetsStatus,
   type Choice,
   type Edits,
@@ -494,6 +495,7 @@ export function NewDatasetPage() {
         nameFree={book !== null && datasets.data !== undefined && !nameTaken}
         sheets={reads.length}
         status={status}
+        badNames={nameIssuesBySheet(issues, forms).size}
         protocols={protocolNames.length}
         platform={platform}
         locked={saving.pending}

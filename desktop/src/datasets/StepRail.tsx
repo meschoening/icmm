@@ -14,6 +14,8 @@ export interface StepRailProps {
   nameFree: boolean;
   sheets: number;
   status: SheetsStatus;
+  /** Sheets in use whose protocol name holds Next (#561), said while none needs a template or steps. */
+  badNames: number;
   protocols: number;
   platform: string;
   /** A save is under way: no going back. */
@@ -44,7 +46,13 @@ export function StepRail(p: StepRailProps) {
         {at > 1
           ? `${count(p.protocols, "protocol")} · ${p.status.leftOut === 0 ? "none left out" : `${count(p.status.leftOut, "sheet")} left out`}`
           : at === 1
-            ? `${count(p.sheets, "sheet")} · ${needs === 0 ? "all set" : `${needs} ${needs === 1 ? "needs" : "need"} ${needWord}`}`
+            ? `${count(p.sheets, "sheet")} · ${
+                needs > 0
+                  ? `${needs} ${needs === 1 ? "needs" : "need"} ${needWord}`
+                  : p.badNames > 0
+                    ? `${p.badNames} ${p.badNames === 1 ? "needs" : "need"} a valid name`
+                    : "all set"
+              }`
             : "Templates and names"}
       </span>
     ),

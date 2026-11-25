@@ -469,7 +469,7 @@ function Detail({
           0,
           fitting.starts - fitting.starts_finished - fitting.starts_failed - fitting.starts_running,
         );
-  const queued = queuedOf(r.id, fitting);
+  const queued = queuedOf(r.id, fitting, reads.fitting);
   // Past 2,000 the page doesn't read every topology, so it can't say which went first or failed.
   const first = many ? undefined : sent.find((t) => t.starts_finished < t.starts);
   const withFailures = many ? [] : sent.filter((t) => t.starts_failed > 0);

@@ -33,6 +33,7 @@ import type {
   RunTiming,
   SavedPlatform,
   RunStretches,
+  Topology,
   TopologySummary,
 } from "../wire/types.gen";
 import { endOf, fittingSeconds } from "./fitting";
@@ -123,7 +124,8 @@ export function engineVersion(key: string | null): string | undefined {
  * once that's gone (or below the Floor, ADR-0020), the one installed now.
  */
 export function resumeHint(r: Run, platform: Platform, engineNow: string | null): string {
-  const n = whole(unfinishedOf(r));
+  const left = unfinishedOf(r);
+  const starts = `the ${plural(left, "unfinished start", "unfinished starts")}`;
   const own = engineVersion(r.engine);
   if (!r.engine_installed) {
     const gone = own === undefined ? "Its engine" : `ICMM ${own}’s engine`;
@@ -131,13 +133,13 @@ export function resumeHint(r: Run, platform: Platform, engineNow: string | null)
       engineNow === null
         ? "the engine installed now"
         : `ICMM ${engineNow}’s, the one installed now`;
-    return `${gone} is no longer on ${platformName(platform)}, so Resume fits the ${n} unfinished starts with ${now}. They’ll agree with the rest in distribution, not to the last digit.`;
+    return `${gone} is no longer on ${platformName(platform)}, so Resume fits ${starts} with ${now}. ${left === 1 ? "It’ll agree" : "They’ll agree"} with the rest in distribution, not to the last digit.`;
   }
   // The engine is named only when it changes (#324, SR17); a cancel's stopped starts begin again.
   const stopped = r.progress.starts_stopped;
   return stopped > 0
-    ? `Resume fits the ${n} unfinished starts, the ${whole(stopped)} that ${stopped === 1 ? "was" : "were"} running again from the beginning.`
-    : `Resume fits the ${n} unfinished starts.`;
+    ? `Resume fits ${starts}, the ${whole(stopped)} that ${stopped === 1 ? "was" : "were"} running again from the beginning.`
+    : `Resume fits ${starts}.`;
 }
 
 // ── pace and ETA ──────────────────────────────────────────────────────────────────────────────
@@ -1155,7 +1157,8 @@ function slotsOf(r: Run, a: BoxAround): { used: number; mine: number; others: Ru
 function slotsInUse(r: Run, a: BoxAround): { big: string; bigOf: string } {
   const { used, mine } = slotsOf(r, a);
   const cap = a.job?.max_running_starts;
-  const own = mine === 0 ? "none" : mine === used ? "all" : whole(mine);
+  // One slot is "1 #214's", never "all" (#572 C1).
+  const own = mine === 0 ? "none" : mine === used && used > 1 ? "all" : whole(mine);
   return {
     big: whole(used),
     bigOf: factLine(
@@ -1179,7 +1182,8 @@ function capLineOf(r: Run, a: BoxAround, holders: boolean): CapLine | undefined 
     // The box's number says how many slots are this run's; this line names the others' (#500).
     const holding = whose(others.map((o) => o.id));
     const fact =
-      mine === 0 && theirs === job.max_running_starts
+      // One is "1 is #2's", never "all 1 are" (#572 C1).
+      mine === 0 && theirs === job.max_running_starts && theirs > 1
         ? `all ${whole(theirs)} are ${holding}`
         : `${whole(theirs)} ${theirs === 1 ? "is" : "are"} ${holding}`;
     // It breaks after the dot, never inside "2 are #41's".
@@ -1198,7 +1202,9 @@ function capLineOf(r: Run, a: BoxAround, holders: boolean): CapLine | undefined 
         : `${whole(a.jobs)} of your ${whole(a.limit)} cluster jobs in use`;
     if (holders && theirs > 0 && a.jobs > 0) {
       const ids = whose(others.map((o) => o.id));
-      jobs += theirs >= a.jobs ? `, all ${ids}` : `, ${whole(theirs)} of them ${ids}`;
+      // One job is just whose, never "all" (#572 C1).
+      jobs +=
+        a.jobs === 1 ? `, ${ids}` : theirs >= a.jobs ? `, all ${ids}` : `, ${whole(theirs)} of them ${ids}`;
     }
   }
   return {
@@ -1350,12 +1356,24 @@ export function cancelingWhat(
 /**
  * The fitting topology's starts not yet out of a cancel's way, `#214/T12.3`'s
  * 20 queued: those not finished, failed or running. `undefined` without one.
+ * Its full read, `detail`, counts them by state: those queued at the scheduler
+ * and those not sent. Its count of running starts can't, since a start whose
+ * result is on its way stops counting while SLURM runs another in its slot
+ * (#573, #469 R06), though it isn't queued.
  */
-export function queuedOf(run: number, fitting: TopologySummary | undefined): Named | undefined {
+export function queuedOf(
+  run: number,
+  fitting: TopologySummary | undefined,
+  detail?: Topology,
+): Named | undefined {
   if (fitting === undefined) return undefined;
+  const name = topologyName(run, fitting);
+  if (detail !== undefined && topologyKey(detail) === topologyKey(fitting)) {
+    return { name, starts: detail.starts_queued + detail.starts_waiting };
+  }
   const rest =
     fitting.starts - fitting.starts_finished - fitting.starts_failed - fitting.starts_running;
-  return { name: topologyName(run, fitting), starts: Math.max(0, rest) };
+  return { name, starts: Math.max(0, rest) };
 }
 
 /** Where a run's failed starts say what happened, when no one change answers them. */

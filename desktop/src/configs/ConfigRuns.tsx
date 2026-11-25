@@ -1,6 +1,6 @@
 /**
  * A config's runs on Configs (LaptopConfigs' Runs from this config, #236):
- * its newest few, each with its state, how far it has got and its ETA, and
+ * its newest few, each with its state beside its number, how far it has got and its ETA, and
  * its best RMSE, saying val or train (RF23), underlined while it runs, with a
  * hover that says why (#373); All runs opens Runs on its name.
  * A run follows its config's id, so a config renamed keeps its runs.
@@ -39,9 +39,6 @@ export function ConfigRuns({ id, name }: { id: string; name: string }) {
         <div role="table" aria-label="Runs from this config" className="cf-runs">
           <div role="row" className="cf-run cf-run-heads">
             <span role="columnheader" className="th">
-              Status
-            </span>
-            <span role="columnheader" className="th">
               Run
             </span>
             <span role="columnheader" className="th cf-run-num">
@@ -74,12 +71,15 @@ function Row({ run: r, eta, now }: { run: RunSummary; eta: number | undefined; n
       className="cf-run row-link"
       aria-describedby={live ? tip.id : undefined}
     >
-      <span role="cell" className={r.state === "failed" ? "st st-failed" : "st"}>
-        <span className={runGlyph(r.state)} aria-hidden="true" />
-        {r.state}
-      </span>
       <span role="cell" className="cf-run-what">
-        <span className="mono">#{r.id}</span>
+        {/* Its state on the number's line, so "completed" never meets "#1" (#572 S1). */}
+        <span className="cf-run-id">
+          <span className="mono">#{r.id}</span>
+          <span className={r.state === "failed" ? "st st-failed" : "st"}>
+            <span className={runGlyph(r.state)} aria-hidden="true" />
+            {r.state}
+          </span>
+        </span>
         <span className="cf-run-lines">
           <span>
             {whole(p.topologies_complete)} / {whole(p.topologies)} topologies

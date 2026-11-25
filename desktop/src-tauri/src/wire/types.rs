@@ -1246,6 +1246,8 @@ pub enum EndReason {
     Budget,
     #[serde(rename = "overflow")]
     Overflow,
+    #[serde(rename = "underflow")]
+    Underflow,
     #[serde(rename = "canceled")]
     Canceled,
     #[serde(rename = "time_limit")]
@@ -1256,6 +1258,7 @@ impl ::std::fmt::Display for EndReason {
         match *self {
             Self::Budget => f.write_str("budget"),
             Self::Overflow => f.write_str("overflow"),
+            Self::Underflow => f.write_str("underflow"),
             Self::Canceled => f.write_str("canceled"),
             Self::TimeLimit => f.write_str("time_limit"),
         }
@@ -1267,6 +1270,7 @@ impl ::std::str::FromStr for EndReason {
         match value {
             "budget" => Ok(Self::Budget),
             "overflow" => Ok(Self::Overflow),
+            "underflow" => Ok(Self::Underflow),
             "canceled" => Ok(Self::Canceled),
             "time_limit" => Ok(Self::TimeLimit),
             _ => Err("invalid value".into()),

@@ -466,6 +466,22 @@ export function contentOf(
   return { content: issues.length > 0 ? null : { name, protocols }, issues };
 }
 
+/**
+ * Each sheet's protocol name issue, the first one only: the Sheets step says it under the name,
+ * and its rail and facts count the sheets that need a valid name (#561, #572 D12).
+ */
+export function nameIssuesBySheet(issues: Issue[], forms: ProtocolForm[]): Map<string, string> {
+  const bySheet = new Map<string, string>();
+  for (const issue of issues) {
+    const at = fieldAt(issue.path);
+    if (at.protocol !== null && at.key === "name") {
+      const sheet = forms[at.protocol]?.sheet;
+      if (sheet !== undefined && !bySheet.has(sheet)) bySheet.set(sheet, issue.message);
+    }
+  }
+  return bySheet;
+}
+
 /** The field an issue's path names: a protocol's (by index) and its key, or the dataset's. */
 export function fieldAt(path: string[]): { protocol: number | null; key: string } {
   if (path[0] !== "protocols" || path.length < 3) return { protocol: null, key: path[0] ?? "" };

@@ -19,7 +19,7 @@ import { FindTopology } from "../../topology/FindTopology";
 import { drawingBox, SPECIFIC_IDS } from "../../topology/size";
 import { drawingCaption, drawingSentence } from "../../topology/words";
 import { VoltageLine } from "../VoltageLine";
-import { exampleIds, generationsOf, generationWords, idWords, voltageWords, whole } from "../words";
+import { exampleIds, idWords, voltageWords, whole } from "../words";
 import { MOST_DRAWN, type IdDrawings } from "./drawings";
 import {
   numberOf,
@@ -879,14 +879,6 @@ export function Optimization(p: OptimizationProps) {
     ? Number(draft.population.replace(/,/g, ""))
     : null;
   const log = /^\d[\d,]*$/.test(draft.log.trim()) ? Number(draft.log.replace(/,/g, "")) : null;
-  const budget = /^\d[\d,]*$/.test(draft.evaluations.trim())
-    ? Number(draft.evaluations.replace(/,/g, ""))
-    : null;
-  // Under one generation, the engine's note says what runs.
-  const generations =
-    population !== null && budget !== null && budget >= population
-      ? generationsOf(budget, population)
-      : null;
   const voltage = voltageWords(numberOf(draft.sigmoidMin), numberOf(draft.sigmoidMax));
   return (
     <Section
@@ -915,21 +907,7 @@ export function Optimization(p: OptimizationProps) {
         p={p}
         field="evaluations"
         label="Evaluations per start"
-        hint={
-          <>
-            {generations !== null && (
-              <>
-                At population <span className="n">{whole(population!)}</span>,{" "}
-                <span className="n">{whole(budget!)}</span> is{" "}
-                <span className="n">{whole(generations)}</span>
-                {"\u00a0"}
-                {generationWords(generations)}.{" "}
-              </>
-            )}
-            {/* A start whose step size overflows ends there, finished (#468, ADR-0008). */}
-            Every start runs them all unless CMA-ES’s step size overflows first.
-          </>
-        }
+        hint="Objective function evaluations each start runs."
       />
       <div className={`cb-adv cb-span3${p.advanced ? " open" : ""}`}>
         <button

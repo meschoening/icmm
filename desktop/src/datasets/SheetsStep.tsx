@@ -11,7 +11,7 @@ import type { TemplateName } from "../wire/templates.gen";
 import type { Issue } from "../wire/types.gen";
 import { SheetPreview } from "./charts";
 import { sweptOf } from "./builder/fields";
-import { fieldAt, parsed, type Choice, type ProtocolForm, type SheetsStatus } from "./draft";
+import { nameIssuesBySheet, parsed, type Choice, type ProtocolForm, type SheetsStatus } from "./draft";
 import { count, decimalsFor, fixed, joinAnd, span } from "./format";
 import type { Book } from "./NewDataset";
 import {
@@ -59,14 +59,7 @@ export function SheetsStep(p: SheetsStepProps) {
     p.setChoices(p.choices.map((c, j) => (j === i ? { ...c, ...change } : c)));
 
   // A protocol's name issue, by its sheet.
-  const nameIssues = new Map<string, string>();
-  for (const issue of p.issues) {
-    const at = fieldAt(issue.path);
-    if (at.protocol !== null && at.key === "name") {
-      const sheet = p.forms[at.protocol]?.sheet;
-      if (sheet !== undefined && !nameIssues.has(sheet)) nameIssues.set(sheet, issue.message);
-    }
-  }
+  const nameIssues = nameIssuesBySheet(p.issues, p.forms);
 
   const needs = p.status.needs;
   const nNone = needs.filter((n) => n.needs === "template").length;
@@ -120,7 +113,7 @@ export function SheetsStep(p: SheetsStepProps) {
         facts={
           <>
             <span className="mono">{p.book.workbook.name}</span> ·{" "}
-            <span className="n">{reads.length}</span> sheets ·{" "}
+            <span className="n">{reads.length}</span> {reads.length === 1 ? "sheet" : "sheets"} ·{" "}
             <span className="n">{p.status.matched}</span> matched
             {needs.length > 0 && (
               <>

@@ -550,18 +550,18 @@ export function ProtocolBuilder(p: ProtocolBuilderProps) {
                 Protocol name
               </label>
               <span className="v col">
-                <span className="ln b-name">
-                  <TextField
-                    id={fid("name")}
-                    value={draft.name}
-                    issue={byKey.get("name")}
-                    mark={marks.name}
-                    hint
-                    width="b-pname"
-                    onChange={(name) => edit({ name })}
-                  />
-                  <MarkWords id={fid("name")} mark={marks.name} />
-                </span>
+                <TextField
+                  id={fid("name")}
+                  value={draft.name}
+                  issue={byKey.get("name")}
+                  mark={marks.name}
+                  hint
+                  width="b-pname"
+                  onChange={(name) => edit({ name })}
+                />
+                {/* A renamed protocol's mark is the first line under the field: beside it, a
+                    32-character name has no room at 1200 (#572 D10). */}
+                <MarkWords id={fid("name")} mark={marks.name} under />
                 {/* Any name error takes the hint's place (#561 D9). */}
                 {byKey.has("name") ? (
                   <span id={`${fid("name")}-issue`} className="err">

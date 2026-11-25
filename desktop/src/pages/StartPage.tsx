@@ -95,7 +95,6 @@ import {
   useTopology,
   type TopologyRef,
 } from "../runs/topology/queries";
-import { evaluationsWords } from "../runs/topology/words";
 import { engineVersion } from "../runs/detail";
 import { rmse, runNumberOf } from "../runs/words";
 import { FailureBox } from "../setup/FailureBox";
@@ -948,19 +947,14 @@ function ProgressSection({
   const bestStart = chart !== undefined && chart.best !== "" ? beside?.best?.start : undefined;
   const drawn = chart?.finished ?? 0;
   const live = phase === "running" && c.asOf === undefined;
-  const of = budget === undefined ? "its" : `its full ${evaluationsWords(budget)}`;
-  // Unless it ends there, finished, as its step size overflows (#468).
-  const runs = `Every start runs ${of} evaluations unless CMA-ES’s step size overflows first.`;
   const empty =
     phase === "queued" || phase === "waiting"
       ? {
           say: "Its best so far shows here once it starts and logs its first generation.",
-          meta: runs,
         }
       : phase === "starting"
         ? {
             say: "Starting up: its best so far shows here once its first generation is logged.",
-            meta: runs,
           }
         : {
             say: "It stopped before its first generation, so it has no best to show.",
@@ -1043,7 +1037,7 @@ function ProgressSection({
       ) : (
         <div className="sp-empty tall">
           <p>{empty.say}</p>
-          <p className="meta">{empty.meta}</p>
+          {empty.meta !== undefined && <p className="meta">{empty.meta}</p>}
         </div>
       )}
     </section>
